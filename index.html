@@ -40,11 +40,11 @@
   .stats { display: flex; gap: 11px; margin-left: auto; font-size: 11px; color: var(--dim); }
   .stats b { color: var(--ink); font-size: 14px; font-variant-numeric: tabular-nums; display: block; text-align: right; }
   .tools { display: flex; gap: 5px; flex: none; }
-  .tools button, .cluebar button {
+  .tools button, .cluenav button {
     background: var(--panel); color: var(--ink); border: 1px solid var(--line);
     border-radius: 8px; padding: 6px 9px; font-size: 12px; cursor: pointer; font-family: inherit;
   }
-  .tools button:hover, .cluebar button:hover { background: var(--tile-in); }
+  .tools button:hover, .cluenav button:hover { background: var(--tile-in); }
 
   main { flex: 1; display: flex; min-height: 0; }
   #scroller { flex: 1; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; position: relative; }
@@ -88,17 +88,26 @@
   @media (max-width: 900px) { aside { display: none; } }
 
   footer { flex: none; background: var(--panel); border-top: 1px solid var(--line); }
-  .cluebar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; min-height: 46px; }
-  .cluebar .ph { color: var(--dim); font-size: 13px; }
+  /* 힌트가 이 판의 본문이다. 작게 줄여 자르지 말고 통째로 보이게 둔다 */
+  .cluebar { padding: 9px 12px 7px; }
+  .cluebar .ph { color: var(--dim); font-size: 14px; }
+  .meta { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
   .tag {
-    font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 6px; flex: none;
+    font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 6px; flex: none;
     background: var(--tile-cur); color: var(--deep);
   }
   .tag.d { background: var(--accent); color: #ffffff; }
   .tag.bad { background: #fbe9a4; color: var(--lemon-ink); }
-  .txt { flex: 1; font-size: 13.5px; line-height: 1.35; min-width: 0;
-         display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .len { font-size: 11px; color: var(--dim); flex: none; }
+  .txt {
+    margin: 0; font-size: 17px; line-height: 1.42; color: var(--ink); font-weight: 500;
+    word-break: keep-all; overflow-wrap: anywhere; max-height: 5.7em; overflow-y: auto;
+  }
+  .len { font-size: 11.5px; color: var(--dim); flex: none; margin-left: auto; }
+
+  .cluenav { display: flex; gap: 6px; padding: 0 10px 8px; }
+  .cluenav button { flex: 1; height: 36px; font-size: 13px; }
+  .cluenav button.wide { flex: 1.35; }
+  @media (min-width: 901px) { .txt { font-size: 18px; } }
 
   /* 화면 밖으로 밀지 않고 자리만 없앤다 — 밀어내면 폰이 화면을 끌어당긴다.
      16px 미만이면 iOS 가 확대하므로 크기는 유지한다. */
@@ -208,12 +217,12 @@
 </main>
 
 <footer>
-  <div class="cluebar">
-    <button id="prev" title="이전 단어">‹</button>
-    <div id="clue" style="flex:1;display:flex;align-items:center;gap:8px;min-width:0"></div>
-    <button id="hint" title="한 칸 열기">💡</button>
-    <button id="open" title="이 단어 통째로 열기">🔓</button>
-    <button id="next" title="다음 단어">›</button>
+  <div class="cluebar" id="clue"></div>
+  <div class="cluenav">
+    <button id="prev" title="이전 단어">‹ 이전</button>
+    <button id="hint" class="wide" title="한 칸 열기">💡 한 칸</button>
+    <button id="open" class="wide" title="이 단어 통째로 열기">🔓 단어 열기</button>
+    <button id="next" title="다음 단어">다음 ›</button>
   </div>
   <div id="kb"></div>
   <!-- 기기 자판을 불러오기 위한, 보이지 않는 입력칸 -->
@@ -258,6 +267,8 @@
     <li>다 채웠는데 <b>틀린 단어</b>는 칸이 레몬색으로 표시됩니다.
         밴드가 안 걷히면 노란 데를 보세요.</li>
     <li>왼쪽 위 단어장 이름을 누르면 <b>다른 단어장</b>으로 바꿀 수 있습니다.</li>
+    <li>창을 닫았다 들어와도 <b>그대로 이어집니다</b> — 판, 채워 둔 글자, 점수,
+        고르고 있던 칸, 보던 자리까지. 단어장마다 따로 남습니다.</li>
   </ul>
   <button class="close" onclick="this.closest('dialog').close()">시작하기</button>
 </dialog>

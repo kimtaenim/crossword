@@ -610,10 +610,13 @@ function renderClue() {
   const bar = document.getElementById('clue');
   if (!w) { bar.innerHTML = '<span class="ph">칸을 눌러 시작하세요</span>'; return; }
   const kind = KIND.get(w.word) || '';
-  bar.innerHTML = `<span class="tag ${w.dir === 'A' ? 'a' : 'd'}">${w.num} ${w.dir === 'A' ? '가로' : '세로'}</span>` +
-                  (w.bad ? '<span class="tag bad">틀림</span>' : '') +
-                  `<span class="txt">${w.clue}</span>` +
-                  `<span class="len">${kind ? kind + ' · ' : ''}${w.len}${isAlpha(w.word[0]) ? '자 (영문)' : '글자'}</span>`;
+  bar.innerHTML =
+    '<div class="meta">' +
+      `<span class="tag ${w.dir === 'A' ? 'a' : 'd'}">${w.num} ${w.dir === 'A' ? '가로' : '세로'}</span>` +
+      (w.bad ? '<span class="tag bad">틀림</span>' : '') +
+      `<span class="len">${kind ? kind + ' · ' : ''}${w.len}${isAlpha(w.word[0]) ? '자 (영문)' : '글자'}</span>` +
+    '</div>' +
+    `<p class="txt">${w.clue}</p>`;
 }
 
 function renderList() {
@@ -1046,18 +1049,30 @@ function savedPick(pack) {
 }
 let saveT;
 
+function writeSave() {
+  clearTimeout(saveT);
+  if (!PACK) return;
+  try {
+    localStorage.setItem(saveKey(), JSON.stringify({
+      depth: G.depth, score: G.score, solvedCount: G.solvedCount, hints: G.hints, filledTo: G.filledTo, par: G.par, bandOff: G.bandOff,
+      words: [...G.words.values()].map(w => [w.word, w.x, w.y, w.dir]),
+      entries: [...G.cells.values()].filter(c => c.ch).map(c => [c.x, c.y, c.ch]),
+      cur: S.cur, dir: S.dir, scroll: Math.round(scroller.scrollTop),
+    }));
+  } catch (_) {}
+}
+
 function save() {
   clearTimeout(saveT);
-  saveT = setTimeout(() => {
-    try {
-      localStorage.setItem(saveKey(), JSON.stringify({
-        depth: G.depth, score: G.score, solvedCount: G.solvedCount, hints: G.hints, filledTo: G.filledTo, par: G.par, bandOff: G.bandOff,
-        words: [...G.words.values()].map(w => [w.word, w.x, w.y, w.dir]),
-        entries: [...G.cells.values()].filter(c => c.ch).map(c => [c.x, c.y, c.ch]),
-      }));
-    } catch (_) {}
-  }, 300);
+  saveT = setTimeout(writeSave, 300);
 }
+
+/* 탭을 덮거나 앱을 내리면 미뤄 둔 저장을 그 자리에서 마친다.
+   폰은 여기서 못 쓰면 그대로 프로세스가 죽어 마지막 몇 글자가 날아간다. */
+addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') writeSave(); });
+addEventListener('pagehide', writeSave);
+
+let pendingScroll = 0;
 
 function load() {
   let data;
@@ -1082,6 +1097,8 @@ function load() {
   G.filledTo = data.filledTo | 0; G.depth = data.depth | 0;
   G.score = data.score | 0; G.solvedCount = data.solvedCount | 0; G.hints = data.hints | 0;
   number();
+  if (data.cur && G.cells.has(data.cur)) { S.cur = data.cur; S.dir = data.dir === 'D' ? 'D' : 'A'; }
+  pendingScroll = data.scroll | 0;
   return true;
 }
 
@@ -1108,9 +1125,11 @@ function startPack(pack, fresh, picked) {
     ? ` · ${PICK.size}/${pack.groups.length}갈래` : '';
   document.getElementById('packname').textContent = pack.emoji + ' ' + pack.name + part;
   document.title = pack.name + ' 크로스워드';
+  pendingScroll = 0;
   if (!load()) grow(AHEAD);
   ensureAhead();
   render();
+  if (pendingScroll) { scroller.scrollTop = pendingScroll; renderList(); }
 }
 
 const packSize = (pack, picked) =>
@@ -1232,7 +1251,7 @@ document.getElementById('kbtoggle').addEventListener('click', () => {
 let scrollT;
 scroller.addEventListener('scroll', () => {
   clearTimeout(scrollT);
-  scrollT = setTimeout(() => { ensureAhead(); render(); }, 80);
+  scrollT = setTimeout(() => { ensureAhead(); render(); save(); }, 80);   // 보던 자리도 같이 남긴다
 }, { passive: true });
 
 let resizeT;
