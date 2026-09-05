@@ -5,7 +5,7 @@
 <title>무한 크로스워드</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0e1218">
-<meta name="description" content="아래로 끝없이 이어지는 한글 크로스워드 — 에이아이·로봇, 시사 용어, 어린이 어휘 중 골라서 푼다">
+<meta name="description" content="아래로 끝없이 이어지는 한글 크로스워드 — 로봇 스터디, 시사 용어, 어린이 어휘 중 골라서 푼다">
 <style>
   :root {
     --c: 42px;
@@ -106,6 +106,7 @@
 
   #kb { padding: 4px 3px 8px; }
   body.nokb #kb { display: none; }
+  body.abc #kb { display: block; }   /* 영문 낱말일 때는 내장 자판을 꼭 보여 준다 */
   .krow { display: flex; justify-content: center; gap: 4px; margin-bottom: 4px; }
   .key {
     flex: 1; max-width: 42px; height: 42px; border-radius: 7px; border: 1px solid var(--line);

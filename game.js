@@ -11,6 +11,14 @@ const JONG_PAIR  = {'ㄱㅅ':'ㄳ','ㄴㅈ':'ㄵ','ㄴㅎ':'ㄶ','ㄹㄱ':'ㄺ',
 const JONG_SPLIT = Object.fromEntries(Object.entries(JONG_PAIR).map(([k, v]) => [v, [k[0], k[1]]]));
 const isVowel = j => JUNG.includes(j);
 
+/*
+ * 낱말은 두 갈래다. 한글 음절 낱말과 알파벳 약어(AGV, SLAM …).
+ * 격자는 글자가 같은지만 보므로 섞여 있어도 그만이지만,
+ * 한글 음절과 알파벳 한 글자는 절대 같을 수 없어 알파벳은 알파벳끼리만 교차한다.
+ * 입력도 갈라야 한다 — 알파벳 낱말을 고르면 자판이 영문으로 바뀐다.
+ */
+const isAlpha = ch => ch >= 'A' && ch <= 'Z';
+
 /** 조합 상태 → 화면에 보일 글자 */
 function assemble(s) {
   if (!s.cho && !s.jung) return '';
@@ -582,6 +590,7 @@ function render() {
   document.getElementById('depth').textContent = G.depth;
   document.getElementById('solved').textContent = G.solvedCount;
   document.getElementById('score').textContent = G.score;
+  syncKeyboard();
   renderClue();
   renderList();
 }
@@ -604,7 +613,7 @@ function renderClue() {
   bar.innerHTML = `<span class="tag ${w.dir === 'A' ? 'a' : 'd'}">${w.num} ${w.dir === 'A' ? '가로' : '세로'}</span>` +
                   (w.bad ? '<span class="tag bad">틀림</span>' : '') +
                   `<span class="txt">${w.clue}</span>` +
-                  `<span class="len">${kind ? kind + ' · ' : ''}${w.len}글자</span>`;
+                  `<span class="len">${kind ? kind + ' · ' : ''}${w.len}${isAlpha(w.word[0]) ? '자 (영문)' : '글자'}</span>`;
 }
 
 function renderList() {
@@ -709,6 +718,19 @@ function input(j) {
     c.ch = assemble(r.cur);
     checkWords(c);
   }
+  after();
+}
+
+/** 알파벳 칸에 글자 하나를 넣고 다음 칸으로 */
+function putChar(ch) {
+  if (!S.cur) return;
+  let c = G.cells.get(S.cur);
+  if (!c) return;
+  if (c.solved) { advance(); c = G.cells.get(S.cur); if (!c || c.solved) { render(); return; } }
+  c.ch = ch.toUpperCase();
+  S.comp = { cho: '', jung: '', jong: '' };
+  checkWords(c);
+  advance();
   after();
 }
 
@@ -849,7 +871,15 @@ let imeCells = [];        // 지금 입력이 차례로 들어갈 칸들
 let composing = false;
 let pendingAfter = false;
 
-const useIME = () => document.body.classList.contains('nokb');
+/** 지금 고른 낱말이 알파벳 약어인가 */
+function alphaMode() {
+  const w = curWord();
+  return !!w && isAlpha(w.word[0]);
+}
+
+// 알파벳 낱말일 때는 기기 자판 대신 내장 영문 자판을 쓴다.
+// 한글 자판을 켜 둔 폰에서 영문으로 갈아 끼우게 하는 건 번거롭기만 하다.
+const useIME = () => document.body.classList.contains('nokb') && !alphaMode();
 
 /** 지금 선택한 자리에 맞춰 입력칸을 비우고 다시 겨눈다 */
 function anchorIME(force) {
@@ -909,10 +939,19 @@ const QWERTY = { q:'ㅂ',w:'ㅈ',e:'ㄷ',r:'ㄱ',t:'ㅅ',y:'ㅛ',u:'ㅕ',i:'ㅑ'
                  Q:'ㅃ',W:'ㅉ',E:'ㄸ',R:'ㄲ',T:'ㅆ',O:'ㅒ',P:'ㅖ' };
 let shift = false;
 
-function buildKeyboard() {
+const ABC = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['Z','X','C','V','B','N','M','⌫'],
+];
+let kbMode = '';
+
+function buildKeyboard(mode) {
+  if (mode === kbMode) return;
+  kbMode = mode;
   const kb = document.getElementById('kb');
   kb.innerHTML = '';
-  ROWS.forEach(row => {
+  (mode === 'en' ? ABC : ROWS).forEach(row => {
     const r = document.createElement('div');
     r.className = 'krow';
     row.forEach(k => {
@@ -924,17 +963,28 @@ function buildKeyboard() {
     });
     kb.appendChild(r);
   });
-  kb.addEventListener('pointerdown', e => {
-    const b = e.target.closest('.key');
-    if (!b) return;
-    e.preventDefault();
-    const k = b.dataset.k;
-    if (k === '⌫') { backspace(); return; }
-    if (k === '⇧') { shift = !shift; paintShift(); return; }
-    input(shift ? (SHIFTED[k] || k) : k);
-    if (shift) { shift = false; paintShift(); }
-  });
-  paintShift();
+  if (mode !== 'en') paintShift();
+}
+
+// 자판을 갈아 끼워도 누름은 한 번만 — 판마다 붙이면 두 번씩 들어간다
+document.getElementById('kb').addEventListener('pointerdown', e => {
+  const b = e.target.closest('.key');
+  if (!b) return;
+  e.preventDefault();
+  const k = b.dataset.k;
+  if (k === '⌫') { backspace(); return; }
+  if (k === '⇧') { shift = !shift; paintShift(); return; }
+  if (kbMode === 'en') { putChar(k); return; }
+  input(shift ? (SHIFTED[k] || k) : k);
+  if (shift) { shift = false; paintShift(); }
+});
+
+/** 고른 낱말에 맞춰 자판을 갈아 끼운다 */
+function syncKeyboard() {
+  const en = alphaMode();
+  buildKeyboard(en ? 'en' : 'ko');
+  document.body.classList.toggle('abc', en);   // 영문일 때는 내장 자판을 반드시 보인다
+  if (en) ime.blur();
 }
 
 function paintShift() {
@@ -960,6 +1010,9 @@ window.addEventListener('keydown', e => {
   if (k === 'ArrowRight') { e.preventDefault(); move(1, 0); return; }
   if (k === 'ArrowUp')    { e.preventDefault(); move(0, -1); return; }
   if (k === 'ArrowDown')  { e.preventDefault(); move(0, 1); return; }
+  if (/^[A-Za-z]$/.test(k) && alphaMode()) {
+    e.preventDefault(); putChar(k); return;
+  }
   if (QWERTY[k]) { e.preventDefault(); ime.value = ''; anchorIME(true); input(QWERTY[k]); return; }
   // 한글 IME 가 켜져 있어 자모/음절이 그대로 들어오는 경우
   if (k.length === 1) {
@@ -1244,7 +1297,7 @@ function showLoadError(err) {
 
 async function boot() {
   document.body.classList.add('nokb');    // 기본은 기기 자판, ⌨ 로 내장 자판 전환
-  buildKeyboard();
+  buildKeyboard('ko');
   sizeCells();
   // 단어장이 오기 전까지는 빈 판이라, 무슨 일이 일어나는지 알려 준다
   document.getElementById('clue').innerHTML = '<span class="ph">단어장 불러오는 중…</span>';
