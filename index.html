@@ -151,6 +151,11 @@
   .pack i { font-style: normal; font-size: 12px; color: #a8b2c2; line-height: 1.4; }
   .pack u { text-decoration: none; font-size: 11px; color: var(--dim); }
 
+  .oops { max-width: 380px; margin: 18vh auto 0; padding: 0 20px; color: var(--dim); font-size: 13.5px; line-height: 1.7; }
+  .oops b { display: block; color: var(--ink); font-size: 15px; margin-bottom: 8px; }
+  .oops code { display: block; margin-top: 6px; padding: 8px 10px; border-radius: 7px;
+               background: #1d2634; border: 1px solid var(--line); color: var(--accent); font-size: 12.5px; }
+
   #kinds { display: flex; flex-wrap: wrap; gap: 7px; }
   .kind {
     display: flex; align-items: baseline; gap: 6px; font-family: inherit; cursor: pointer;
@@ -250,10 +255,6 @@
   <button class="close" onclick="this.closest('dialog').close()">시작하기</button>
 </dialog>
 
-<script>window.PACKS = [];</script>
-<script src="packs/ai-robot.js"></script>
-<script src="packs/news.js"></script>
-<script src="packs/kids.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

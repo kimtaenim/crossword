@@ -1,9 +1,9 @@
 /* 힌트 점검 — 정답이 새거나, 너무 길거나, 겹치는 힌트를 잡아낸다.
    node tools/check-clues.mjs */
 import fs from 'fs';
-global.window = { PACKS: [] };
 const dir = new URL('../packs/', import.meta.url).pathname;
-for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.js'))) eval(fs.readFileSync(dir + f, 'utf8'));
+const names = JSON.parse(fs.readFileSync(dir + 'index.json', 'utf8'));
+global.window = { PACKS: names.map(n => JSON.parse(fs.readFileSync(dir + n, 'utf8'))) };
 
 const MAXLEN = 46;              // 힌트 줄이 두 줄을 넘지 않는 길이
 let bad = 0, n = 0;

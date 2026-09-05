@@ -1212,15 +1212,53 @@ if (vv) {
 }
 
 /* ───────── 시작 ───────── */
-document.body.classList.add('nokb');    // 기본은 기기 자판, ⌨ 로 내장 자판 전환
-buildKeyboard();
-sizeCells();
+/*
+ * 단어장은 packs/*.json 에 따로 두고 여기서 읽어 온다.
+ * 파일을 하나 더 얹고 index.json 에 이름만 적으면 단어장이 늘어난다.
+ * 다만 fetch 를 쓰므로 file:// 로 열면 브라우저가 막는다 — 서버가 있어야 한다.
+ */
+async function loadPacks() {
+  // 한 파일로 묶어 배포할 때는 단어장을 미리 박아 넣는다 (fetch 할 데가 없다)
+  if (Array.isArray(window.PACKS_INLINE) && window.PACKS_INLINE.length) return window.PACKS_INLINE;
+  const base = new URL('packs/', location.href);
+  const names = await (await fetch(new URL('index.json', base))).json();
+  const packs = await Promise.all(
+    names.map(async n => {
+      const r = await fetch(new URL(n, base));
+      if (!r.ok) throw new Error(`${n}: ${r.status}`);
+      return r.json();
+    }));
+  return packs.filter(p => p && p.groups && p.groups.length);
+}
 
-let first = null;
-try { first = window.PACKS.find(p => p.id === localStorage.getItem(LAST_KEY)); } catch (_) {}
-const firstPack = first || window.PACKS[0];
-startPack(firstPack, false, savedPick(firstPack));
-if (!first) openChooser();     // 처음 왔으면 단어장부터 고르게 한다
+function showLoadError(err) {
+  document.getElementById('clue').innerHTML =
+    '<span class="ph">단어장을 못 읽었습니다 — ' + String(err.message || err) + '</span>';
+  document.getElementById('board').innerHTML =
+    '<div class="oops"><b>단어장을 불러오지 못했습니다.</b>' +
+    '<p>파일을 직접 열면(file://) 브라우저가 packs 폴더 읽기를 막습니다.' +
+    ' 간단한 서버로 여세요.</p><code>npx http-server .</code>' +
+    '<p>깃허브 페이지스로 올린 주소에서는 그냥 됩니다.</p></div>';
+  console.error(err);
+}
+
+async function boot() {
+  document.body.classList.add('nokb');    // 기본은 기기 자판, ⌨ 로 내장 자판 전환
+  buildKeyboard();
+  sizeCells();
+  // 단어장이 오기 전까지는 빈 판이라, 무슨 일이 일어나는지 알려 준다
+  document.getElementById('clue').innerHTML = '<span class="ph">단어장 불러오는 중…</span>';
+  window.PACKS = await loadPacks();
+  if (!window.PACKS.length) throw new Error('단어장이 비어 있습니다');
+
+  let first = null;
+  try { first = window.PACKS.find(p => p.id === localStorage.getItem(LAST_KEY)); } catch (_) {}
+  const firstPack = first || window.PACKS[0];
+  startPack(firstPack, false, savedPick(firstPack));
+  if (!first) openChooser();     // 처음 왔으면 단어장부터 고르게 한다
+}
+
+boot().catch(showLoadError);
 
 if (location.search.includes('debug'))
   window.__cw = { G, S, get W() { return W; }, key, grow, collapse, clearableY, render, wordCells,
