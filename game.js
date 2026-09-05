@@ -95,6 +95,9 @@ const W = 8;                 // 열 수 (4~5음절 단어가 여유 있게 들�
 const AHEAD = 26;            // 화면 아래로 미리 만들어 두는 줄 수
 const BAND = 6;              // 세로 단어가 넘지 못하는 경계의 간격 (= 걷어낼 수 있는 자리)
 const TARGET_CROSS = 4;      // 단어 하나가 다른 단어와 겹쳤으면 하는 목표 횟수
+const KEEP = BAND * 40;      // 다 푼 줄을 이만큼(240줄) 남겨 두고, 그보다 오래된 것만 버린다
+const WINDOW = 14;           // 화면 위아래로 이만큼 줄만 DOM 에 둔다 (판이 끝없이 길어지므로)
+const SHADES = 5;            // 지나온 밴드를 옅어지는 파랑 몇 단계로 보여 줄지
 const RECENT = 16;            // 최근 이만큼 안에서는 같은 단어를 다시 쓰지 않는다
 const key = (x, y) => x + ',' + y;
 
@@ -174,9 +177,11 @@ const G = {
   filledTo: 0,        // 이 줄까지는 겹침을 보강해 둠
   strad: new Map(),   // 줄 → 그 경계를 가로지르는 세로 단어 수
   used: new Map(),    // 단어 → 지금까지 쓴 횟수 (많이 쓴 것은 뒤로 미룬다)
-  par: 0,             // 가로줄의 홀짝 (줄을 걷어내면 밀린다)
-  bandOff: 0,         // 밴드 경계의 위치 (역시 줄을 걷어내면 밀린다)
-  depth: 0,           // 걷어낸 줄 수
+  par: 0,             // 가로줄의 홀짝
+  bandOff: 0,         // 밴드 경계의 위치
+  top: 0,             // 여기서부터가 아직 푸는 중인 줄. 그 위는 다 푼 줄로 남겨 둔다
+  numBase: 0,         // 지나간 줄에 이미 매긴 번호 (번호가 흔들리지 않게 이어서 매긴다)
+  depth: 0,           // 지나온 줄 수
   solvedCount: 0,
   score: 0,
   hints: 0,
@@ -433,10 +438,10 @@ function grow(targetY) {
   number();
 }
 
-/** 화면 순서대로 단어 번호 매기기 */
+/** 화면 순서대로 단어 번호 매기기 (지나간 줄의 번호는 건드리지 않고 그 뒤로 잇는다) */
 function number() {
-  const starts = [...G.cells.values()].sort((a, b) => a.y - b.y || a.x - b.x);
-  let n = 0;
+  const starts = [...G.cells.values()].filter(c => !c.past).sort((a, b) => a.y - b.y || a.x - b.x);
+  let n = G.numBase;
   for (const c of starts) {
     const a = c.across !== null && G.words.get(c.across).x === c.x && G.words.get(c.across).y === c.y;
     const d = c.down !== null && G.words.get(c.down).x === c.x && G.words.get(c.down).y === c.y;
@@ -477,15 +482,16 @@ function checkWords(cell) {
  */
 function markBad() {
   for (const w of G.words.values()) {
+    if (w.past) continue;
     const cs = wordCells(w);
     w.bad = !w.solved && cs.every(c => c.ch) && cs.some(c => c.ch !== c.ans);
   }
 }
 
-/** 위에서부터 통째로 풀린 줄 수 (단어가 걸쳐 있지 않은 지점까지) */
+/** 아직 푸는 중인 줄 가운데, 위에서부터 통째로 풀린 데까지의 새 경계 (절대 좌표) */
 function clearableY() {
-  let limit = 0;
-  for (let y = 0; y <= G.maxY; y++) {
+  let limit = G.top;
+  for (let y = G.top; y <= G.maxY; y++) {
     let ok = true;
     for (let x = 0; x < W; x++) {
       const c = G.cells.get(key(x, y));
@@ -494,9 +500,9 @@ function clearableY() {
     if (!ok) break;
     limit = y + 1;
   }
-  if (!limit) return 0;
-  let best = 0;
-  for (let y = 1; y <= limit; y++) {
+  if (limit === G.top) return G.top;
+  let best = G.top;
+  for (let y = G.top + 1; y <= limit; y++) {
     let straddle = false;
     for (const w of G.words.values()) {
       if (w.dir === 'D' && w.y < y && w.y + w.len > y) { straddle = true; break; }
@@ -506,36 +512,57 @@ function clearableY() {
   return best;
 }
 
+/*
+ * 윗줄을 다 풀면 걷어내는 대신 "지나온 줄"로 넘긴다.
+ * 지우지 않으므로 위로 스크롤하면 언제든 다시 볼 수 있고(복습),
+ * 대신 색을 한 단계씩 옅게 해서 처리한 데라는 것을 보여 준다.
+ * 좌표가 밀리지 않으니 홀짝도 밴드 경계도 번호도 그대로다.
+ */
 function collapse() {
   const n = clearableY();
-  if (!n) return false;
-  for (const [k, c] of [...G.cells]) if (c.y < n) G.cells.delete(k);
-  for (const [id, w] of [...G.words]) if (w.y + (w.dir === 'D' ? w.len - 1 : 0) < n) G.words.delete(id);
-  const moved = new Map();
-  for (const c of G.cells.values()) { c.y -= n; moved.set(key(c.x, c.y), c); }
-  G.cells = moved;
-  for (const w of G.words.values()) w.y -= n;
-  G.maxY -= n;
-  G.par = (G.par + n) % 2;
-  G.bandOff = (G.bandOff + n) % BAND;
-  rebuildStrad();
-  G.filledTo = Math.max(0, G.filledTo - n);
-  G.depth += n;
-  G.score += n * 5;
+  if (n <= G.top) return false;
+  const rows = n - G.top;
+  for (const c of G.cells.values()) if (c.y >= G.top && c.y < n) c.past = true;
+  for (const w of G.words.values())
+    if (!w.past && w.y + (w.dir === 'D' ? w.len - 1 : 0) < n) w.past = true;
+  G.top = n;
+  G.depth += rows;
+  G.score += rows * 5;
+  // 지나간 칸의 번호는 그대로 두고, 아직 푸는 줄만 그 뒤로 이어 매긴다
+  for (const c of G.cells.values()) if (c.past && c.num > G.numBase) G.numBase = c.num;
   if (S.cur) {
-    const [x, y] = S.cur.split(',').map(Number);
-    const nk = key(x, y - n);
-    S.cur = (y >= n && G.cells.has(nk)) ? nk : null;
+    const y = +S.cur.split(',')[1];
+    if (y < G.top) S.cur = null;
   }
+  forget();
   number();
   return true;
+}
+
+/** 너무 오래된 줄은 버린다 — 끝없이 쌓이면 저장도 그리기도 무거워진다 */
+function forget() {
+  let cut = G.top - KEEP;
+  if (cut <= 0) return;
+  // 세로 단어가 걸친 자리에서 자르면 반쪽 단어가 남는다. 안 걸친 줄까지 물러난다
+  const straddles = y => {
+    for (const w of G.words.values()) if (w.dir === 'D' && w.y < y && w.y + w.len > y) return true;
+    return false;
+  };
+  while (cut > 0 && straddles(cut)) cut--;
+  if (cut <= 0) return;
+  for (const [k, c] of [...G.cells]) if (c.y < cut) G.cells.delete(k);
+  for (const [id, w] of [...G.words]) if (w.y + (w.dir === 'D' ? w.len - 1 : 0) < cut) G.words.delete(id);
 }
 
 /* ───────── 화면 ───────── */
 const board = document.getElementById('board');
 const layer = document.getElementById('layer');
 const scroller = document.getElementById('scroller');
-const els = new Map();       // 칸 객체 → div (좌표가 아니라 객체로 묶어야 줄이 걷혀도 안 어긋난다)
+const els = new Map();       // 칸 객체 → div (화면 언저리에 있는 것만 들고 있는다)
+const nowline = document.createElement('div');   // 여기서부터가 아직 푸는 줄
+nowline.id = 'nowline';
+nowline.hidden = true;
+layer.appendChild(nowline);
 let C = 44;                  // 칸 크기(px)
 
 function sizeCells() {
@@ -549,10 +576,11 @@ function vanish(cell) {
   const el = els.get(cell);
   if (!el) return;
   els.delete(cell);
-  el.classList.remove('wrong', 'cur', 'inword');
-  el.classList.add('gone');
-  setTimeout(() => el.remove(), 400);
+  el.remove();      // 화면 밖으로 나간 칸일 뿐이다 — 다시 올라오면 그대로 다시 그린다
 }
+
+/** 지나온 줄을 몇 단계 옅은 파랑으로 보일지 (0 = 방금 지나온 밴드) */
+const shadeOf = y => Math.min(SHADES - 1, Math.floor((G.top - 1 - y) / BAND));
 
 function render() {
   layer.style.height = (G.maxY + 2) * C + 'px';
@@ -560,8 +588,12 @@ function render() {
   const inWord = w ? new Set(wordCells(w)) : null;
   const bad = new Set();
   for (const w of G.words.values()) if (w.bad) for (const c of wordCells(w)) bad.add(c);
+  // 판은 이제 지워지지 않고 계속 길어지므로, 화면 언저리만 DOM 에 둔다
+  const from = Math.floor(scroller.scrollTop / C) - WINDOW;
+  const to = Math.ceil((scroller.scrollTop + scroller.clientHeight) / C) + WINDOW;
   const live = new Set();
   for (const [k, c] of G.cells) {
+    if (c.y < from || c.y > to) continue;
     live.add(c);
     let el = els.get(c);
     if (!el) {
@@ -573,8 +605,11 @@ function render() {
       layer.appendChild(el);
       els.set(c, el);
       el.style.transform = `translate(${c.x * C}px, ${c.y * C}px)`;
-      el.classList.add('born');
-      requestAnimationFrame(() => el.classList.remove('born'));
+      if (!c.seen) {                        // 새로 생긴 칸만 나타나는 시늉을 한다
+        c.seen = true;
+        el.classList.add('born');
+        requestAnimationFrame(() => el.classList.remove('born'));
+      }
     }
     const txt = c.ch || '', num = c.num ? String(c.num) : '';
     if (el._b.textContent !== txt) el._b.textContent = txt;
@@ -585,8 +620,13 @@ function render() {
     el.classList.toggle('wrong', !c.solved && bad.has(c));
     el.classList.toggle('cur', k === S.cur);
     el.classList.toggle('inword', !!inWord && inWord.has(c));
+    el.classList.toggle('past', !!c.past);
+    const age = c.past ? String(shadeOf(c.y)) : '';
+    if (el._age !== age) { el._age = age; if (age) el.dataset.age = age; else delete el.dataset.age; }
   }
   for (const c of [...els.keys()]) if (!live.has(c)) vanish(c);
+  nowline.style.transform = `translateY(${G.top * C}px)`;
+  nowline.hidden = !G.top;
   document.getElementById('depth').textContent = G.depth;
   document.getElementById('solved').textContent = G.solvedCount;
   document.getElementById('score').textContent = G.score;
@@ -658,9 +698,12 @@ function flash(v) {
 
 function scrollTo(c) {
   const top = c.y * C, bot = top + C;
-  const vt = scroller.scrollTop, vb = vt + scroller.clientHeight;
-  if (top < vt + C) scroller.scrollTo({ top: Math.max(0, top - C * 2), behavior: 'smooth' });
-  else if (bot > vb - C) scroller.scrollTo({ top: bot - scroller.clientHeight + C * 2, behavior: 'smooth' });
+  const h = scroller.clientHeight;
+  // 자판이 올라오면 판이 보이는 높이가 세 줄도 안 된다. 여백을 그만큼 줄여야 칸이 안 가린다
+  const m = Math.min(C * 2, Math.max(0, (h - C) / 2));
+  const vt = scroller.scrollTop, vb = vt + h;
+  if (top < vt + m) scroller.scrollTo({ top: Math.max(0, top - m), behavior: 'smooth' });
+  else if (bot > vb - m) scroller.scrollTo({ top: bot - h + m, behavior: 'smooth' });
 }
 
 /* ───────── 조작 ───────── */
@@ -842,9 +885,11 @@ function after() {
   ensureAhead();
   markBad();
   if (cleared) {
-    flash(cleared + '줄 정리!');
+    flash(cleared + '줄 넘김!');
     board.classList.add('lift');
     setTimeout(() => board.classList.remove('lift'), 400);
+    const want = Math.max(0, G.top * C - 6);      // 지나온 줄은 위에 남기고 시선만 내린다
+    if (scroller.scrollTop < want) scroller.scrollTo({ top: want, behavior: 'smooth' });
   }
   const w = curWord();
   if (!S.cur || (w && w.solved)) jumpNearest();
@@ -855,7 +900,9 @@ function after() {
 
 function ensureAhead() {
   const bottomRow = Math.ceil((scroller.scrollTop + scroller.clientHeight) / C);
-  if (G.maxY < bottomRow + AHEAD) grow(bottomRow + AHEAD);
+  // 위로 올려 복습하는 중이어도 푸는 자리는 늘 넉넉히 깔려 있어야 한다
+  const need = Math.max(bottomRow, G.top) + AHEAD;
+  if (G.maxY < need) grow(need);
 }
 
 
@@ -1055,6 +1102,7 @@ function writeSave() {
   try {
     localStorage.setItem(saveKey(), JSON.stringify({
       depth: G.depth, score: G.score, solvedCount: G.solvedCount, hints: G.hints, filledTo: G.filledTo, par: G.par, bandOff: G.bandOff,
+      top: G.top, numBase: G.numBase,
       words: [...G.words.values()].map(w => [w.word, w.x, w.y, w.dir]),
       entries: [...G.cells.values()].filter(c => c.ch).map(c => [c.x, c.y, c.ch]),
       cur: S.cur, dir: S.dir, scroll: Math.round(scroller.scrollTop),
@@ -1081,6 +1129,7 @@ function load() {
   const at = new Map(BANK.map(([w], i) => [w, i]));
   G.cells = new Map(); G.words = new Map(); G.nextId = 1; G.maxY = -1; G.strad = new Map(); G.used = new Map();
   G.par = data.par | 0; G.bandOff = data.bandOff | 0;
+  G.top = data.top | 0; G.numBase = data.numBase | 0;
   for (const [word, x, y, dir] of data.words) {
     const wi = at.get(word);
     if (wi === undefined) continue;      // 단어장이 바뀌어 사라진 단어는 건너뛴다
@@ -1093,7 +1142,9 @@ function load() {
   for (const w of G.words.values()) {
     const cs = wordCells(w);
     if (cs.every(c => c.ch === c.ans)) { w.solved = true; cs.forEach(c => { c.solved = true; }); }
+    if (w.y + (w.dir === 'D' ? w.len - 1 : 0) < G.top) w.past = true;   // 지나온 줄인지는 위치가 말해 준다
   }
+  for (const c of G.cells.values()) if (c.y < G.top) c.past = true;
   G.filledTo = data.filledTo | 0; G.depth = data.depth | 0;
   G.score = data.score | 0; G.solvedCount = data.solvedCount | 0; G.hints = data.hints | 0;
   number();
@@ -1106,6 +1157,7 @@ function load() {
 function clearBoard() {
   G.cells = new Map(); G.words = new Map(); G.nextId = 1; G.maxY = -1; G.filledTo = 0;
   G.strad = new Map(); G.used = new Map(); G.par = 0; G.bandOff = 0;
+  G.top = 0; G.numBase = 0;
   G.depth = 0; G.score = 0; G.solvedCount = 0; G.hints = 0; G.recent = [];
   S.cur = null; S.dir = 'A'; S.comp = { cho: '', jung: '', jong: '' };
   els.forEach(el => el.remove());

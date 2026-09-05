@@ -96,6 +96,30 @@
   .cell.solved i { color: #9dc0ea; text-shadow: none; }
   .cell.born, .cell.gone { opacity: 0; }
 
+  /* 다 푼 줄은 지우지 않고 남겨 둔다 — 위로 올리면 언제든 다시 읽을 수 있게.
+     대신 지나온 밴드마다 코발트를 한 단계씩 묽혀 처리한 데라는 걸 보여 준다.
+     방금 넘긴 줄이 제일 진하고, 오래된 줄일수록 유약만 남은 흰빛에 가까워진다. */
+  .cell.past { text-shadow: none; box-shadow: var(--sheen), 0 1px 1px rgba(14,43,87,.05); cursor: pointer; }
+  .cell.past[data-age="0"] { background: linear-gradient(180deg,#5d92d8 0%,#3f73bd 100%); border-color: #35619f; color: #f2f7ff; }
+  .cell.past[data-age="1"] { background: linear-gradient(180deg,#8fb4e2 0%,#7098d0 100%); border-color: #6b93c8; color: #f8fbff; }
+  .cell.past[data-age="2"] { background: linear-gradient(180deg,#b9d2ec 0%,#9dbde3 100%); border-color: #9bb9dd; color: #1b4a8f; }
+  .cell.past[data-age="3"] { background: linear-gradient(180deg,#d8e6f6 0%,#c4d9f0 100%); border-color: #bfd4ec; color: #3a6299; }
+  .cell.past[data-age="4"] { background: linear-gradient(180deg,#ecf2fa 0%,#dfe9f5 100%); border-color: #d6e2f0; color: #6a86ac; }
+  .cell.past[data-age="0"] i, .cell.past[data-age="1"] i { color: rgba(255,255,255,.55); }
+  .cell.past[data-age="2"] i { color: #6f95c6; }
+  .cell.past[data-age="3"] i, .cell.past[data-age="4"] i { color: #9db6d4; }
+  .cell.past.cur { box-shadow: var(--sheen), 0 0 0 2px rgba(29,89,179,.4); border-color: var(--cobalt); }
+
+  /* 지나온 줄과 푸는 줄의 경계 */
+  #nowline {
+    position: absolute; top: 0; left: 0; right: 0; height: 0;
+    border-top: 1px dashed #8fb0d8; pointer-events: none;
+  }
+  #nowline::after {
+    content: '여기부터 푸는 중'; position: absolute; right: 2px; top: 3px;
+    font-size: 10px; color: #7e9cc4; letter-spacing: .3px;
+  }
+
   aside {
     width: 300px; flex: none; border-left: 1px solid var(--line); background: var(--panel);
     overflow-y: auto; padding: 4px 0 24px; font-size: 12.5px;
@@ -230,7 +254,7 @@
 <header>
   <button id="packname" title="단어장 바꾸기">단어장</button>
   <div class="stats">
-    <span>걷어낸 줄<b id="depth">0</b></span>
+    <span>지나온 줄<b id="depth">0</b></span>
     <span>단어<b id="solved">0</b></span>
     <span>점수<b id="score">0</b></span>
   </div>
@@ -286,7 +310,9 @@
   <ul>
     <li>퍼즐은 <b>아래로 끝없이</b> 이어집니다. 내려가며 푸세요.</li>
     <li>화면 안의 어떤 칸이든 <b>순서 없이</b> 아무 때나 풀 수 있습니다.</li>
-    <li>맨 윗부분이 <b>빈틈없이 다 풀리면</b> 그 줄들이 걷히고, 남은 판이 위로 올라붙습니다.</li>
+    <li>맨 윗부분이 <b>빈틈없이 다 풀리면</b> 그 줄은 <b>지나온 줄</b>이 되어 위에 남습니다.
+        지워지지 않으니 <b>위로 올려 언제든 다시 읽을 수 있습니다</b>(복습).
+        지나온 밴드일수록 파랑이 한 단계씩 옅어져, 처리한 데라는 걸 색으로 보여 줍니다.</li>
     <li>칸을 누르면 선택, 같은 칸을 다시 누르면 <b>가로↔세로</b> 전환.</li>
     <li>글자는 <b>늘 쓰던 자판</b>으로 칩니다. 폰은 칸을 누르면 평소 한글 자판이 올라오고,
         PC는 한/영이 한글이든 영문이든 두벌식대로 치면 됩니다.</li>
