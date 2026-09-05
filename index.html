@@ -9,18 +9,29 @@
 <style>
   :root {
     --c: 42px;
-    /* 델프트 도자기 배색 — 흰 유약 바탕에 코발트 파랑 */
-    --bg: #edf3fa; --panel: #ffffff; --line: #c2d7ee; --ink: #14325e; --dim: #6d84a3;
-    --accent: #1b56a8; --deep: #0f2f60; --ok: #1b56a8;
-    --tile: #ffffff; --tile-in: #e9f1fc; --tile-cur: #d3e4fb;
-    --lemon: #e3ae07; --lemon-bg: #fdf5cd; --lemon-ink: #7a5c00;
+    /* 델프트 도자기 — 흰 유약을 두껍게 입힌 살결에 코발트 하나로만 그린다.
+       유약은 두 가지로 흉내 낸다: 위에서 아래로 옅어지는 결(glaze) 과
+       가장자리 안쪽에 한 줄 도는 흰 빛(inset highlight). */
+    --bg: #eaf0f8; --panel: #fbfcfe; --line: #b9d0ea; --ink: #0e2b57; --dim: #5f7796;
+    --accent: #164691; --cobalt: #1d59b3; --deep: #0a2554; --ok: #164691;
+    --tile: #ffffff; --tile-in: #dfebfa; --tile-cur: #c6dcf8;
+    --glaze: linear-gradient(180deg, #ffffff 0%, #f2f7fd 58%, #e8f0fa 100%);
+    --glaze-blue: linear-gradient(180deg, #2f6ccb 0%, #1d59b3 46%, #123f85 100%);
+    --sheen: inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 2px rgba(29,89,179,.09);
+    --sheen-blue: inset 0 1px 0 rgba(255,255,255,.42), inset 0 -2px 5px rgba(6,26,60,.4);
+    --lemon: #d9a400; --lemon-bg: #fdf3c2; --lemon-ink: #6b5000;
+    --glaze-lemon: linear-gradient(180deg, #fefadf 0%, #fdf3c2 55%, #f7e9a6 100%);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   /* 브라우저 기본 초점 테두리는 주황빛이라 배색을 깬다 */
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   html, body { height: 100%; }
   body {
-    margin: 0; background: var(--bg); color: var(--ink); overflow: hidden;
+    margin: 0; color: var(--ink); overflow: hidden;
+    background:
+      radial-gradient(120% 70% at 50% -10%, #ffffff 0%, rgba(255,255,255,0) 62%),
+      radial-gradient(90% 60% at 8% 108%, #dfe9f6 0%, rgba(223,233,246,0) 70%),
+      var(--bg);
     font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
     display: flex; flex-direction: column; height: 100dvh;
     /* 자판이 올라오면 스크립트가 실제 보이는 높이로 덮어쓴다 */
@@ -29,11 +40,12 @@
 
   header {
     display: flex; align-items: center; gap: 8px; padding: 8px 10px;
-    background: var(--panel); border-bottom: 1px solid var(--line); flex: none;
+    background: linear-gradient(180deg, #ffffff 0%, #f2f7fd 100%); flex: none;
+    border-bottom: 1px solid var(--line); box-shadow: 0 1px 3px rgba(14,43,87,.06);
   }
   #packname {
-    background: var(--panel); border: 1px solid var(--line); color: var(--ink);
-    border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 600;
+    background: var(--glaze); border: 1px solid var(--line); color: var(--ink);
+    box-shadow: var(--sheen); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 600;
     font-family: inherit; cursor: pointer; white-space: nowrap; flex: none;
   }
   #packname:hover { background: var(--tile-in); border-color: #a9c8ea; }
@@ -41,21 +53,22 @@
   .stats b { color: var(--ink); font-size: 14px; font-variant-numeric: tabular-nums; display: block; text-align: right; }
   .tools { display: flex; gap: 5px; flex: none; }
   .tools button, .cluenav button {
-    background: var(--panel); color: var(--ink); border: 1px solid var(--line);
-    border-radius: 8px; padding: 6px 9px; font-size: 12px; cursor: pointer; font-family: inherit;
+    background: var(--glaze); color: var(--ink); border: 1px solid var(--line);
+    box-shadow: var(--sheen); border-radius: 8px; padding: 6px 9px; font-size: 12px; cursor: pointer; font-family: inherit;
   }
   .tools button:hover, .cluenav button:hover { background: var(--tile-in); }
 
   main { flex: 1; display: flex; min-height: 0; }
   #scroller { flex: 1; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; position: relative; }
   #board { padding: 10px 0 45vh; transition: filter .3s; }
-  #board.lift { filter: brightness(1.12); }
+  #board.lift { filter: brightness(1.06) saturate(1.15); }
   #layer { position: relative; margin: 0 auto; }
 
   .cell {
     position: absolute; top: 0; left: 0;
     width: calc(var(--c) - 3px); height: calc(var(--c) - 3px);
-    background: var(--tile); border: 1px solid var(--line); border-radius: 7px;
+    background: var(--glaze); border: 1px solid var(--line); border-radius: 8px;
+    box-shadow: var(--sheen), 0 1px 1.5px rgba(14,43,87,.07);
     display: grid; place-items: center; cursor: pointer; opacity: 1;
     transition: transform .38s cubic-bezier(.2,.85,.25,1), opacity .35s,
                 background .15s, border-color .15s, box-shadow .15s;
@@ -65,12 +78,22 @@
     position: absolute; top: 2px; left: 3px; font-style: normal;
     font-size: calc(var(--c) * .24); color: #93a9c6; line-height: 1;
   }
-  .cell.inword { background: var(--tile-in); }
-  .cell.cur { background: var(--tile-cur); border-color: var(--accent); box-shadow: 0 0 0 2px rgba(27,86,168,.22); }
-  .cell.solved { background: var(--accent); border-color: var(--deep); color: #ffffff; }
+  .cell.inword { background: linear-gradient(180deg, #eef5fd 0%, var(--tile-in) 100%); }
+  .cell.cur {
+    background: linear-gradient(180deg, #dcebfd 0%, var(--tile-cur) 100%); border-color: var(--cobalt);
+    box-shadow: var(--sheen), 0 0 0 2px rgba(29,89,179,.26), 0 2px 5px rgba(14,43,87,.14);
+  }
+  .cell.solved {
+    background: var(--glaze-blue); border-color: var(--deep); color: #f4f8ff;
+    box-shadow: var(--sheen-blue), 0 1px 2px rgba(10,37,84,.28);
+    text-shadow: 0 1px 1px rgba(6,26,60,.45);
+  }
   /* 다 채웠는데 틀린 단어 — 어느 칸이 틀렸는지는 알려 주지 않는다 */
-  .cell.wrong { border-color: var(--lemon); background: var(--lemon-bg); color: var(--lemon-ink); }
-  .cell.solved i { color: #a9c8ea; }
+  .cell.wrong {
+    border-color: var(--lemon); background: var(--glaze-lemon); color: var(--lemon-ink);
+    box-shadow: var(--sheen), 0 1px 2px rgba(122,92,0,.16);
+  }
+  .cell.solved i { color: #9dc0ea; text-shadow: none; }
   .cell.born, .cell.gone { opacity: 0; }
 
   aside {
@@ -87,7 +110,11 @@
   aside li.on b { color: var(--accent); }
   @media (max-width: 900px) { aside { display: none; } }
 
-  footer { flex: none; background: var(--panel); border-top: 1px solid var(--line); }
+  footer {
+    flex: none; border-top: 1px solid var(--line);
+    background: linear-gradient(180deg, #ffffff 0%, #f6f9fd 100%);
+    box-shadow: 0 -1px 4px rgba(14,43,87,.06);
+  }
   /* 힌트가 이 판의 본문이다. 작게 줄여 자르지 말고 통째로 보이게 둔다 */
   .cluebar { padding: 9px 12px 7px; }
   .cluebar .ph { color: var(--dim); font-size: 14px; }
@@ -96,7 +123,7 @@
     font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 6px; flex: none;
     background: var(--tile-cur); color: var(--deep);
   }
-  .tag.d { background: var(--accent); color: #ffffff; }
+  .tag.d { background: var(--glaze-blue); color: #ffffff; box-shadow: var(--sheen-blue); }
   .tag.bad { background: #fbe9a4; color: var(--lemon-ink); }
   .txt {
     margin: 0; font-size: 17px; line-height: 1.42; color: var(--ink); font-weight: 500;
@@ -118,17 +145,18 @@
   }
   footer { position: relative; }
 
-  #kb { padding: 4px 3px 8px; background: #e7eff9; }
+  #kb { padding: 4px 3px 8px; background: linear-gradient(180deg,#e4edf8,#dbe7f6); }
   body.nokb #kb { display: none; }
   body.abc #kb { display: block; }   /* 영문 낱말일 때는 내장 자판을 꼭 보여 준다 */
   .krow { display: flex; justify-content: center; gap: 4px; margin-bottom: 4px; }
   .key {
     flex: 1; max-width: 42px; height: 42px; border-radius: 7px; border: 1px solid var(--line);
-    background: var(--panel); color: var(--ink); font-size: 16px; font-family: inherit; cursor: pointer;
+    background: var(--glaze); color: var(--ink); font-size: 16px; font-family: inherit; cursor: pointer;
+    box-shadow: var(--sheen), 0 1px 1.5px rgba(14,43,87,.08);
   }
-  .key:active { background: var(--tile-cur); }
-  .key.fn { background: #eaf1fa; color: var(--dim); font-size: 14px; max-width: 52px; }
-  .key.fn.on { background: var(--accent); color: #ffffff; }
+  .key:active { background: var(--tile-cur); box-shadow: inset 0 2px 4px rgba(10,37,84,.18); }
+  .key.fn { background: linear-gradient(180deg,#f0f5fc,#e3ecf8); color: var(--dim); font-size: 14px; max-width: 52px; }
+  .key.fn.on { background: var(--glaze-blue); color: #ffffff; box-shadow: var(--sheen-blue); }
 
   #flash {
     position: fixed; left: 50%; top: 22%; transform: translate(-50%, 10px); white-space: nowrap;
@@ -139,7 +167,8 @@
 
   dialog {
     border: 1px solid var(--line); background: var(--panel); color: var(--ink);
-    border-radius: 14px; padding: 20px 22px; max-width: 440px; width: calc(100vw - 32px);
+    border-radius: 14px; padding: 20px 22px; max-width: 440px;
+    box-shadow: 0 18px 50px rgba(10,37,84,.28); width: calc(100vw - 32px);
     font-size: 13.5px; line-height: 1.65;
   }
   dialog::backdrop { background: rgba(15,47,96,.4); }
@@ -149,15 +178,16 @@
   dialog b { color: var(--accent); }
   dialog .close {
     margin-top: 14px; width: 100%; padding: 9px; border-radius: 8px; border: 0;
-    background: var(--accent); color: #ffffff; font-weight: 700; font-size: 14px;
+    background: var(--glaze-blue); color: #ffffff; font-weight: 700; font-size: 14px;
+    box-shadow: var(--sheen-blue);
     cursor: pointer; font-family: inherit;
   }
 
   #packs { display: flex; flex-direction: column; gap: 8px; }
   .pack {
     display: flex; gap: 12px; align-items: center; text-align: left; width: 100%;
-    background: var(--panel); border: 1px solid var(--line); border-radius: 11px;
-    padding: 12px 14px; cursor: pointer; color: var(--ink); font-family: inherit;
+    background: var(--glaze); border: 1px solid var(--line); border-radius: 11px;
+    box-shadow: var(--sheen); padding: 12px 14px; cursor: pointer; color: var(--ink); font-family: inherit;
   }
   .pack:hover { background: var(--tile-in); border-color: #a9c8ea; }
   .pack .pe { font-size: 26px; flex: none; }
