@@ -462,6 +462,18 @@ function checkWords(cell) {
   return gained;
 }
 
+/**
+ * 다 채웠는데 틀린 단어를 표시해 둔다.
+ * 밴드가 안 걷히는데 어디가 틀렸는지 모르면 손쓸 데가 없다.
+ * 어느 칸이 틀렸는지까지는 알려 주지 않는다 — 그건 답을 알려 주는 것이나 같다.
+ */
+function markBad() {
+  for (const w of G.words.values()) {
+    const cs = wordCells(w);
+    w.bad = !w.solved && cs.every(c => c.ch) && cs.some(c => c.ch !== c.ans);
+  }
+}
+
 /** 위에서부터 통째로 풀린 줄 수 (단어가 걸쳐 있지 않은 지점까지) */
 function clearableY() {
   let limit = 0;
@@ -529,6 +541,7 @@ function vanish(cell) {
   const el = els.get(cell);
   if (!el) return;
   els.delete(cell);
+  el.classList.remove('wrong', 'cur', 'inword');
   el.classList.add('gone');
   setTimeout(() => el.remove(), 400);
 }
@@ -537,6 +550,8 @@ function render() {
   layer.style.height = (G.maxY + 2) * C + 'px';
   const w = curWord();
   const inWord = w ? new Set(wordCells(w)) : null;
+  const bad = new Set();
+  for (const w of G.words.values()) if (w.bad) for (const c of wordCells(w)) bad.add(c);
   const live = new Set();
   for (const [k, c] of G.cells) {
     live.add(c);
@@ -559,6 +574,7 @@ function render() {
     const tf = `translate(${c.x * C}px, ${c.y * C}px)`;
     if (el._tf !== tf) { el.style.transform = tf; el._tf = tf; }
     el.classList.toggle('solved', c.solved);
+    el.classList.toggle('wrong', !c.solved && bad.has(c));
     el.classList.toggle('cur', k === S.cur);
     el.classList.toggle('inword', !!inWord && inWord.has(c));
   }
@@ -586,6 +602,7 @@ function renderClue() {
   if (!w) { bar.innerHTML = '<span class="ph">칸을 눌러 시작하세요</span>'; return; }
   const kind = KIND.get(w.word) || '';
   bar.innerHTML = `<span class="tag ${w.dir === 'A' ? 'a' : 'd'}">${w.num} ${w.dir === 'A' ? '가로' : '세로'}</span>` +
+                  (w.bad ? '<span class="tag bad">틀림</span>' : '') +
                   `<span class="txt">${w.clue}</span>` +
                   `<span class="len">${kind ? kind + ' · ' : ''}${w.len}글자</span>`;
 }
@@ -727,6 +744,21 @@ function hint() {
   after();
 }
 
+/** 도저히 안 되는 단어를 통째로 연다. 한 칸씩 여는 것과 값은 같다 */
+function openWord() {
+  const w = curWord();
+  if (!w) return;
+  for (const c of wordCells(w)) {
+    if (c.solved || c.ch === c.ans) continue;
+    c.ch = c.ans;
+    G.hints++;
+    G.score = Math.max(0, G.score - 8);
+    checkWords(c);
+  }
+  after();
+  focusIME();
+}
+
 function move(dx, dy) {
   if (!S.cur) return;
   let [x, y] = S.cur.split(',').map(Number);
@@ -783,6 +815,7 @@ function after() {
     cleared += G.depth - before;
   }
   ensureAhead();
+  markBad();
   if (cleared) {
     flash(cleared + '줄 정리!');
     board.classList.add('lift');
@@ -1132,6 +1165,7 @@ document.querySelector('.cluebar').addEventListener('pointerdown', e => {
   if (e.target.closest('button')) e.preventDefault();   // 눌러도 자판이 내려가지 않게
 });
 document.getElementById('hint').addEventListener('click', () => { hint(); focusIME(); });
+document.getElementById('open').addEventListener('click', openWord);
 document.getElementById('prev').addEventListener('click', () => nextWord(-1));
 document.getElementById('next').addEventListener('click', () => nextWord(1));
 document.getElementById('help').addEventListener('click', () => document.getElementById('howto').showModal());
@@ -1190,7 +1224,7 @@ if (!first) openChooser();     // 처음 왔으면 단어장부터 고르게 한
 
 if (location.search.includes('debug'))
   window.__cw = { G, S, get W() { return W; }, key, grow, collapse, clearableY, render, wordCells,
-                  input, hint, after, nextWord, crossCount, startPack, curWord, focusIME, anchorIME,
+                  input, hint, openWord, after, markBad, nextWord, crossCount, startPack, curWord, focusIME, anchorIME,
                   tune: (w, c, r, o) => { WEAR = w; WEARCAP = c; RECSHIFT = r; if (o !== undefined) OFFPICK = o; },
                   get ONTOPIC() { return ONTOPIC; }, get PACK() { return PACK; }, get BANK() { return BANK; } };
 })();
