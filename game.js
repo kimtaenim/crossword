@@ -840,22 +840,39 @@ function move(dx, dy) {
 }
 
 /** 지금 자리에서 가장 가까운 미해결 단어로 옮겨 간다 */
-function jumpNearest() {
+/*
+ * 지금 단어를 다 풀었을 때 옮겨 갈 자리.
+ * 방금 있던 칸을 지나는 다른 단어가 아직 안 풀렸으면 거기가 제일 자연스럽고,
+ * 없으면 화면 안에 있는 단어를 먼저 고른다. 화면 밖으로 튀면 어디로 갔는지 모른다.
+ */
+function jumpNearest(quiet) {
   const c = S.cur ? G.cells.get(S.cur) : null;
-  const x0 = c ? c.x : 0, y0 = c ? c.y : 0;
-  let best = null, bestD = Infinity;
-  for (const w of G.words.values()) {
-    if (w.solved) continue;
-    const dy = w.y - y0;
-    const d = (dy >= 0 ? dy : -dy * 1.6) * 2 + Math.abs(w.x - x0);
-    if (d < bestD) { bestD = d; best = w; }
+  const x0 = c ? c.x : 0, y0 = c ? c.y : G.top;
+  let best = null;
+  if (c) {                                   // 십자로 걸린 단어부터
+    for (const id of [c.across, c.down]) {
+      const w = id !== null ? G.words.get(id) : null;
+      if (w && !w.solved) { best = w; break; }
+    }
+  }
+  if (!best) {
+    const from = scroller.scrollTop / C, to = (scroller.scrollTop + scroller.clientHeight) / C;
+    let bestD = Infinity;
+    for (const w of G.words.values()) {
+      if (w.solved || w.past) continue;
+      const end = w.y + (w.dir === 'D' ? w.len - 1 : 0);
+      const off = (end < from || w.y > to) ? 400 : 0;      // 화면 밖은 크게 미룬다
+      const dy = w.y - y0;
+      const d = off + (dy >= 0 ? dy : -dy * 1.6) * 2 + Math.abs(w.x - x0);
+      if (d < bestD) { bestD = d; best = w; }
+    }
   }
   if (!best) return;
   S.dir = best.dir;
   const t = wordCells(best).find(x => !x.solved) || wordCells(best)[0];
   S.cur = key(t.x, t.y);
   S.comp = disassemble(t.ch);
-  scrollTo(t);
+  if (!quiet) scrollTo(t);        // 줄을 넘긴 직후에는 따라 내려가는 스크롤 하나만 쓴다
 }
 
 function nextWord(step) {
@@ -888,11 +905,17 @@ function after() {
     flash(cleared + '줄 넘김!');
     board.classList.add('lift');
     setTimeout(() => board.classList.remove('lift'), 400);
-    const want = Math.max(0, G.top * C - 6);      // 지나온 줄은 위에 남기고 시선만 내린다
-    if (scroller.scrollTop < want) scroller.scrollTo({ top: want, behavior: 'smooth' });
   }
   const w = curWord();
-  if (!S.cur || (w && w.solved)) jumpNearest();
+  if (!S.cur || (w && w.solved)) jumpNearest(cleared > 0);
+  if (cleared) {
+    const want = Math.max(0, G.top * C - 6);      // 지나온 줄은 위에 남기고 시선만 내린다
+    if (scroller.scrollTop < want) scroller.scrollTo({ top: want, behavior: 'smooth' });
+  } else {
+    // 지금 쓰는 칸은 언제나 보이는 데 있어야 한다 (자판이 아래를 가리는 폰에서 특히)
+    const cc = S.cur && G.cells.get(S.cur);
+    if (cc) scrollTo(cc);
+  }
   render();
   save();
   if (useIME() && !composing) anchorIME();
@@ -1121,6 +1144,7 @@ addEventListener('visibilitychange', () => { if (document.visibilityState === 'h
 addEventListener('pagehide', writeSave);
 
 let pendingScroll = 0;
+let settling = 0;        // 이 시각까지는 화면 크기가 바뀌어도 스크롤을 건드리지 않는다
 
 function load() {
   let data;
@@ -1179,9 +1203,13 @@ function startPack(pack, fresh, picked) {
   document.title = pack.name + ' 크로스워드';
   pendingScroll = 0;
   if (!load()) grow(AHEAD);
+  if (pendingScroll) {                       // 보던 자리까지는 판이 깔려 있어야 그리로 갈 수 있다
+    const need = Math.ceil((pendingScroll + scroller.clientHeight) / C) + AHEAD;
+    if (G.maxY < need) grow(need);
+  }
   ensureAhead();
   render();
-  if (pendingScroll) { scroller.scrollTop = pendingScroll; renderList(); }
+  if (pendingScroll) { scroller.scrollTop = pendingScroll; settling = Date.now() + 900; render(); }
 }
 
 const packSize = (pack, picked) =>
@@ -1327,8 +1355,13 @@ if (vv) {
       document.body.style.height = Math.round(vv.height) + 'px';
       sizeCells();
       render();
-      const c = S.cur && G.cells.get(S.cur);
-      if (c) scrollTo(c);
+      // 자판이 올라와 칸을 가릴 때만 끌어온다. 그리고 막 들어와 보던 자리로
+      // 옮기는 동안에는 건드리지 않는다 — 안 그러면 복원한 자리가 딸려 간다
+      const covered = vv.height < window.innerHeight - 60;
+      if (covered && Date.now() > settling) {
+        const c = S.cur && G.cells.get(S.cur);
+        if (c) scrollTo(c);
+      }
     }, 60);
   };
   vv.addEventListener('resize', fit);

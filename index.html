@@ -99,15 +99,15 @@
   /* 다 푼 줄은 지우지 않고 남겨 둔다 — 위로 올리면 언제든 다시 읽을 수 있게.
      대신 지나온 밴드마다 코발트를 한 단계씩 묽혀 처리한 데라는 걸 보여 준다.
      방금 넘긴 줄이 제일 진하고, 오래된 줄일수록 유약만 남은 흰빛에 가까워진다. */
-  .cell.past { text-shadow: none; box-shadow: var(--sheen), 0 1px 1px rgba(14,43,87,.05); cursor: pointer; }
-  .cell.past[data-age="0"] { background: linear-gradient(180deg,#5d92d8 0%,#3f73bd 100%); border-color: #35619f; color: #f2f7ff; }
-  .cell.past[data-age="1"] { background: linear-gradient(180deg,#8fb4e2 0%,#7098d0 100%); border-color: #6b93c8; color: #f8fbff; }
-  .cell.past[data-age="2"] { background: linear-gradient(180deg,#b9d2ec 0%,#9dbde3 100%); border-color: #9bb9dd; color: #1b4a8f; }
-  .cell.past[data-age="3"] { background: linear-gradient(180deg,#d8e6f6 0%,#c4d9f0 100%); border-color: #bfd4ec; color: #3a6299; }
-  .cell.past[data-age="4"] { background: linear-gradient(180deg,#ecf2fa 0%,#dfe9f5 100%); border-color: #d6e2f0; color: #6a86ac; }
-  .cell.past[data-age="0"] i, .cell.past[data-age="1"] i { color: rgba(255,255,255,.55); }
-  .cell.past[data-age="2"] i { color: #6f95c6; }
-  .cell.past[data-age="3"] i, .cell.past[data-age="4"] i { color: #9db6d4; }
+  .cell.past { box-shadow: var(--sheen), 0 1px 1px rgba(14,43,87,.06); cursor: pointer; }
+  /* 글자는 어느 단계에서나 흰색으로 둔다. 옅은 파랑에서도 읽히도록 옅은 그늘을 깐다 */
+  .cell.past { color: #ffffff; text-shadow: 0 1px 2px rgba(10,37,84,.45); }
+  .cell.past[data-age="0"] { background: linear-gradient(180deg,#4b81cd 0%,#2f64b0 100%); border-color: #2b5da6; }
+  .cell.past[data-age="1"] { background: linear-gradient(180deg,#6294d8 0%,#4577bd 100%); border-color: #4370b4; }
+  .cell.past[data-age="2"] { background: linear-gradient(180deg,#79a6e0 0%,#5b89c9 100%); border-color: #5a86c2; }
+  .cell.past[data-age="3"] { background: linear-gradient(180deg,#8eb5e6 0%,#719ad3 100%); border-color: #6f97cf; }
+  .cell.past[data-age="4"] { background: linear-gradient(180deg,#a3c3ec 0%,#84a9db 100%); border-color: #83a6d7; }
+  .cell.past i { color: rgba(255,255,255,.62); text-shadow: none; }
   .cell.past.cur { box-shadow: var(--sheen), 0 0 0 2px rgba(29,89,179,.4); border-color: var(--cobalt); }
 
   /* 지나온 줄과 푸는 줄의 경계 */
