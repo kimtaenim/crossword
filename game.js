@@ -120,6 +120,8 @@ let PACK = null;             // 지금 고른 단어장
 let PICK = new Set();        // 그중 고른 갈래 이름들
 let ONTOPIC = new Set();     // 고른 갈래에 든 단어들 (나머지는 벌점을 받고 뒤로 밀린다)
 let KIND = new Map();        // 단어 → 갈래 이름
+let BASIC = new Set();       // "기초" 로 표시해 둔 단어 (쉽게 모드에서 먼저 깔린다)
+let EASY = false;            // 쉽게 — 기초 낱말 위주로 깔고, 낱말마다 첫 글자를 열어 준다
 let BANK = [];               // [[단어, 힌트], ...] — 고른 갈래의 단어만
 let INDEX = new Map();       // 음절 → [{wi, pos}]
 let EVEN = new Map();        // 음절 → 그 음절을 짝수 번째에 가진 단어 수 (세로로 엮을 여지)
@@ -139,11 +141,13 @@ function loadBank(pack, picked) {
   PICK = new Set(picked && picked.length ? picked : allKinds(pack));
   ONTOPIC = new Set();
   KIND = new Map();
+  BASIC = new Set();
   BANK = [];
   for (const g of pack.groups) {
     for (const w of g.words) {
       BANK.push(w);
       KIND.set(w[0], w[2] || g.name);
+      if (w[3] === '기초') BASIC.add(w[0]);
       if (PICK.has(g.name)) ONTOPIC.add(w[0]);
     }
   }
@@ -269,8 +273,12 @@ let OFFPICK = 26;    // 고르지 않은 갈래의 단어에 매기는 벌점.
                      // 겹침 하나 값이 100 이므로 이 값이 100 을 넘으면 사실상 하드 필터가 되는데,
                      // 그러면 고른 갈래 비율은 100% 가 되지만 채움이 0.30, 겹침이 0.78 로 무너진다.
                      // 26 이면 판은 그대로 촘촘하고(겹침 1.4~1.5) 고른 갈래가 절반 남짓 나온다.
+let HARD = 34;      // 쉽게 모드에서 기초가 아닌 말에 매기는 벌점.
+                    // 겹침 하나 값(100)보다 한참 낮게 둬야 판이 안 성긴다 —
+                    // 그래도 200줄 기준 기초 비율이 44% 에서 74% 로 올라간다
 const wornOut = word =>
-  Math.min(WEARCAP, WEAR * (G.used.get(word) || 0)) + (ONTOPIC.has(word) ? 0 : OFFPICK);
+  Math.min(WEARCAP, WEAR * (G.used.get(word) || 0)) + (ONTOPIC.has(word) ? 0 : OFFPICK)
+  + (EASY && BASIC.size && !BASIC.has(word) ? HARD : 0);
 
 /**
  * 이 단어를 여기 놓으면 나중에 몇 개나 더 엮을 수 있을지.
@@ -420,9 +428,25 @@ function buildBandBest(top, tries) {
   }
   if (!best) return;
   const at = new Map(BANK.map(([w], i) => [w, i]));
-  for (const [word, x, y, dir] of best.snap) place(at.get(word), x, y, dir);
+  const made = [];
+  for (const [word, x, y, dir] of best.snap) made.push(place(at.get(word), x, y, dir));
   if (G.maxY < top) G.maxY = top;
   G.filledTo = Math.max(G.filledTo, top + BAND - 1);
+  if (EASY) giveFirst(made);
+}
+
+/** 쉽게 모드 — 낱말마다 첫 글자를 미리 채워 둔다. 시작점이 있으면 훨씬 덜 막힌다 */
+function giveFirst(ws) {
+  for (const w of ws) {
+    const c = wordCells(w)[0];
+    if (c && !c.ch) { c.ch = c.ans; c.given = true; }
+  }
+  for (const w of ws) {          // 첫 글자만으로 다 채워진 짧은 낱말은 바로 맞은 것으로
+    const cs = wordCells(w);
+    if (!w.solved && cs.every(c => c && c.ch === c.ans)) {
+      w.solved = true; cs.forEach(c => { c.solved = true; });
+    }
+  }
 }
 
 const bandTopAtOrAfter = y => {
@@ -804,7 +828,7 @@ function hint() {
   if (!target) return;
   target.ch = target.ans;
   G.hints++;
-  G.score = Math.max(0, G.score - 8);
+  G.score = Math.max(0, G.score - (EASY ? 4 : 8));
   S.cur = key(target.x, target.y);
   S.comp = disassemble(target.ch);
   checkWords(target);
@@ -1105,6 +1129,7 @@ const kindSig = (pack, picked) => allKinds(pack).map(n => picked.includes(n) ? '
 const saveKey = () => 'infinite-crossword:' + PACK.id + ':' + kindSig(PACK, [...PICK]);
 const pickKey = id => 'infinite-crossword:pick:' + id;
 const LAST_KEY = 'infinite-crossword:last';
+const EASY_KEY = 'infinite-crossword:easy';
 
 /** 그 단어장에서 지난번에 고른 갈래 (없으면 전부) */
 function savedPick(pack) {
@@ -1199,7 +1224,8 @@ function startPack(pack, fresh, picked) {
   } catch (_) {}
   const part = (pack.groups.length > 1 && PICK.size < pack.groups.length)
     ? ` · ${PICK.size}/${pack.groups.length}갈래` : '';
-  document.getElementById('packname').textContent = pack.emoji + ' ' + pack.name + part;
+  document.getElementById('packname').textContent =
+    pack.emoji + ' ' + pack.name + part + (EASY ? ' · 쉽게' : '');
   document.title = pack.name + ' 크로스워드';
   pendingScroll = 0;
   if (!load()) grow(AHEAD);
@@ -1222,6 +1248,13 @@ function progressOf(pack, picked) {
   } catch (_) { return 0; }
 }
 
+/** 쉽게 모드일 때, 그 단어장에 기초로 표시된 말이 몇 개인지 */
+function basicOf(p) {
+  if (!EASY) return '';
+  const n = p.groups.reduce((a, g) => a + g.words.filter(w => w[3] === '기초').length, 0);
+  return n ? ` · 기초 ${n}개` : '';
+}
+
 function buildChooser() {
   document.getElementById('packs').innerHTML = window.PACKS.map(p => {
     const picked = savedPick(p);
@@ -1232,7 +1265,7 @@ function buildChooser() {
     return `<button class="pack" data-id="${p.id}">
       <span class="pe">${p.emoji}</span>
       <span class="pt"><b>${p.name}</b><i>${p.desc}</i>
-        <u>단어 ${n}개${part}${done ? ` · 걷어낸 줄 ${done}` : ''}</u></span>
+        <u>단어 ${n}개${part}${basicOf(p)}${done ? ` · 지나온 줄 ${done}` : ''}</u></span>
     </button>`;
   }).join('');
 }
@@ -1300,8 +1333,28 @@ document.getElementById('startpack').addEventListener('click', () => {
   focusIME();
 });
 
+function paintEasy() {
+  const b = document.getElementById('easy');
+  b.setAttribute('aria-pressed', EASY ? 'true' : 'false');
+}
+
+document.getElementById('easy').addEventListener('click', () => {
+  EASY = !EASY;
+  try { localStorage.setItem(EASY_KEY, EASY ? '1' : '0'); } catch (_) {}
+  paintEasy();
+  buildChooser();
+  // 켠 보람이 바로 있어야 한다 — 지금 판에 깔린 낱말에도 첫 글자를 열어 준다
+  if (EASY && PACK) {
+    giveFirst([...G.words.values()].filter(w => !w.past && !w.solved));
+    render(); writeSave();      // 곧바로 써 둔다 — 여기서 단어장을 바로 고르면 미뤄 둔 저장은 늦는다
+  }
+  if (PACK) document.getElementById('packname').textContent =
+    PACK.emoji + ' ' + PACK.name + (EASY ? ' · 쉽게' : '');
+});
+
 function openChooser() {
   buildChooser();
+  paintEasy();
   document.getElementById('pane2').hidden = true;
   document.getElementById('pane1').hidden = false;
   document.getElementById('chooser').showModal();
@@ -1400,6 +1453,7 @@ function showLoadError(err) {
 }
 
 async function boot() {
+  try { EASY = localStorage.getItem(EASY_KEY) === '1'; } catch (_) {}
   document.body.classList.add('nokb');    // 기본은 기기 자판, ⌨ 로 내장 자판 전환
   buildKeyboard('ko');
   sizeCells();
