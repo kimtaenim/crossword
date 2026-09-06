@@ -150,6 +150,7 @@ function loadBank(pack, picked) {
   paintTheme(pack);
   TIERED = pack.tiered === true;
   PICK = new Set(picked && picked.length ? picked : allKinds(pack));
+  // 층이 두꺼우면 잠그고, 얇으면 우선순위만 준다 (아래 BASIC 을 채운 뒤 정한다)
   ONTOPIC = new Set();
   KIND = new Map();
   BASIC = new Set();
@@ -164,6 +165,8 @@ function loadBank(pack, picked) {
       if (PICK.has(g.name)) ONTOPIC.add(w[0]);
     }
   }
+  HARD = BASIC.size >= LOCKAT ? SHUT : LEAN;
+  DEEP = (BANK.length - BASIC.size) >= LOCKAT ? SHUT : LEAN;
   INDEX = new Map();
   EVEN = new Map();
   ALL = new Map();
@@ -294,13 +297,17 @@ let OFFPICK = 26;    // 고르지 않은 갈래의 단어에 매기는 벌점.
                      // 겹침 하나 값이 100 이므로 이 값이 100 을 넘으면 사실상 하드 필터가 되는데,
                      // 그러면 고른 갈래 비율은 100% 가 되지만 채움이 0.30, 겹침이 0.78 로 무너진다.
                      // 26 이면 판은 그대로 촘촘하고(겹침 1.4~1.5) 고른 갈래가 절반 남짓 나온다.
-let HARD = 34;      // 쉽게 모드에서 기초가 아닌 말에 매기는 벌점.
-                    // 겹침 하나 값(100)보다 한참 낮게 둬야 판이 안 성긴다 —
-                    // 그래도 200줄 기준 기초 비율이 44% 에서 74% 로 올라간다
-let DEEP = 20;      // 난이도를 가른 단어장에서 «쉽게» 를 껐을 때 기초 말에 매기는 벌점.
-                    // HARD 보다 가볍게 둔다 — 심화가 일흔 개뿐이라 세게 밀면 같은 말만 돌고
-                    // 판이 성겨진다(DEEP 130 이면 심화 99% 에 채움 0.23). 20 이면 심화가
-                    // 300줄에 53~62% 로 앞에 서면서 채움 0.38 을 지킨다
+/*
+ * 한쪽 층만 내보내려면 벌점이 겹침 하나 값(100)을 넘어야 한다 — 그 아래로는
+ * «겹치는 쪽» 이 늘 이기므로 반대편 말이 6~18% 씩 섞여 든다. 기초를 고른
+ * 사람에게 그 정도가 섞이면 기초로 느껴지지 않는다.
+ * 다만 잠그려면 그 층 창고가 넉넉해야 한다. 얇은 층을 잠그면 판이 성겨진다
+ * (동물 기초 148개를 잠그니 채움이 0.32에서 0.26으로 떨어졌다).
+ * 그래서 창고가 LOCKAT 을 넘을 때만 잠그고, 얇으면 예전처럼 «우선» 만 준다.
+ */
+let SHUT = 130, LEAN = 34, LOCKAT = 180;
+let HARD = LEAN;    // 쉽게 모드에서 기초가 아닌 말에 매기는 벌점 (loadBank 에서 정해진다)
+let DEEP = 20;      // «쉽게» 를 껐을 때 기초 말에 매기는 벌점. 같은 규칙으로 정한다
 let NEW = 11;       // 요즘 말에 주는 가산점. 벌점을 깎아 앞자리로 당긴다.
                     // 요즘 말이 일흔다섯 개로 늘어 22 로는 판의 삼분의 이를 차지했다
 const wornOut = word =>
@@ -1675,6 +1682,7 @@ if (location.search.includes('debug'))
                   input, hint, openWord, after, markBad, nextWord, crossCount, startPack, curWord, focusIME, anchorIME,
                   tune: (w, c, r, o) => { WEAR = w; WEARCAP = c; RECSHIFT = r; if (o !== undefined) OFFPICK = o; },
                   tune2: (h, d) => { if (h !== undefined) HARD = h; if (d !== undefined) DEEP = d; },
+                  get 층벌점() { return { HARD, DEEP, 기초: BASIC.size, 창고: BANK.length }; },
                   useIME,
                   get ONTOPIC() { return ONTOPIC; }, get PACK() { return PACK; }, get BANK() { return BANK; } };
 })();
