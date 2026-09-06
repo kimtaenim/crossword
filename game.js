@@ -734,6 +734,7 @@ function scrollTo(c) {
 function tap(k) {
   const c = G.cells.get(k);
   if (!c) return;
+  resetShift();
   if (S.cur === k) {
     const other = S.dir === 'A' ? 'D' : 'A';
     if ((other === 'A' ? c.across : c.down) !== null) S.dir = other;
@@ -821,6 +822,7 @@ function backspace() {
 }
 
 function hint() {
+  resetShift();
   if (!S.cur) return;
   const w = curWord();
   const c = G.cells.get(S.cur);
@@ -838,6 +840,7 @@ function hint() {
 
 /** 도저히 안 되는 단어를 통째로 연다. 한 칸씩 여는 것과 값은 같다 */
 function openWord() {
+  resetShift();
   const w = curWord();
   if (!w) return;
   for (const c of wordCells(w)) {
@@ -900,6 +903,7 @@ function jumpNearest(quiet) {
 }
 
 function nextWord(step) {
+  resetShift();
   const ws = [...G.words.values()].filter(w => !w.solved).sort((a, b) => a.num - b.num || (a.dir < b.dir ? -1 : 1));
   if (!ws.length) return;
   const cw = curWord();
@@ -1069,7 +1073,7 @@ document.getElementById('kb').addEventListener('pointerdown', e => {
   if (!b) return;
   e.preventDefault();
   const k = b.dataset.k;
-  if (k === '⌫') { backspace(); return; }
+  if (k === '⌫') { backspace(); resetShift(); return; }
   if (k === '⇧') { shift = !shift; paintShift(); return; }
   if (kbMode === 'en') { putChar(k); return; }
   input(shift ? (SHIFTED[k] || k) : k);
@@ -1079,9 +1083,21 @@ document.getElementById('kb').addEventListener('pointerdown', e => {
 /** 고른 낱말에 맞춰 자판을 갈아 끼운다 */
 function syncKeyboard() {
   const en = alphaMode();
+  if (en !== (kbMode === 'en')) shift = false;    // 자판이 갈리면 눌러 둔 ⇧ 도 푼다
   buildKeyboard(en ? 'en' : 'ko');
   document.body.classList.toggle('abc', en);   // 영문일 때는 내장 자판을 반드시 보인다
   if (en) ime.blur();
+}
+
+/*
+ * ⇧ 는 한 글자짜리다 — 누른 뒤 다음 자음 하나에만 걸리고 곧바로 풀린다.
+ * 지우거나, 다른 칸으로 옮기거나, 자판이 갈리면 그때도 푼다.
+ * 안 그러면 눌러 둔 채로 이어져 다음에 엉뚱한 된소리가 들어간다.
+ */
+function resetShift() {
+  if (!shift) return;
+  shift = false;
+  if (kbMode !== 'en') paintShift();
 }
 
 function paintShift() {
