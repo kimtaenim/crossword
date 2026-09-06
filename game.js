@@ -211,7 +211,10 @@ function fits(word, x, y, dir, needCross) {
   if (!isARow(y)) return -1;                 // 두 방향 모두 가로줄에서 시작
   if (dir === 'D') {
     if (x & 1) return -1;                    // 세로는 짝수 칸에만
-    if (!(len & 1)) return -1;               // 세로는 홀수 글자만 (끝도 가로줄에 떨어지게)
+    // 세로가 홀수 글자여야 할 이유는 없다. 끝 글자가 가로줄이 아닌 데 떨어지면
+    // 그 칸만 안 걸릴 뿐이고, 그건 크로스워드에서 흔한 모양이다.
+    // 홀수만 받던 동안은 창고의 절반(네 글자·여섯 글자)이 세로로는 아예 못 놓여
+    // 판에 한 번도 안 나왔다 — 로봇 창고 202개 중 73개가 그랬다.
     if (bandOf(y) !== bandOf(y + len - 1)) return -1;   // 밴드를 넘지 않게
   }
   if (dir === 'A' ? x + len > W : x >= W) return -1;
@@ -281,7 +284,11 @@ function crossCount(w) {
 }
 
 /** 이미 여러 번 쓴 단어는 뒤로 미룬다 (겹침 하나 값은 못 넘게 벌점을 묶어 둔다) */
-let WEAR = 6, WEARCAP = 24, RECSHIFT = 3;    // 같은 단어를 돌려 쓰지 않게 하는 벌점
+let WEAR = 16, WEARCAP = 80, RECSHIFT = 3;   // 같은 단어를 돌려 쓰지 않게 하는 벌점.
+                     // 겹침 하나 값(100) 아래로 묶어 두되 24 는 너무 낮았다 —
+                     // 열 번 쓴 말도 벌점이 24 뿐이라 잘 물리는 말만 계속 나왔다.
+                     // 80 으로 올리니 300줄에 나오는 서로 다른 말이 한 판에서
+                     // 137→200개(시사), 최다 반복이 10.5→4.8회로 내려갔다
 let OFFPICK = 26;    // 고르지 않은 갈래의 단어에 매기는 벌점.
                      // 겹침 하나 값이 100 이므로 이 값이 100 을 넘으면 사실상 하드 필터가 되는데,
                      // 그러면 고른 갈래 비율은 100% 가 되지만 채움이 0.30, 겹침이 0.78 로 무너진다.
@@ -290,8 +297,9 @@ let HARD = 34;      // 쉽게 모드에서 기초가 아닌 말에 매기는 벌
                     // 겹침 하나 값(100)보다 한참 낮게 둬야 판이 안 성긴다 —
                     // 그래도 200줄 기준 기초 비율이 44% 에서 74% 로 올라간다
 let DEEP = 20;      // 난이도를 가른 단어장에서 «쉽게» 를 껐을 때 기초 말에 매기는 벌점.
-                    // HARD 보다 가볍게 둔다 — 심화가 일흔 개뿐이라 세게 밀면 같은 말만 돌고,
-                    // 20 이면 심화 말이 서너 번 쓰인 뒤 기초와 값이 맞아 자연히 섞인다
+                    // HARD 보다 가볍게 둔다 — 심화가 일흔 개뿐이라 세게 밀면 같은 말만 돌고
+                    // 판이 성겨진다(DEEP 130 이면 심화 99% 에 채움 0.23). 20 이면 심화가
+                    // 300줄에 53~62% 로 앞에 서면서 채움 0.38 을 지킨다
 let NEW = 11;       // 요즘 말에 주는 가산점. 벌점을 깎아 앞자리로 당긴다.
                     // 요즘 말이 일흔다섯 개로 늘어 22 로는 판의 삼분의 이를 차지했다
 const wornOut = word =>
@@ -1309,6 +1317,30 @@ addEventListener('pagehide', writeSave);
 let pendingScroll = 0;
 let settling = 0;        // 이 시각까지는 화면 크기가 바뀌어도 스크롤을 건드리지 않는다
 
+/*
+ * 갈래(기초/심화)로 갈라 두었던 단어장을 «쉽게» 스위치 쪽으로 옮기면 저장 열쇠가
+ * 바뀐다 (animal:10 → animal:1). 그냥 두면 풀던 판이 없어진 것처럼 보이므로,
+ * 새 열쇠가 비어 있을 때 한 번만 옛 열쇠 가운데 제일 많이 푼 것을 옮겨 온다.
+ */
+function migrate(pack) {
+  if (!pack.tiered || !EASY) return;      // 옛 판은 기초 갈래였으니 기초 쪽으로만 옮긴다
+  const 새열쇠 = boardKey(pack, [...PICK]);
+  const 지금꼴 = kindSig(pack, [...PICK]);
+  try {
+    if (localStorage.getItem(새열쇠)) return;
+    const 머리 = 'infinite-crossword:' + pack.id + ':';
+    let 옛것 = null, 깊이 = -1;
+    for (const k of Object.keys(localStorage)) {
+      if (!k.startsWith(머리)) continue;
+      const 꼴 = k.slice(머리.length);
+      if (!/^[01]+$/.test(꼴) || 꼴 === 지금꼴) continue;   // 옛 갈래 조합만 (심화 쪽은 건드리지 않는다)
+      const d = JSON.parse(localStorage.getItem(k) || 'null');
+      if (d && d.words && d.words.length && (d.depth | 0) > 깊이) { 깊이 = d.depth | 0; 옛것 = k; }
+    }
+    if (옛것) { localStorage.setItem(새열쇠, localStorage.getItem(옛것)); localStorage.removeItem(옛것); }
+  } catch (_) {}
+}
+
 function load() {
   let data;
   try { data = JSON.parse(localStorage.getItem(saveKey()) || 'null'); } catch (_) { return false; }
@@ -1365,6 +1397,7 @@ function startPack(pack, fresh, picked) {
   document.getElementById('packname').textContent = packLabel(pack, [...PICK]);
   document.title = pack.name + ' 크로스워드';
   pendingScroll = 0;
+  migrate(pack);
   if (!load()) grow(AHEAD);
   if (pendingScroll) {                       // 보던 자리까지는 판이 깔려 있어야 그리로 갈 수 있다
     const need = Math.ceil((pendingScroll + scroller.clientHeight) / C) + AHEAD;
@@ -1640,6 +1673,7 @@ if (location.search.includes('debug'))
   window.__cw = { G, S, get W() { return W; }, key, grow, collapse, clearableY, render, wordCells,
                   input, hint, openWord, after, markBad, nextWord, crossCount, startPack, curWord, focusIME, anchorIME,
                   tune: (w, c, r, o) => { WEAR = w; WEARCAP = c; RECSHIFT = r; if (o !== undefined) OFFPICK = o; },
+                  tune2: (h, d) => { if (h !== undefined) HARD = h; if (d !== undefined) DEEP = d; },
                   useIME,
                   get ONTOPIC() { return ONTOPIC; }, get PACK() { return PACK; }, get BANK() { return BANK; } };
 })();

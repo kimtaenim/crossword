@@ -1,0 +1,2095 @@
+<title>무한 크로스워드</title>
+<style>
+  :root {
+    --c: 42px;
+    /* 델프트 도자기 — 흰 유약을 두껍게 입힌 살결에 코발트 하나로만 그린다.
+       유약은 두 가지로 흉내 낸다: 위에서 아래로 옅어지는 결(glaze) 과
+       가장자리 안쪽에 한 줄 도는 흰 빛(inset highlight). */
+    --bg: #eaf0f8; --panel: #fbfcfe; --line: #b9d0ea; --ink: #0e2b57; --dim: #5f7796;
+    --accent: #164691; --cobalt: #1d59b3; --deep: #0a2554; --ok: #164691;
+    --tile: #ffffff; --tile-in: #dfebfa; --tile-cur: #c6dcf8;
+    --tile-in-top: #eef5fd; --tile-cur-top: #dcebfd;
+    --ring: rgba(29,89,179,.26); --ring-strong: rgba(29,89,179,.4); --cast: rgba(14,43,87,.14);
+    --glaze: linear-gradient(180deg, #ffffff 0%, #f2f7fd 58%, #e8f0fa 100%);
+    --glaze-blue: linear-gradient(180deg, #2f6ccb 0%, #1d59b3 46%, #123f85 100%);
+    --sheen: inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 2px rgba(29,89,179,.09);
+    --sheen-blue: inset 0 1px 0 rgba(255,255,255,.42), inset 0 -2px 5px rgba(6,26,60,.4);
+    --lemon: #d9a400; --lemon-bg: #fdf3c2; --lemon-ink: #6b5000;
+    --glaze-lemon: linear-gradient(180deg, #fefadf 0%, #fdf3c2 55%, #f7e9a6 100%);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* 브라우저 기본 초점 테두리는 주황빛이라 배색을 깬다 */
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; color: var(--ink); overflow: hidden;
+    background:
+      radial-gradient(120% 70% at 50% -10%, #ffffff 0%, rgba(255,255,255,0) 62%),
+      radial-gradient(90% 60% at 8% 108%, #dfe9f6 0%, rgba(223,233,246,0) 70%),
+      var(--bg);
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+    display: flex; flex-direction: column; height: 100dvh;
+    /* 자판이 올라오면 스크립트가 실제 보이는 높이로 덮어쓴다 */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  header {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    background: linear-gradient(180deg, #ffffff 0%, #f2f7fd 100%); flex: none;
+    border-bottom: 1px solid var(--line); box-shadow: 0 1px 3px rgba(14,43,87,.06);
+  }
+  #packname {
+    background: var(--glaze); border: 1px solid var(--line); color: var(--ink);
+    box-shadow: var(--sheen); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 600;
+    font-family: inherit; cursor: pointer; white-space: nowrap;
+    /* 갈래 이름까지 붙으면 길어져 오른쪽 숫자를 밀어낸다. 넘치면 말줄임 */
+    flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  }
+  #packname:hover { background: var(--tile-in); border-color: #a9c8ea; }
+  .stats { display: flex; gap: 11px; margin-left: auto; font-size: 11px; color: var(--dim); flex: none; white-space: nowrap; }
+  .stats b { color: var(--ink); font-size: 14px; font-variant-numeric: tabular-nums; display: block; text-align: right; }
+  .tools { display: flex; gap: 5px; flex: none; }
+  .tools button, .cluenav button {
+    background: var(--glaze); color: var(--ink); border: 1px solid var(--line);
+    box-shadow: var(--sheen); border-radius: 8px; padding: 6px 9px; font-size: 12px; cursor: pointer; font-family: inherit;
+  }
+  .tools button:hover, .cluenav button:hover { background: var(--tile-in); }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  #scroller { flex: 1; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; position: relative; }
+  #board { padding: 10px 0 45vh; transition: filter .3s; }
+  #board.lift { filter: brightness(1.06) saturate(1.15); }
+  #layer { position: relative; margin: 0 auto; }
+
+  .cell {
+    position: absolute; top: 0; left: 0;
+    width: calc(var(--c) - 3px); height: calc(var(--c) - 3px);
+    background: var(--glaze); border: 1px solid var(--line); border-radius: 8px;
+    box-shadow: var(--sheen), 0 1px 1.5px rgba(14,43,87,.07);
+    display: grid; place-items: center; cursor: pointer; opacity: 1;
+    transition: transform .38s cubic-bezier(.2,.85,.25,1), opacity .35s,
+                background .15s, border-color .15s, box-shadow .15s;
+  }
+  .cell b { font-size: calc(var(--c) * .5); font-weight: 600; line-height: 1; }
+  .cell i {
+    position: absolute; top: 2px; left: 3px; font-style: normal;
+    font-size: calc(var(--c) * .24); color: #93a9c6; line-height: 1;
+  }
+  .cell.inword { background: linear-gradient(180deg, var(--tile-in-top) 0%, var(--tile-in) 100%); }
+  .cell.cur {
+    background: linear-gradient(180deg, var(--tile-cur-top) 0%, var(--tile-cur) 100%); border-color: var(--cobalt);
+    box-shadow: var(--sheen), 0 0 0 2px var(--ring), 0 2px 5px var(--cast);
+  }
+  .cell.solved {
+    background: var(--glaze-blue); border-color: var(--deep); color: #f4f8ff;
+    box-shadow: var(--sheen-blue), 0 1px 2px rgba(10,37,84,.28);
+    text-shadow: 0 1px 1px rgba(6,26,60,.45);
+  }
+  /* 다 채웠는데 틀린 단어 — 어느 칸이 틀렸는지는 알려 주지 않는다 */
+  .cell.wrong {
+    border-color: var(--lemon); background: var(--glaze-lemon); color: var(--lemon-ink);
+    box-shadow: var(--sheen), 0 1px 2px rgba(122,92,0,.16);
+  }
+  .cell.solved i { color: #9dc0ea; text-shadow: none; }
+  .cell.born, .cell.gone { opacity: 0; }
+
+  /* 다 푼 줄은 지우지 않고 남겨 둔다 — 위로 올리면 언제든 다시 읽을 수 있게.
+     여섯 줄을 다 채워 넘어가는 «그 순간» 옅어진다. 다음 밴드를 넘길 때까지
+     기다렸다 옅어지면, 정작 해낸 순간에는 아무 일도 안 일어난 것처럼 보인다.
+     채도는 살려 두고 밝기만 확 올린다 — 흐린 회색이 아니라 맑고 옅은 파랑.
+     글자는 그냥 흰색. 지나간 답이라 또렷할 필요 없이 물러나 있는 편이 낫다. */
+  .cell.past {
+    background: linear-gradient(180deg,#dcebff 0%,#c2dafb 55%,#b1d0f8 100%);
+    border-color: #9dc8f4; cursor: pointer;
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,.95), inset 0 -2px 4px rgba(31,98,196,.14);
+    color: #ffffff; text-shadow: none;
+    transition: transform .38s cubic-bezier(.2,.85,.25,1), background .55s, color .55s, border-color .55s;
+  }
+  .cell.past i { color: rgba(255,255,255,.75); text-shadow: none; }
+  .cell.past.cur { box-shadow: var(--sheen), 0 0 0 2px var(--ring-strong); border-color: var(--cobalt); }
+
+  /* 어린이 단어장은 민트로 갈아입는다 — 델프트가 코발트라면 이쪽은 청자빛이다.
+     토큰만 바꿔 끼우므로 유약도 그늘도 그대로 따라온다 */
+  body[data-theme="mint"] {
+    --bg: #f3fdfa; --panel: #ffffff; --line: #cdf1e6; --ink: #1c7264; --dim: #85bcb0;
+    --accent: #38caab; --cobalt: #46d6b8; --deep: #1ba489; --ok: #38caab;
+    --tile-in: #eafdf7; --tile-cur: #d7f8ee;
+    --glaze: linear-gradient(180deg, #ffffff 0%, #f8fefc 58%, #effcf8 100%);
+    --glaze-blue: linear-gradient(180deg, #79e3ca 0%, #52d5b8 46%, #33bfa4 100%);
+    --sheen: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 2px rgba(56,202,171,.08);
+    --sheen-blue: inset 0 1px 0 rgba(255,255,255,.65), inset 0 -2px 5px rgba(12,120,98,.26);
+  }
+  body[data-theme="mint"] header { background: linear-gradient(180deg, #ffffff 0%, #f7fefc 100%); }
+  body[data-theme="mint"] footer { background: linear-gradient(180deg, #ffffff 0%, #fafffd 100%); }
+  body[data-theme="mint"] #kb { background: linear-gradient(180deg, #effdf8, #e6faf3); }
+  body[data-theme="mint"] .key.fn { background: linear-gradient(180deg, #f6fefb, #ecfbf6); }
+  body[data-theme="mint"] #nowline { border-top-color: #aee9d8; }
+  body[data-theme="mint"] #nowline::after { color: #8aceba; }
+  body[data-theme="mint"] .cell i { color: #a2d6c8; }
+  /* 밝아진 만큼 흰 글자가 묽어진다. 그늘을 조금 더 깔아 읽히게 한다 */
+  body[data-theme="mint"] .cell.solved { text-shadow: 0 1px 2px rgba(9,100,82,.45); }
+  body[data-theme="mint"] .cell.past {
+    background: linear-gradient(180deg,#d3fcf1 0%,#aef4e3 55%,#99efdb 100%);
+    border-color: #82e8d1;
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,.95), inset 0 -2px 4px rgba(14,170,140,.14);
+    color: #ffffff; text-shadow: none;
+  }
+  body[data-theme="mint"] .cell.past i { color: rgba(255,255,255,.75); }
+  body[data-theme="mint"] dialog::backdrop { background: rgba(16,120,100,.32); }
+
+  /* 어린이 어휘는 코랄핑크 — 같은 유약에 물감만 산호빛으로 바꿔 끼운다.
+     밑그림이 파랑을 전제로 쓴 자리(칸 배경·바탕 번짐)까지 같이 덮어야
+     분홍 위에 파란 기가 비치지 않는다 */
+  body[data-theme="coral"] {
+    --bg: #fff5f3; --panel: #ffffff; --line: #ffd3cc; --ink: #9b2f45; --dim: #cf8f95;
+    --accent: #f4536f; --cobalt: #ff7a8b; --deep: #dd3557; --ok: #f4536f;
+    --tile-in: #ffeceb; --tile-cur: #ffd8d6;
+    --tile-in-top: #fff7f6; --tile-cur-top: #ffe9e7;
+    --ring: rgba(244,83,111,.3); --ring-strong: rgba(244,83,111,.42); --cast: rgba(155,47,69,.14);
+    --glaze: linear-gradient(180deg, #ffffff 0%, #fffaf9 58%, #fff2f0 100%);
+    --glaze-blue: linear-gradient(180deg, #ff8296 0%, #f4536f 46%, #dd3557 100%);
+    --sheen: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 2px rgba(244,83,111,.09);
+    --sheen-blue: inset 0 1px 0 rgba(255,255,255,.6), inset 0 -2px 5px rgba(150,20,48,.3);
+  }
+  body[data-theme="coral"] {
+    background:
+      radial-gradient(120% 70% at 50% -10%, #ffffff 0%, rgba(255,255,255,0) 62%),
+      radial-gradient(90% 60% at 8% 108%, #ffe0dc 0%, rgba(255,224,220,0) 70%),
+      var(--bg);
+  }
+  body[data-theme="coral"] header { background: linear-gradient(180deg, #ffffff 0%, #fff7f6 100%); }
+  body[data-theme="coral"] footer { background: linear-gradient(180deg, #ffffff 0%, #fffbfa 100%); }
+  body[data-theme="coral"] #kb { background: linear-gradient(180deg, #fff2f0, #ffeae7); }
+  body[data-theme="coral"] .key.fn { background: linear-gradient(180deg, #fffbfa, #fff1ef); }
+  body[data-theme="coral"] #packname:hover { border-color: #ffbdb5; }
+  body[data-theme="coral"] #nowline { border-top-color: #ffb9b3; }
+  body[data-theme="coral"] #nowline::after { color: #e29aa0; }
+  body[data-theme="coral"] .cell i { color: #e0a6a9; }
+  body[data-theme="coral"] .cell.solved { color: #fff6f7; text-shadow: 0 1px 2px rgba(120,15,42,.5); }
+  body[data-theme="coral"] .cell.solved i { color: #ffc3cd; }
+  body[data-theme="coral"] .cell.past {
+    background: linear-gradient(180deg,#fff0ef 0%,#ffdcdc 55%,#ffd2d3 100%);
+    border-color: #ffc3c3;
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,.95), inset 0 -2px 4px rgba(200,60,85,.13);
+    color: #ffffff; text-shadow: none;
+  }
+  body[data-theme="coral"] .cell.past i { color: rgba(255,255,255,.8); }
+  body[data-theme="coral"] dialog::backdrop { background: rgba(150,40,60,.3); }
+
+  /* 빈자리 스티커 — 어린이 단어장에서만 나온다. 누를 수 없고 칸을 가리지 않는다 */
+  .deco {
+    position: absolute; top: 0; left: 0;
+    width: calc(var(--c) - 3px); height: calc(var(--c) - 3px);
+    display: grid; place-items: center; pointer-events: none;
+    font-size: calc(var(--c) * var(--dz, .52)); line-height: 1;
+    opacity: .8; transition: opacity .3s;
+  }
+  .deco b {
+    display: block; transform: rotate(var(--dr, 0deg));
+    filter: drop-shadow(0 1px 1px rgba(14,43,87,.18));
+  }
+  .deco.past { opacity: .3; }
+
+  /* 지나온 줄과 푸는 줄의 경계 */
+  #nowline {
+    position: absolute; top: 0; left: 0; right: 0; height: 0;
+    border-top: 1px dashed #8fb0d8; pointer-events: none;
+  }
+  #nowline::after {
+    content: '여기부터 푸는 중'; position: absolute; right: 2px; top: 3px;
+    font-size: 10px; color: #7e9cc4; letter-spacing: .3px;
+  }
+
+  aside {
+    width: 300px; flex: none; border-left: 1px solid var(--line); background: var(--panel);
+    overflow-y: auto; padding: 4px 0 24px; font-size: 12.5px;
+  }
+  aside h3 { margin: 12px 14px 6px; font-size: 11px; color: var(--dim); letter-spacing: 1px; }
+  aside ul { list-style: none; margin: 0; padding: 0; }
+  aside li { display: flex; gap: 8px; padding: 6px 14px; cursor: pointer; line-height: 1.4; color: #40587d; }
+  aside li:hover { background: var(--tile-in); }
+  aside li b { color: var(--dim); min-width: 20px; text-align: right; font-weight: 600; }
+  aside li.ok { color: #93a9c6; text-decoration: line-through; }
+  aside li.on { background: var(--tile-cur); color: var(--deep); }
+  aside li.on b { color: var(--accent); }
+  @media (max-width: 900px) { aside { display: none; } }
+
+  footer {
+    flex: none; border-top: 1px solid var(--line);
+    background: linear-gradient(180deg, #ffffff 0%, #f6f9fd 100%);
+    box-shadow: 0 -1px 4px rgba(14,43,87,.06);
+  }
+  /* 힌트가 이 판의 본문이다. 작게 줄여 자르지 말고 통째로 보이게 둔다 */
+  .cluebar { padding: 9px 12px 7px; }
+  .cluebar .ph { color: var(--dim); font-size: 14px; }
+  .meta { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+  .tag {
+    font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 6px; flex: none;
+    background: var(--tile-cur); color: var(--deep);
+  }
+  .tag.d { background: var(--glaze-blue); color: #ffffff; box-shadow: var(--sheen-blue); }
+  .tag.bad { background: #fbe9a4; color: var(--lemon-ink); }
+  .txt {
+    margin: 0; font-size: 17px; line-height: 1.42; color: var(--ink); font-weight: 500;
+    word-break: keep-all; overflow-wrap: anywhere; max-height: 5.7em; overflow-y: auto;
+  }
+  .len { font-size: 11.5px; color: var(--dim); flex: none; margin-left: auto; }
+
+  .cluenav { display: flex; gap: 6px; padding: 0 10px 8px; }
+  .cluenav button { flex: 1; height: 36px; font-size: 13px; }
+  .cluenav button.wide { flex: 1.35; }
+  @media (min-width: 901px) { .txt { font-size: 18px; } }
+
+  /* 화면 밖으로 밀지 않고 자리만 없앤다 — 밀어내면 폰이 화면을 끌어당긴다.
+     16px 미만이면 iOS 가 확대하므로 크기는 유지한다. */
+  #ime {
+    position: absolute; bottom: 0; left: 0; width: 1px; height: 1px;
+    opacity: 0; border: 0; padding: 0; font-size: 16px; background: transparent;
+    color: transparent; caret-color: transparent;
+  }
+  footer { position: relative; }
+
+  #kb { padding: 4px 3px 8px; background: linear-gradient(180deg,#e4edf8,#dbe7f6); }
+  body.nokb #kb { display: none; }
+  body.abc #kb { display: block; }   /* 영문 낱말일 때는 내장 자판을 꼭 보여 준다 */
+  .krow { display: flex; justify-content: center; gap: 4px; margin-bottom: 4px; }
+  .key {
+    flex: 1; max-width: 42px; height: 42px; border-radius: 7px; border: 1px solid var(--line);
+    background: var(--glaze); color: var(--ink); font-size: 16px; font-family: inherit; cursor: pointer;
+    box-shadow: var(--sheen), 0 1px 1.5px rgba(14,43,87,.08);
+  }
+  .key:active { background: var(--tile-cur); box-shadow: inset 0 2px 4px rgba(10,37,84,.18); }
+  .key.fn { background: linear-gradient(180deg,#f0f5fc,#e3ecf8); color: var(--dim); font-size: 14px; max-width: 52px; }
+  .key.fn.on { background: var(--glaze-blue); color: #ffffff; box-shadow: var(--sheen-blue); }
+
+  #flash {
+    position: fixed; left: 50%; top: 22%; transform: translate(-50%, 10px); white-space: nowrap;
+    font-size: 30px; font-weight: 800; color: var(--ok); opacity: 0; pointer-events: none;
+    transition: opacity .25s, transform .25s; text-shadow: 0 2px 18px rgba(255,255,255,.9);
+  }
+  #flash.on { opacity: 1; transform: translate(-50%, -14px); }
+
+  dialog {
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+    border-radius: 14px; padding: 20px 22px; max-width: 440px;
+    box-shadow: 0 18px 50px rgba(10,37,84,.28); width: calc(100vw - 32px);
+    font-size: 13.5px; line-height: 1.65;
+  }
+  dialog::backdrop { background: rgba(15,47,96,.4); }
+  dialog h2 { margin: 0 0 4px; font-size: 16px; }
+  dialog .sub { color: var(--dim); font-size: 12.5px; margin-bottom: 14px; }
+  dialog ul { padding-left: 18px; margin: 8px 0; }
+  dialog b { color: var(--accent); }
+  dialog .close {
+    margin-top: 14px; width: 100%; padding: 9px; border-radius: 8px; border: 0;
+    background: var(--glaze-blue); color: #ffffff; font-weight: 700; font-size: 14px;
+    box-shadow: var(--sheen-blue);
+    cursor: pointer; font-family: inherit;
+  }
+
+  #packs { display: flex; flex-direction: column; gap: 8px; }
+  .pack {
+    display: flex; gap: 12px; align-items: center; text-align: left; width: 100%;
+    background: var(--glaze); border: 1px solid var(--line); border-radius: 11px;
+    box-shadow: var(--sheen); padding: 12px 14px; cursor: pointer; color: var(--ink); font-family: inherit;
+  }
+  .pack:hover { background: var(--tile-in); border-color: #a9c8ea; }
+  .pack .pe { font-size: 26px; flex: none; }
+  .pack .pt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .pack b { font-size: 14.5px; }
+  .pack i { font-style: normal; font-size: 12px; color: #5c7595; line-height: 1.4; }
+  .pack u { text-decoration: none; font-size: 11px; color: var(--dim); }
+
+  .oops { max-width: 380px; margin: 18vh auto 0; padding: 0 20px; color: var(--dim); font-size: 13.5px; line-height: 1.7; }
+  .oops b { display: block; color: var(--ink); font-size: 15px; margin-bottom: 8px; }
+  .oops code { display: block; margin-top: 6px; padding: 8px 10px; border-radius: 7px;
+               background: var(--tile-in); border: 1px solid var(--line); color: var(--deep); font-size: 12.5px; }
+
+  #kinds { display: flex; flex-wrap: wrap; gap: 7px; }
+  .kind {
+    display: flex; align-items: baseline; gap: 6px; font-family: inherit; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--line); color: #5c7595;
+    border-radius: 999px; padding: 7px 13px; font-size: 13px;
+  }
+  .kind:hover { background: var(--tile-in); }
+  .kind.on { background: var(--tile-cur); border-color: var(--accent); color: var(--deep); }
+  .kind b { font-weight: 600; }
+  .kind u { text-decoration: none; font-size: 11px; color: var(--dim); }
+  .kind.on u { color: var(--accent); }
+  #caps {
+    background: var(--glaze-lemon); color: var(--lemon-ink);
+    border-top: 1px solid var(--lemon); border-bottom: 1px solid var(--lemon);
+    padding: 6px 12px; font-size: 12.5px; font-weight: 600; text-align: center;
+  }
+
+  /* 쉽게 스위치 */
+  .switch {
+    display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 12px;
+    background: var(--glaze); border: 1px solid var(--line); border-radius: 11px;
+    box-shadow: var(--sheen); padding: 10px 12px; cursor: pointer;
+    font-family: inherit; color: var(--ink); text-align: left;
+  }
+  .switch:hover { background: var(--tile-in); border-color: #a9c8ea; }
+  .switch .dot {
+    flex: none; width: 38px; height: 22px; border-radius: 999px; position: relative;
+    background: #cddcee; transition: background .18s;
+  }
+  .switch .dot::after {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(10,37,84,.3);
+    transition: transform .18s;
+  }
+  .switch[aria-pressed="true"] { border-color: var(--cobalt); background: var(--tile-cur); }
+  .switch[aria-pressed="true"] .dot { background: var(--accent); }
+  .switch[aria-pressed="true"] .dot::after { transform: translateX(16px); }
+  .switch .lab { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .switch b { font-size: 13.5px; }
+  .switch i { font-style: normal; font-size: 11.5px; color: var(--dim); line-height: 1.35; }
+
+  #poolnote { font-size: 12px; color: var(--dim); margin: 12px 2px 0; }
+  #poolnote.warn { color: #a8720a; }
+  .prow { display: flex; gap: 8px; align-items: center; }
+  .prow .close { margin-top: 14px; }
+  .ghost {
+    margin-top: 14px; padding: 9px 14px; border-radius: 8px; font-size: 13px; cursor: pointer;
+    background: transparent; border: 1px solid var(--line); color: var(--dim); font-family: inherit;
+    white-space: nowrap; flex: none;
+  }
+  .prow .close { flex: 1; }
+  .ghost:hover { color: var(--ink); }
+</style>
+<script>window.PACKS_INLINE = [{"id":"robot","name":"로봇","emoji":"🦾","desc":"유압 로봇팔에서 감속기 속까지 — 쉽게를 켜면 기초, 끄면 심화가 깔린다","tiered":true,"groups":[{"name":"로봇","words":[["유니메이트","1961년 GM 공장에 들어간, 1.8톤짜리 최초의 산업용 로봇","연대기와 인물","기초"],["엥겔버거","데볼과 회사를 차려 '로봇공학의 아버지'로 불린 사업가","연대기와 인물","기초"],["아크용접","전기 불꽃으로 금속을 녹여 잇는, 연속 경로가 필요한 작업","연대기와 인물","기초"],["델타로봇","가는 팔 셋이 한 판을 함께 잡고 초고속으로 집어 옮기는 기구","연대기와 인물","기초"],["협동로봇","안전 울타리 없이 사람 곁에서 함께 일하도록 만든 팔","연대기와 인물","기초"],["전동화","기름 새는 호스를 걷어내고 모터로 갈아타는 흐름","연대기와 인물","기초"],["아틀라스","유압을 버리고 전동으로 다시 태어난 휴머노이드","연대기와 인물","기초"],["옵티머스","테슬라가 만드는, 공장에 먼저 들어간 휴머노이드","연대기와 인물","기초"],["휴머노이드","팔다리를 사람처럼 갖춰 사람의 일터에 넣으려는 기계","연대기와 인물","기초"],["카렐차페크","1920년 희곡에서 '로봇'이라는 말을 처음 쓴 체코 작가","연대기와 인물","기초"],["픽앤플레이스","집어서 옮겨 놓기. 네 축 팔과 병렬 기구가 잘하는 일","연대기와 인물","기초"],["창고로봇","선반 사이를 밤새 오가며 상자를 사람 앞까지 실어 오는 기계","연대기와 인물","기초"],["시제품","팔 물건은 아니고, 되는지 보려고 딱 한 대 만들어 보는 것","연대기와 인물","기초"],["상용화","실험실에서 나와 값이 매겨지고 팔리기 시작하는 일","연대기와 인물","기초"],["특허출원","남이 먼저 적기 전에 내 발명을 문서로 못 박아 두는 일","연대기와 인물","기초"],["액추에이터","전기나 기름의 힘을 실제 움직임으로 바꾸는, 관절마다 든 근육","구동계","기초"],["서보모터","시킨 각도까지 돌고는, 손으로 밀어도 그 자리를 버티고 서 있는 부품","구동계","기초"],["인코더","축이 몇 도 돌았는지 세어 일러 주는, 모터 뒤통수에 붙은 눈금자","구동계","기초"],["감속기","모터는 쌩쌩 도는데 팔은 느리고 힘 있게 움직이게 만드는 부품","구동계","기초"],["감속비","입력이 백 바퀴 돌 때 출력이 한 바퀴 돈다면 백 대 일","구동계","기초"],["백래시","반대로 돌릴 때 이빨이 다시 맞물릴 때까지 축만 헛도는 그 찰나","구동계","기초"],["유압구동","기름 압력으로 밀어붙여 힘은 센데 바닥에 자꾸 기름이 배던 옛 방식","구동계","기초"],["전기구동","기름을 버리고 모터로 움직여, 힘 대신 섬세함을 얻은 방식","구동계","기초"],["기어박스","모터에 물려 회전을 바꾸는 통. 하나 붙일 때마다 효율이 반씩 깎인다","구동계","기초"],["정밀제어","시킨 좌표 언저리에서 떨지 않고 딱 그 자리에 가 붙게 다루는 일","구동계","기초"],["매니퓰레이터","논문에서 \"로봇팔\"을 부르는 딱딱한 이름","구조와 기구학","기초"],["다관절로봇","어깨 팔꿈치 손목처럼 도는 마디를 이어 붙인, 여섯 축이 표준인 형태","구조와 기구학","기초"],["순기구학","관절이 삼십 도, 사십오 도, 구십 도… 그러면 손끝은 지금 어디에 있나","구조와 기구학","기초"],["역기구학","손끝을 저기 두려면 관절을 몇 도씩 꺾어야 하는지 되짚는 계산","구조와 기구학","기초"],["특이점","축 둘이 한 줄로 겹쳐 갈 방향 하나를 잃고 팔이 홱 도는 자세","구조와 기구학","기초"],["작업영역","손끝을 데려갈 수 있는 데를 모두 이으면 나오는 공간","구조와 기구학","기초"],["동작범위","어깨가 몇 도에서 몇 도까지, 관절마다 정해져 있는 한계","구조와 기구학","기초"],["병렬기구","팔 하나가 다 하는 대신 가는 팔 셋이 한 판을 같이 붙들고 움직이는 구조","구조와 기구학","기초"],["관절각도","역기구학을 풀면 나오는, 마디마다 몇 도씩이라는 답","구조와 기구학","기초"],["엔드이펙터","팔 끝에 무엇을 다느냐로 그 팔의 직업이 정해지는 자리","손끝과 감각","기초"],["그리퍼","벌어졌다 오므라들며 물건을 쥐는 손","손끝과 감각","기초"],["흡착패드","판판한 상자에 척 붙어 진공으로 들어 올리는 고무 빨판","손끝과 감각","기초"],["용접건","팔 끝에 달려 이음매를 지지며 불꽃을 튀기는 도구","손끝과 감각","기초"],["머신비전","부품이 어디에 놓였는지 삐뚤어졌는지 찍어서 가려내는 로봇의 눈","손끝과 감각","기초"],["라이다","레이저를 사방에 뿌려 벽까지 몇 미터인지 훑어 오는 이동 로봇의 눈","손끝과 감각","기초"],["초음파센서","소리를 툭 던지고 되돌아오는 시간으로 코앞을 재는 값싼 부품","손끝과 감각","기초"],["자이로스코프","지금 얼마나 빨리 도는 중인지를 재는, 손톱만 한 부품","손끝과 감각","기초"],["가속도계","출발할 때 등이 시트에 눌리는 그 느낌을 숫자로 재는 부품","손끝과 감각","기초"],["센서융합","카메라가 눈부셔 못 볼 때 레이저가 대신 보게, 감각을 겹쳐 쓰는 일","손끝과 감각","기초"],["실시간지도","다니는 동안 벽이 나타날 때마다 그 자리에서 고쳐 그리는 주변 그림","손끝과 감각","기초"],["장애물회피","앞에 지게차가 서 있으면 멈추는 대신 옆으로 비껴 가는 것","손끝과 감각","기초"],["컨트롤러","팔 옆에 선 캐비닛. 기구학을 풀고 모터에 명령을 내리는 머리","두뇌와 교시","기초"],["티치펜던트","손에 들고 팔을 조금씩 움직여 동작을 새겨 넣는 리모컨","두뇌와 교시","기초"],["직접교시","사람이 팔을 손으로 잡아끌어 길을 가르치는 방식","두뇌와 교시","기초"],["사이클타임","한 번의 작업을 마치는 데 걸리는 시간. 도입 판단의 첫 숫자","두뇌와 교시","기초"],["프로그래밍","기계가 알아들을 말로 시킬 일을 적어 넣는 일","두뇌와 교시","기초"],["인건비","로봇 도입의 진짜 장벽은 하드웨어값이 아니라 이것이었다","두뇌와 교시","기초"],["안전펜스","산업용 팔을 사람과 갈라놓는 울타리. 코봇은 이걸 없앤 것","안전과 협동","기초"],["감시정지","사람이 구역에 들어서면 팔을 세워 두었다가 나가면 다시 돌리는 방식","안전과 협동","기초"],["핸드가이딩","작업자가 팔을 붙들고 여기, 여기 하고 끌어 보이며 가르치는 협동 운전","안전과 협동","기초"],["보호이격거리","사람과 팔 사이에 늘 남겨 두어야 하는 최소한의 사이","안전과 협동","기초"],["안전규격","울타리를 칠지 속도를 늦출지 나라마다 다르지 않게 정해 둔 국제 기준","안전과 협동","기초"],["페이로드","손목이 들 수 있는 최대 무게. 손끝 무게까지 빼고 세야 한다","성능과 거래","기초"],["반복정밀도","같은 자리로 몇 번이고 돌아올 때 벌어지는 오차","성능과 거래","기초"],["정확도","시킨 좌표와 실제로 간 자리 사이의 거리. 대개 반복 오차보다 나쁘다","성능과 거래","기초"],["공기계","본체와 캐비닛만 있고 손끝도 프로그램도 없어 아무 일도 못 하는 것","성능과 거래","기초"],["시스템통합","맨 팔에 손끝과 지그와 안전 설비를 붙여 일하는 물건으로 만드는 일","성능과 거래","기초"],["로봇셀","팔과 주변 설비와 울타리를 묶은 하나의 작업 단위","성능과 거래","기초"],["복합로봇","이동 기계 위에 팔을 얹어 옮기기와 다루기를 한 몸에 담은 것","성능과 거래","기초"],["산업용로봇","울타리 안에서 하루 종일 같은 동작을 되풀이하는 커다란 팔","성능과 거래","기초"],["이동로봇","팔은 없고 바퀴만 있어 짐을 싣고 바닥을 굴러다니는 기계","성능과 거래","기초"],["조립라인","부품이 흘러가는 동안 차례차례 붙어 완성품이 되어 나오는 줄","성능과 거래","기초"],["물류창고","천장까지 선반이 올라간, 기계가 사람보다 먼저 들어간 일터","성능과 거래","기초"],["자동화","밤에 불을 꺼 두어도 라인이 계속 돌아가게 만드는 일","성능과 거래","기초"],["경량구조","알루미늄으로 팔을 가볍게 만들어 사람 곁에 둘 수 있게 한 설계","성능과 거래","기초"],["도입장벽","값보다 셋업 품이 더 든다는, 자동화를 막아 온 문턱","성능과 거래","기초"],["로봇공학","기계와 전자와 제어를 한꺼번에 붙들어야 하는 학문","성능과 거래","기초"],["AGV","바닥에 붙은 테이프만 따라 다녀서, 앞에 상자가 놓이면 멈춰 선 채 기다리는 운반차","알파벳 약어","기초"],["AMR","통로가 막히면 제가 그린 지도를 보고 옆길로 돌아가는 창고 운반 로봇","알파벳 약어","기초"],["SLAM","처음 온 건물을 돌며 지도를 그리는 동시에 그 지도 위 제자리도 찾는 일","알파벳 약어","기초"],["PLC","제어반 안에 서서 컨베이어와 실린더에 신호를 돌리며 라인의 박자를 맞추는 상자","알파벳 약어","기초"],["IMU","눈을 감겨 놔도 지금 기울었는지 도는 중인지를 아는, 손톱만 한 평형 기관","알파벳 약어","기초"],["DOF","여섯이면 어느 자세로든 손끝을 둘 수 있고, 다섯이면 못 가는 각도가 생긴다","알파벳 약어","기초"],["SCARA","옆으로 밀면 물렁하고 아래로 누르면 꿈쩍 않는, 기판에 부품 꽂는 네 축 팔","알파벳 약어","기초"],["ISO","10218이라는 번호를 달고 로봇 안전 기준을 찍어 내는 곳","알파벳 약어","기초"],["TOF","빛을 쏘고 되돌아오기까지 몇 나노초 걸렸는지로 거리를 아는 방식","알파벳 약어","기초"],["ROS","노드끼리 토픽을 주고받게 해, 팔이든 바퀴든 같은 방식으로 다루게 한 뼈대","알파벳 약어","기초"],["TCP","그리퍼 끝인지 용접봉 끝인지, \"여기가 손끝이다\" 하고 찍어 두는 기준점","알파벳 약어","기초"],["PID","모자라면 더 밀고, 오래 모자랐으면 더 밀고, 급히 다가가면 브레이크를 밟는 제어기","알파벳 약어","기초"],["HMI","현장 기둥에 붙어 개수와 온도를 띄우고, 눌러서 설비를 세우는 화면","알파벳 약어","기초"],["MES","어느 라인에서 몇 개 나왔고 몇 개가 불량인지를 실시간으로 걷어 가는 공장 시스템","알파벳 약어","기초"],["CAN","선 두 가닥에 여러 장치가 매달려 급한 말부터 먼저 보내는 설비용 통신","알파벳 약어","기초"],["CAD","도면을 손으로 긋는 대신 화면에서 그리고 치수를 박아 두는 프로그램","알파벳 약어","기초"],["이족보행","두 다리로 걸어 계단도 오르지만 밀면 잘 넘어지는 방식","걷고 구르기","기초"],["사족보행","네 다리로 험한 데를 잘 다니는, 개를 닮은 방식","걷고 구르기","기초"],["무한궤도","바퀴 대신 쇠사슬 띠를 둘러 진흙에도 안 빠지게 한 구동","걷고 구르기","기초"],["자율주행","사람이 손을 놓아도 스스로 길을 보고 가는 것","걷고 구르기","기초"],["원격제어","멀리서 화면을 보며 손에 든 조종기로 다루는 것","걷고 구르기","기초"],["충전스테이션","일을 마치면 스스로 찾아가 코를 대는 자리","걷고 구르기","기초"],["배터리","다 쓰면 세워 두고 채워야 하는, 이동 기계의 밥","걷고 구르기","기초"],["배달드론","하늘에서 날개 넷을 돌려 짐을 나르는 것","걷고 구르기","기초"],["비상정지","빨간 버튼을 치면 모든 축이 그 자리에서 서는 장치","안전","기초"],["안전인증","팔을 팔기 전에 규격에 맞는지 받아 두는 도장","안전","기초"],["위험성평가","다치는 일이 어디서 어떻게 생길지 미리 따져 적어 두는 일","안전","기초"],["보호구","현장에 들어설 때 머리와 눈과 발을 지키려 갖춰 입는 것","안전","기초"],["잠금장치","고치는 동안 아무도 못 켜게 스위치를 잠가 두는 것","안전","기초"],["컨베이어","부품을 실어 다음 자리로 흘려보내는 띠","공장에서","기초"],["팔레타이징","상자를 층층이 쌓아 받침대에 가지런히 올리는 일","공장에서","기초"],["상하차","트럭에 싣고 내리는, 사람 허리가 제일 먼저 망가지는 일","공장에서","기초"],["용접로봇","불꽃을 튀기며 이음매를 붙이는 팔","공장에서","기초"],["도장로봇","안개처럼 뿌려 차 겉면을 고르게 칠하는 팔","공장에서","기초"],["검사공정","다 만든 뒤 흠이 있는지 골라내는 자리","공장에서","기초"],["작업지시","무엇을 몇 개, 어느 라인에서 만들지 내려보내는 문서","공장에서","기초"],["표준작업","누가 해도 같은 결과가 나오게 순서와 시간을 못 박아 둔 것","공장에서","기초"],["가동률","세워 둔 시간을 빼고 실제로 돌아간 비율","공장에서","기초"],["불량률","만든 것 백 개 가운데 몇 개가 못 쓰게 나오는지","공장에서","기초"],["서빙로봇","쟁반을 얹고 식당 상 사이를 다니는 기계","곁에 온 로봇","기초"],["배달로봇","인도를 굴러 문 앞까지 물건을 가져다주는 기계","곁에 온 로봇","기초"],["수술로봇","의사가 콘솔에 앉아 손목을 움직이면 배 속 집게가 따라 도는 것","곁에 온 로봇","기초"],["재활로봇","다리에 채워 걷는 연습을 거들어 주는 기계","곁에 온 로봇","기초"],["청소로봇","혼자 방을 돌며 먼지를 빨아들이고 제자리로 돌아가는 것","곁에 온 로봇","기초"],["교육용로봇","블록을 끼우듯 순서를 짜 보게 만든, 배우려고 쓰는 기계","곁에 온 로봇","기초"],["좌표계","여기가 원점이고 저쪽이 가로축이라고 정해 두는 틀","다루는 법","기초"],["원점복귀","켤 때마다 정해진 자세로 돌아가 제가 어디인지 다시 아는 일","다루는 법","기초"],["시뮬레이션","실물을 세우기 전에 화면 안에서 먼저 돌려 보는 일","다루는 법","기초"],["디지털트윈","현장 설비를 화면 속에 똑같이 지어 놓고 나란히 돌리는 것","다루는 법","기초"],["유지보수","기름 치고 부품 갈며 멈추지 않게 돌보는 일","다루는 법","기초"],["예방정비","고장 나기 전에 때가 되면 미리 갈아 끼우는 일","다루는 법","기초"],["고장진단","왜 섰는지 신호와 기록을 뒤져 찾아내는 일","다루는 법","기초"],["근접센서","닿지 않고도 쇠붙이가 코앞에 왔는지 아는 부품","부품","기초"],["적외선센서","눈에 안 보이는 빛을 쏘아 가로막힌 것을 알아채는 부품","부품","기초"],["리밋스위치","여기까지가 끝이라고 알려 주려 축 끝에 달아 둔 것","부품","기초"],["공압실린더","압축 공기로 밀고 당기는, 값싸고 빠른 힘","부품","기초"],["진공펌프","빨판이 척 붙게 공기를 빨아내는 부품","부품","기초"],["스테핑모터","한 걸음씩 각을 끊어 도는, 되먹임 없이도 쓰는 부품","부품","기초"],["제어반","차단기와 배선과 컨트롤러가 들어앉은 철제 상자","부품","기초"],["케이블베어","선이 꺾이지 않게 잡아 주며 같이 따라 움직이는 사슬","부품","기초"],["유니메이션","데볼과 엥겔버거가 1956년 세운 세계 최초의 로봇 회사","연대기와 인물","심화"],["조지데볼","1954년 '프로그램된 물품 이송' 특허를 낸 발명가","연대기와 인물","심화"],["다이캐스팅","녹인 금속을 금형에 고압으로 밀어 넣어 부품을 찍는 주조법","연대기와 인물","심화"],["드럼메모리","회전하는 자기 원통에 동작 순서를 새겨 두던 초기 저장 장치","연대기와 인물","심화"],["배기가스","다이캐스팅 공정에서 사람이 마시던, 로봇에게 먼저 넘긴 위험","연대기와 인물","심화"],["스탠퍼드암","1969년 샤인먼이 만든, 최초의 전전기식 여섯 축 팔","연대기와 인물","심화"],["샤인먼","스탠퍼드 암과 푸마를 설계한 로봇팔의 아버지","연대기와 인물","심화"],["파물루스","1973년 쿠카가 낸 세계 최초의 여섯 축 전기 구동 산업 로봇","연대기와 인물","심화"],["마이크로프로세서","1974년 IRB 6에 처음 들어가 로봇 제어를 바꾼 칩","연대기와 인물","심화"],["연속경로","점을 찍어 가는 대신 이음매를 따라 손끝이 멈추지 않고 흐르는 동작","연대기와 인물","심화"],["공작기계","쇳덩이를 깎고 뚫어 부품으로 만드는 설비. 밀라크론이 원래 팔던 물건이다","연대기와 인물","심화"],["야스카와전기","1974년 화낙과 나란히 로봇 생산을 시작한 일본 회사","연대기와 인물","심화"],["마키노히로시","1978년 네 축 조립 팔을 처음 만든 야마나시대 교수","연대기와 인물","심화"],["클라벨","초콜릿 공장 수작업을 보고 병렬 기구를 떠올린 스위스 교수","연대기와 인물","심화"],["콜게이트","페시킨과 함께 1996년 코봇 개념을 처음 세운 미국 교수","연대기와 인물","심화"],["페시킨","사람을 다치지 않게 힘을 유도하는 팔을 함께 연구한 교수","연대기와 인물","심화"],["길레스피","상금 오십 달러가 걸린 공모에서 '코봇'을 제안한 연구원","연대기와 인물","심화"],["유니버설로봇","2005년 덴마크에서 창업해 첫 상용 코봇을 낸 회사","연대기와 인물","심화"],["터치패드","프로그래머 없이 현장 작업자가 코봇을 세팅하던 화면","연대기와 인물","심화"],["자기테이프","바닥에 붙여 무인 운반차가 따라가게 하는 띠","연대기와 인물","심화"],["고정경로","여기서 저기까지, 벗어나면 안 되게 바닥에 미리 그어 둔 길","연대기와 인물","심화"],["양산개시","한 대씩 만들어 보던 것을 줄 세워 찍어 내기 시작하는 때","연대기와 인물","심화"],["키바시스템즈","2012년 아마존이 칠억 칠천만 달러에 사들인 창고 로봇 회사","연대기와 인물","심화"],["프로테우스","2022년 아마존이 낸, 직원들 사이를 자유로이 다니는 첫 자율 기계","연대기와 인물","심화"],["보스턴다이내믹스","2024년 유압 아틀라스를 접고 완전 전동으로 갈아탄 회사","연대기와 인물","심화"],["어질리티","디짓으로 창고에서 토트를 날라 상업 실적을 낸 회사","연대기와 인물","심화"],["제로백래시","헛돎이 없다는 뜻으로, 감속기 카탈로그 첫 줄에 오르는 말","구동계","심화"],["하모닉드라이브","얇은 컵을 타원으로 눌러 이빨을 물리는 소형 관절용 감속기","구동계","심화"],["파동기어","금속을 휘어 동력을 넘기는 감속 방식. 상표가 아닌 일반 이름","구동계","심화"],["웨이브제너레이터","모터축에 붙어 얇은 컵을 타원으로 눌러 주는 캠","구동계","심화"],["플렉스플라인","타원에 눌려 휘는 얇은 강철 컵. 바깥에 이빨이 나 있다","구동계","심화"],["서큘러스플라인","안쪽에 이빨이 난 고정 링. 컵보다 이빨이 두 개 많다","구동계","심화"],["탄성변형","딱딱한 기어를 굴리는 대신 금속을 살짝 휘어 힘을 넘기는 발상","구동계","심화"],["나브테스코","큰 관절용 감속기 세계 시장의 육 할을 쥔 일본 회사","구동계","심화"],["사이클로이드","곡선 이빨로 힘을 나눠 받는, 대형 감속기의 기어 방식","구동계","심화"],["구형손목","뒤 세 축을 한 점에서 만나게 해 위치와 자세를 갈라 놓은 설계","구조와 기구학","심화"],["직교좌표로봇","가로세로높이 직선 셋으로만 움직이는, 인형 뽑기 같은 형태","구조와 기구학","심화"],["원통좌표로봇","기둥이 돌고 그 위에서 위아래와 앞뒤로 미는 형태","구조와 기구학","심화"],["극좌표로봇","몸통이 돌고 팔이 들리고 앞으로 뻗는, 전차 포탑 같은 형태","구조와 기구학","심화"],["수평다관절","회전축이 모두 바닥에 수직으로 서서 테이블을 쓸듯 도는 형태","구조와 기구학","심화"],["수직다관절","어깨와 팔꿈치 축이 누워 있어 팔이 위아래로 크게 오르내리는 형태","구조와 기구학","심화"],["선택적유연성","옆으로는 무르고 아래로는 단단한, 네 축 팔 이름의 앞 두 글자","구조와 기구학","심화"],["기구학형태","축을 어디에 어떻게 놓았느냐로 갈리는 로봇의 생김새 갈래","구조와 기구학","심화"],["힘토크센서","손목에 달려 닿는 세기를 느끼는, 끼워 맞춤에 꼭 필요한 부품","손끝과 감각","심화"],["인지계층","레이저와 카메라가 본 것을 한데 모아 \"주변이 이렇다\"로 만드는 층","손끝과 감각","심화"],["경로재탐색","가려던 통로가 막혔을 때 되돌아 나와 다른 길을 다시 찾는 일","손끝과 감각","심화"],["로봇시스템","팔만으로는 아니고 손끝과 지그와 울타리까지 붙어야 이렇게 부른다","손끝과 감각","심화"],["생체역학한계","여기까지 부딪혀도 멍이 안 든다고 정해 둔 힘과 압력의 상한","안전과 협동","심화"],["기술사양","규격만으로는 모자란 세부 요구를 따로 적어 둔 문서","안전과 협동","심화"],["턴키방식","한 업체가 통째로 지어 놓아 열쇠만 돌리면 되는 납품","성능과 거래","심화"],["텔레오퍼레이션","사람이 뒤에서 원격으로 조종하는 것. 시연 자율성 논란의 지점","성능과 거래","심화"],["PUMA","1978년 GM 라인에 놓여 조립 로봇의 본이 된, 사람 팔만 한 여섯 축 팔","알파벳 약어","심화"],["VAL","\"여기로 가서 집어라\"를 사람 말에 가깝게 적게 해 준 최초의 로봇 전용 언어","알파벳 약어","심화"],["RAAS","로봇을 사지 않고 다달이 값을 치르거나 집어 든 상자 수만큼 내는 방식","알파벳 약어","심화"],["LBR","사람 곁에 세워도 되게 알루미늄으로 가볍게 만든 쿠카의 팔 계보","알파벳 약어","심화"],["IRB","1974년 육 킬로그램짜리 6호로 시작한 아세아의 산업 로봇 이름","알파벳 약어","심화"],["SSM","사람이 다가오면 속도를 늦추고 더 다가오면 아예 서 버리는 협동 운전","알파벳 약어","심화"],["PFL","부딪혀도 멍이 안 들 만큼 힘을 묶어 두어 울타리를 걷어낸 운전 방식","알파벳 약어","심화"],["OLP","라인을 세우는 대신 화면 속 쌍둥이 팔로 동선을 짜 두었다 내려보내는 방식","알파벳 약어","심화"],["DLR","쿠카와 손잡고 가벼운 팔을 만들어 낸 독일의 항공우주 연구소","알파벳 약어","심화"],["EPFL","초콜릿 집는 손을 보다 못해 병렬 기구가 태어난 스위스 로잔의 공대","알파벳 약어","심화"],["ABB","아세아와 브라운보베리가 합쳐진, 취리히에 본사를 둔 로봇 회사","알파벳 약어","심화"],["KUKA","1973년 파물루스를 내놓은 아우크스부르크의 주황색 로봇 회사","알파벳 약어","심화"],["FANUC","노란 팔로 알아보는, 후지산 기슭에 공장을 둔 일본 로봇 회사","알파벳 약어","심화"],["RGBD","빨강 초록 파랑에 픽셀마다 \"얼마나 먼지\"를 한 장 더 얹어 주는 카메라","알파벳 약어","심화"],["URDF","링크와 조인트가 어떻게 이어졌는지 적어 두어 시뮬레이터가 팔을 그려 내는 파일","알파벳 약어","심화"],["RTK","기준국이 오차를 실시간으로 일러 주어 위치를 센티미터까지 좁히는 위성 항법","알파벳 약어","심화"],["MTBF","고장에서 다음 고장까지 평균 몇 시간이나 돌았는지 재는 신뢰도 숫자","알파벳 약어","심화"],["OEE","가동률과 성능과 양품률을 곱해 설비가 제 몫을 얼마나 했는지 하나로 보는 지표","알파벳 약어","심화"],["VLA","보고, 말을 알아듣고, 곧바로 팔까지 움직이는 데를 한 모델로 잇는 방식","알파벳 약어","심화"]]}]},{"id":"news","name":"시사 용어","emoji":"📰","desc":"뉴스에 매일 나오지만 대충 넘기게 되는 말들 — 요즘 말부터","groups":[{"name":"시사 용어","words":[["기준금리","중앙은행이 이 숫자를 올리면 내 대출 이자가 따라 오르는 값","경제와 금융"],["인플레이션","작년에 만 원이던 장바구니가 올해는 만이천 원이 되는 현상","경제와 금융","요즘","2026-09-04"],["디플레이션","값이 계속 내려가니 다들 더 기다렸다 사자며 지갑을 닫는 상태","경제와 금융"],["소비자물가","쌀, 라면, 버스비… 가정이 사는 것들의 값을 묶어 잰 지표","경제와 금융"],["실질임금","월급은 3% 올랐는데 물가가 4% 오르면 깎인 셈이 되는 그것","경제와 금융"],["최저임금","이보다 적게 주면 법을 어기는 것이 되는, 시간당 삯의 바닥","경제와 금융","요즘","2026-09-04"],["통화정책","돈을 풀거나 죄어 경기를 다루는, 중앙은행이 쓰는 손","경제와 금융"],["재정정책","세금을 걷고 나라 돈을 풀어 경기를 다루는, 정부가 쓰는 손","경제와 금융"],["양적완화","중앙은행이 채권을 사들여 시중에 돈을 밀어 넣는 조치","경제와 금융"],["국채금리","나라가 빌린 돈에 붙는 이자율. 나라 신용의 체온계다","경제와 금융"],["환율변동","천삼백 원 하던 것이 천사백 원이 되는, 돈값의 오르내림","경제와 금융"],["무역수지","판 것에서 산 것을 뺀 나라 단위 가계부. 마이너스면 적자다","경제와 금융"],["경상수지","물건에 여행비, 이자까지 더해 나라가 벌고 쓴 것을 다 센 셈","경제와 금융"],["외환보유액","위기가 오면 꺼내 쓰려고 나라가 쟁여 둔 남의 나라 돈","경제와 금융"],["경기침체","공장은 덜 돌고 지갑은 안 열려 두 분기 내리 뒷걸음치는 국면","경제와 금융"],["연착륙","금리를 올리되 주저앉히지는 않고 살살 속도만 줄이는 것","경제와 금융"],["신용등급","이 사람이 빚을 갚을 것 같은지 남이 매겨 놓은 점수","경제와 금융"],["가계부채","집집마다 진 빚을 다 더한 것. 이자가 오르면 같이 무거워진다","경제와 금융"],["부동산시장","옆 동이 얼마에 팔렸는지로 내 집값이 정해지는 판","경제와 금융","요즘","2026-09-04"],["전세사기","돌려받을 줄 알았던 보증금이 집주인과 함께 사라지는 일","경제와 금융"],["주식시장","남의 회사 지분을 조각내 사고파는 판","경제와 금융","요즘","2026-09-04"],["공매도","빌려서 먼저 팔아 놓고 값이 떨어지면 사서 갚는 투자법","경제와 금융"],["기업공개","회사 지분을 처음으로 시장에 내놓아 아무나 사게 하는 일","경제와 금융"],["인수합병","남의 회사를 통째로 사거나 둘을 하나로 합치는 일","경제와 금융","요즘","2026-09-04"],["독점규제","한 회사가 판을 다 쥐고 값을 마음대로 못 매기게 막는 일","경제와 금융","요즘","2026-09-04"],["공정거래","큰 회사가 납품업체에 단가를 후려치지 못하게 하는 원칙","경제와 금융","요즘","2026-09-04"],["규제샌드박스","새 사업을 몇 년 풀어 주고 해 보게 한 뒤 따지자는 제도","경제와 금융"],["벤처투자","열에 아홉은 망할 걸 알면서 하나를 노리고 새싹에 돈을 대는 일","경제와 금융"],["스타트업","몇 사람이 시작해 빠르게 커지는 것을 노리는 회사","경제와 금융","요즘","2026-09-04"],["금융위기","은행이 서로를 못 믿어 돈줄이 얼어붙는 사태","경제와 금융","요즘","2026-09-04"],["구조조정","적자를 줄이려고 사업을 접고 사람을 내보내는 일","경제와 금융","요즘","2026-09-04"],["소비심리","지금 큰 걸 사도 되겠다고 사람들이 느끼는 정도","경제와 금융"],["내수시장","수출 말고 나라 안에서 사고파는 것만 따진 판","경제와 금융","요즘","2026-09-04"],["수출주도","안에서 파는 것보다 밖에 파는 힘으로 커 온 방식","경제와 금융","요즘","2026-09-04"],["산업정책","반도체를 밀지 배터리를 밀지 정부가 정해 놓은 계획","경제와 금융","요즘","2026-09-04"],["연구개발","돈은 올해 쓰고 결과는 십 년 뒤에 나올지도 모르는 일","경제와 금융","요즘","2026-09-04"],["집행유예","형은 정해 두되 사고 없이 지내면 없던 일로 하는 판결","정치와 미디어"],["세제개편","세금 매기는 방식을 손보는 일. 언제나 누군가는 운다","경제와 금융","요즘","2026-09-04"],["부가가치세","만 원짜리 영수증 맨 아래 909원쯤으로 붙어 있는 세금","경제와 금융"],["법인세","회사가 한 해 남긴 이익에 매기는 세금","경제와 금융"],["상속세","물려받은 재산에 매기는 세금. 가업 승계 때마다 말이 나온다","경제와 금융","요즘","2026-09-04"],["조세형평","많이 버는 쪽이 더 내야 한다는, 부담을 고르게 하자는 원칙","경제와 금융"],["조세피난처","세금이 거의 없어 서류상 회사만 세워 두는 나라","경제와 금융"],["국가부채","나라가 채권을 찍어 빌려 쓴 돈을 다 더한 것","경제와 금융"],["재정건전성","빚을 감당하며 나라 살림이 버틸 수 있는 정도","경제와 금융","요즘","2026-09-04"],["경제성장률","작년보다 나라 살림이 몇 퍼센트 커졌는지 나타낸 수","경제와 금융","요즘","2026-09-04"],["소비지출","가정이 먹고 입고 타는 데 실제로 쓴 돈","경제와 금융"],["설비투자","기업이 기계를 들이고 공장을 짓는 데 돈을 넣는 일","경제와 금융","요즘","2026-09-04"],["생산성","같은 한 시간에 얼마나 많이 만들어 내는지","경제와 금융","요즘","2026-09-04"],["공소시효","이 기간이 지나면 죄가 있어도 재판에 못 넘기는 기한","정치와 미디어"],["기후변화","여름은 길어지고 겨울은 짧아지는, 수십 년에 걸친 날씨의 달라짐","환경과 에너지","요즘","2026-09-04"],["탄소중립","내뿜은 만큼 나무를 심고 걷어 들여 셈을 영으로 맞추는 목표","환경과 에너지","요즘","2026-09-04"],["온실가스","빠져나갈 열을 붙잡아 지구에 이불을 덮는 기체","환경과 에너지"],["재생에너지","햇빛과 바람처럼 써도 다시 채워지는 동력원","환경과 에너지","요즘","2026-09-04"],["탄소배출권","내뿜을 몫을 나눠 주고 남으면 팔 수 있게 만든 권리","환경과 에너지"],["지속가능성","다음 세대가 쓸 몫을 미리 까먹지 않고 이어 갈 수 있는 성질","환경과 에너지"],["순환경제","쓰고 버리는 대신 고쳐 쓰고 되살려 다시 돌리는 구조","환경과 에너지"],["미세먼지","너무 작아 코를 지나 폐 깊숙이까지 들어가는 오염 물질","환경과 에너지"],["생물다양성","한 종만 남지 않고 여러 종이 골고루 살아 있는 상태","환경과 에너지","요즘","2026-09-04"],["해수면상승","빙하가 녹아 섬나라 해안선이 안쪽으로 밀려드는 일","환경과 에너지"],["이상기후","사월에 눈이 오고 시월에 반팔을 입는, 평년과 딴판인 날씨","환경과 에너지","요즘","2026-09-04"],["폭염경보","낮 최고 35도가 이틀 이어질 때 내리는 여름 알림","환경과 에너지"],["에너지전환","석탄 발전을 줄이고 햇빛과 바람 쪽으로 갈아타는 흐름","환경과 에너지"],["태양광발전","지붕 위 검은 판이 햇빛을 받아 전기를 만드는 방식","환경과 에너지"],["풍력발전","바닷가 흰 날개가 돌면서 전기를 만드는 방식","환경과 에너지"],["원자력발전","핵이 쪼개질 때 나는 열로 물을 끓여 전기를 얻는 방식","환경과 에너지","요즘","2026-09-04"],["플라스틱","싸고 가벼워 다 쓰는데 오백 년을 안 썩는 재료","환경과 에너지"],["자원순환","다 쓴 페트병을 모아 다시 옷감 원료로 되돌리는 일","환경과 에너지"],["환경영향평가","공사 시작 전에 물길과 새 둥지가 어떻게 될지 따져 보는 절차","환경과 에너지"],["에너지안보","수입선이 끊겨도 전기가 나가지 않게 미리 확보해 두는 일","환경과 에너지"],["저출산","한 여자가 평생 낳는 아이가 한 명도 안 되는 흐름","사회와 복지"],["고령화사회","예순다섯 넘은 사람이 일곱에 하나를 넘어선 세상","사회와 복지"],["인구감소","태어나는 수보다 죽는 수가 많아 전체가 줄어드는 일","사회와 복지"],["지방소멸","학교가 문을 닫고 젊은이가 떠나 동네가 비어 가는 문제","사회와 복지"],["다문화가정","서로 다른 나라에서 온 부모가 이룬 한 가족","사회와 복지","요즘","2026-09-04"],["사회안전망","일자리를 잃어도 굶지는 않게 받쳐 주는 제도의 그물","사회와 복지"],["기본소득","일을 하든 안 하든 모두에게 얼마씩 주자는 구상","사회와 복지","요즘","2026-09-04"],["국민연금","일할 때 다달이 부어 두었다가 늙어서 받는 제도","사회와 복지","요즘","2026-09-04"],["건강보험","다 같이 조금씩 내 두었다가 아픈 사람 치료비를 대는 제도","사회와 복지","요즘","2026-09-04"],["돌봄서비스","혼자 씻고 밥 짓기 어려운 이의 곁을 지켜 주는 일","사회와 복지"],["근로시간","하루 여덟, 주 마흔. 법으로 정해 둔 일하는 길이","사회와 복지"],["정년연장","예순에 나가던 것을 예순다섯까지 늦추자는 논의","사회와 복지"],["산업재해","일하다 떨어지고 끼이고 병을 얻는 사고","사회와 복지"],["소득격차","위쪽 십 퍼센트와 아래쪽 십 퍼센트의 벌이가 벌어진 정도","사회와 복지"],["양극화","가운데가 얇아지고 위아래 양 끝만 두꺼워지는 현상","사회와 복지","요즘","2026-09-04"],["주거복지","월세와 전셋값 걱정을 덜어 주려고 짜는 정책","사회와 복지"],["교육격차","집 형편에 따라 배울 기회가 갈리는 문제","사회와 복지"],["청년실업","졸업은 했는데 갈 데가 없는 젊은 층의 문제","사회와 복지"],["노동시장","일할 사람과 일자리가 만나 값이 정해지는 판","사회와 복지","요즘","2026-09-04"],["헌법소원","법이나 공권력이 내 기본권을 침해했다고 헌재에 내는 것","정치와 미디어"],["최저생계비","사람답게 살자면 한 달에 최소한 이만큼은 있어야 한다는 돈","사회와 복지"],["복지예산","돌봄과 지원에 쓰려고 잡아 둔 나라 돈","사회와 복지"],["실업률","일하려는 사람 백 명 중 자리를 못 구한 사람의 수","사회와 복지"],["고용률","열다섯에서 예순넷 사이 사람 중 실제로 일하는 비율","사회와 복지"],["인재유출","박사까지 시켜 놨더니 외국 회사로 가 버리는 현상","사회와 복지"],["감염병","기침과 손을 타고 사람에서 사람으로 옮는 병","사회와 복지"],["팬데믹","한 병이 대륙을 넘어 온 세계에 번진 상태","사회와 복지","요즘","2026-09-04"],["백신접종","미리 약한 놈을 넣어 몸에 방어를 만들어 두는 일","사회와 복지"],["의료개혁","의사 수와 수가, 진료 체계를 통째로 손보려는 일","사회와 복지"],["필수의료","돈은 안 되지만 없으면 사람이 죽는 응급과 분만 같은 진료","사회와 복지"],["원격의료","병원에 안 가고 화면 너머로 진찰받고 처방받는 방식","사회와 복지"],["공공의료","적자가 나도 국민 건강을 앞세워 유지하는 병원과 진료","사회와 복지"],["식량안보","수입이 끊겨도 굶지 않게 먹을거리를 대는 일","사회와 복지"],["여론조사","천 명에게 물어 오천만 명의 생각을 짐작하는 일","정치와 미디어","요즘","2026-09-04"],["선거제도","몇 명을 어떻게 뽑을지 정해 둔 규칙","정치와 미디어"],["비례대표","정당이 얻은 표의 비율만큼 의석을 나눠 갖는 방식","정치와 미디어"],["삼권분립","법 만들고 집행하고 재판하는 힘을 셋으로 갈라 둔 원리","정치와 미디어"],["탄핵소추","높은 공직자를 자리에서 내려달라고 국회가 요구하는 절차","정치와 미디어"],["국정감사","가을마다 국회가 부처를 불러다 따져 묻는 절차","정치와 미디어"],["예산심의","정부가 짠 나라 살림 계획을 국회가 줄 단위로 뜯어보는 일","정치와 미디어","요즘","2026-09-04"],["공약이행","선거 때 걸었던 약속을 임기 안에 실제로 지키는 일","정치와 미디어","요즘","2026-09-04"],["정당지지율","어느 당을 밀겠느냐고 물었을 때 나온 비율","정치와 미디어"],["필리버스터","소수당이 발언을 길게 끌어 표결을 늦추는 합법적 저지","정치와 미디어","요즘","2026-09-04"],["행정처분","영업정지나 과태료처럼 관청이 법에 따라 내리는 조치","정치와 미디어"],["정보공개","관청이 쥐고 있는 문서를 국민이 달라면 내주는 일","정치와 미디어"],["부정부패","자리를 이용해 뒷돈을 챙기고 편의를 봐주는 일","정치와 미디어","요즘","2026-09-04"],["이해충돌","심사를 맡았는데 그 회사에 내 돈이 들어 있는 상황","정치와 미디어"],["내부고발","내 회사의 잘못을 내가 밖에 알리는, 자리를 거는 행위","정치와 미디어"],["사법개혁","수사권과 재판 절차를 어떻게 나눌지 손보는 일","정치와 미디어","요즘","2026-09-04"],["인권침해","사람이면 당연히 누릴 권리를 힘으로 짓밟는 일","정치와 미디어","요즘","2026-09-04"],["차별금지","성별이나 출신을 이유로 다르게 대하지 못하게 하는 원칙","정치와 미디어"],["성평등","같은 일을 하면 성별과 상관없이 같은 기회를 갖는 상태","정치와 미디어","요즘","2026-09-04"],["세대갈등","연금도 집값도 서로 손해라고 여기며 부딪히는 일","정치와 미디어"],["지역균형","수도권에만 몰린 사람과 돈을 고르게 펴려는 일","정치와 미디어"],["도시재생","낡은 동네를 밀어 버리지 않고 고쳐 되살리는 사업","정치와 미디어"],["교통체증","차가 밀려 내비게이션이 도착 시각을 자꾸 미루는 일","정치와 미디어"],["대중교통","여럿이 같이 타고 정해진 길을 다니는 이동 수단","정치와 미디어"],["긴축재정","나라가 허리띠를 졸라매 지출을 줄이는 살림","경제와 금융"],["재난대응","지진이든 산불이든 났을 때 누가 뭘 할지 정해 둔 체계","정치와 미디어"],["낙수효과","위쪽이 잘되면 아래로도 흘러내린다는, 자주 반박되는 주장","경제와 금융"],["기저효과","지난해가 워낙 나빠서 올해가 좋아 보이는 착시","경제와 금융"],["보험료율","월급의 몇 퍼센트를 떼어 낼지 정해 둔 비율","정치와 미디어"],["가처분소득","세금과 보험료를 떼고 실제로 쓸 수 있게 남은 돈","경제와 금융"],["기업윤리","돈이 되더라도 회사가 하지 말아야 할 선","정치와 미디어","요즘","2026-09-04"],["사회공헌","회사가 번 것 일부를 장학금이나 봉사로 돌려주는 활동","정치와 미디어"],["언론자유","권력이 싫어할 기사도 실을 수 있는 권리","정치와 미디어"],["가짜뉴스","기사처럼 꾸며 놓았지만 사실이 아닌 소식","정치와 미디어","요즘","2026-09-04"],["팩트체크","떠도는 주장을 원자료와 대조해 진짜인지 가리는 작업","정치와 미디어","요즘","2026-09-04"],["표현의자유","듣기 싫은 말도 할 수 있어야 한다는 권리","정치와 미디어","요즘","2026-09-04"],["개인정보유출","가입할 때 적은 이름과 번호가 밖으로 새 나가는 사고","정치와 미디어"],["사이버공격","전산망에 몰래 들어가 망가뜨리거나 자료를 빼 가는 짓","정치와 미디어","요즘","2026-09-04"],["랜섬웨어","파일을 몽땅 잠가 놓고 풀어 주는 값을 요구하는 악성 프로그램","정치와 미디어"],["디지털격차","키오스크 앞에서 누구는 삼 초, 누구는 삼 분 걸리는 차이","정치와 미디어","요즘","2026-09-04"],["플랫폼규제","거대 중개 서비스가 수수료를 마음대로 못 올리게 하는 정책","정치와 미디어"],["데이터주권","내 기록을 어디에 쓸지 내가 정할 수 있어야 한다는 권리","정치와 미디어"],["공급망","한 나라 공장 하나가 멈추면 지구 반대편 생산이 서는 사슬","국제와 안보","요즘","2026-09-04"],["수출규제","우리 기술이 들어간 물건을 저 나라엔 못 팔게 막는 조치","국제와 안보"],["관세장벽","들어오는 물건에 세금을 매겨 값을 올려 막는 방식","국제와 안보"],["무역분쟁","관세를 올리면 저쪽도 올리며 주고받는 나라 사이 갈등","국제와 안보"],["자유무역협정","서로 관세를 없애거나 낮추기로 나라끼리 맺는 약속","국제와 안보"],["경제제재","은행 거래와 수출을 끊어 상대를 압박하는 수단","국제와 안보"],["국제연합","전쟁을 막자고 이차대전 뒤 세운, 온 나라가 모인 기구","국제와 안보"],["유럽연합","돈과 국경까지 합친, 대륙 단위로 뭉친 공동체","국제와 안보","요즘","2026-09-04"],["개발도상국","공장을 세우고 산업을 한창 키우는 중인 나라","국제와 안보"],["신흥국","성장은 빠른데 아직 흔들림도 큰, 커 가는 시장의 나라","국제와 안보"],["난민문제","전쟁과 박해를 피해 국경을 넘은 사람들을 둘러싼 과제","국제와 안보","요즘","2026-09-04"],["인도적지원","누구 편인지 따지지 않고 다치고 굶는 사람부터 돕는 일","국제와 안보"],["휴전협정","완전히 끝내진 못하고 총만 일단 멈추기로 한 약속","국제와 안보"],["평화협상","총 대신 말로 끝내 보려고 양쪽이 마주 앉는 일","국제와 안보"],["핵확산금지","가진 나라는 늘리지 말고 없는 나라는 갖지 말자는 약속","국제와 안보"],["안전보장","밖의 위협을 막아 나라가 안녕하도록 지키는 일","국제와 안보"],["지정학","바다에 붙었는지 강대국 사이에 끼었는지가 운명을 정한다는 관점","국제와 안보","요즘","2026-09-04"],["동맹관계","한쪽이 공격받으면 같이 싸워 주기로 맺은 사이","국제와 안보"],["외교마찰","역사든 무역이든 뜻이 어긋나 두 나라가 부딪히는 일","국제와 안보","요즘","2026-09-04"],["국제기구","한 나라가 못 푸는 일을 하려고 여럿이 세워 굴리는 조직","국제와 안보","요즘","2026-09-04"],["정상회담","대통령이나 총리끼리 직접 마주 앉는 자리","국제와 안보","요즘","2026-09-04"],["공동성명","합의한 내용을 양쪽이 같은 문장으로 함께 내놓는 문서","국제와 안보"],["대북정책","제재로 갈지 대화로 갈지, 북쪽을 상대하는 방향","국제와 안보"],["남북대화","판문점이든 개성이든, 두 쪽이 마주 앉는 일","국제와 안보"],["군사훈련","실제로 싸울 때를 대비해 부대가 미리 해 보는 연습","국제와 안보"],["방위비","무기를 사고 병력을 유지하는 데 쓰는 나라 돈","국제와 안보"],["징병제","일정 나이가 되면 의무로 군에 가게 하는 제도","국제와 안보"],["우주개발","위성을 올리고 달까지 가 보려는 나라 단위 사업","국제와 안보"],["인공위성","쏘아 올려 궤도를 돌며 통신과 관측을 맡는 기계","국제와 안보"],["희토류","폰과 전기차에 꼭 들어가는데 캐는 나라는 몇 안 되는 금속","국제와 안보"],["기술패권","앞선 재주를 쥐고 남이 못 따라오게 하려는 다툼","국제와 안보"],["지방선거","사 년마다 시장과 도지사와 교육감을 한꺼번에 뽑는 날","정치와 미디어","요즘","2026-09-04"],["인공지능","묻는 대로 척척 답하는데, 없는 논문도 당당하게 지어낸다","경제와 금융","요즘","2026-09-04"],["노동조합","혼자 말하면 안 들어주니 여럿이 모여 함께 말하려고 만든 것","사회와 복지","요즘","2026-09-04"],["기후위기","덥다는 말이 날씨 이야기가 아니라 재난 대책 문서에 오르는 상태","환경과 에너지","요즘","2026-09-04"],["검찰개혁","수사권과 기소권을 한 손에 쥔 곳을 어떻게 나눌지 다투는 일","정치와 미디어","요즘","2026-09-04"],["비상계엄","군이 한밤에 국회 담을 넘었다가 여섯 시간 만에 물러난 그것","정치와 미디어","요즘","2026-09-04"],["우크라이나","삼 년 넘게 포성이 이어지는, 유럽 동쪽 끝의 나라","국제와 안보","요즘","2026-09-04"],["특별검사","대통령도 수사할 수 있게 국회가 따로 임명하는 수사 책임자","정치와 미디어","요즘","2026-09-04"],["알고리즘","무엇을 먼저 보여 줄지 정하는 규칙. 취향인 줄 알았는데 계산이다","경제와 금융","요즘","2026-09-04"],["데이터센터","도시 하나만큼 전기를 먹으며 서버가 밤새 도는 창고","환경과 에너지","요즘","2026-09-04"],["이주노동자","농장과 공장의 빈자리를 메우러 국경을 건너온 사람들","사회와 복지","요즘","2026-09-04"],["헌법재판소","만든 법이 나라의 근본법에 어긋나는지, 대통령을 파면할지 정하는 곳","정치와 미디어","요즘","2026-09-04"],["재개발","동네를 통째로 헐고 새로 짓는 사업. 살던 사람은 대개 못 돌아온다","경제와 금융","요즘","2026-09-04"],["재건축","낡은 아파트를 헐고 더 높이 다시 올리는 일","경제와 금융","요즘","2026-09-04"],["정치자금","누가 얼마를 어디에 댔는지 반드시 장부에 남겨야 하는 돈","정치와 미디어","요즘","2026-09-04"],["공소청","수사는 떼어 내고 재판에 넘기는 일만 맡기려고 새로 만드는 기관","정치와 미디어","요즘","2026-09-04"],["비정규직","같은 일을 하는데 계약 기간이 정해져 있어 늘 다음이 불안한 자리","사회와 복지"],["내란우두머리","군을 움직여 헌정을 멈추려 한 무리의 맨 윗사람에게 붙는 죄명","정치와 미디어"],["전기요금","서버와 에어컨이 늘수록 같이 오르는, 달마다 오는 고지서","환경과 에너지","요즘","2026-09-04"],["중대재해","한 번에 여럿이 죽거나 다쳐 대표까지 형사 책임을 지는 사고","사회와 복지"],["가자지구","봉쇄된 좁은 땅에 이백만 명이 갇혀 사는 지중해 동쪽 끝","국제와 안보"],["정신건강","마음이 아픈 것도 병원에 갈 일이라고 말하기 시작한 영역","사회와 복지","요즘","2026-09-04"],["중대범죄수사청","검찰에서 떼어 낸 큰 사건을 파헤치라고 새로 세우는 기관","정치와 미디어","요즘","2026-09-04"],["사전투표","당일에 시간이 안 되는 사람이 며칠 앞서 한 표를 넣는 것","정치와 미디어","요즘","2026-09-04"],["공공임대","나라가 지어 시세보다 싸게, 오래 빌려주는 집","사회와 복지","요즘","2026-09-04"],["탈시설","큰 수용 건물에서 나와 동네에서 이웃으로 살게 하자는 흐름","사회와 복지"],["탄핵심판","파면해 달라는 요구를 받아 아홉 명이 여섯 이상 찬성해야 끝나는 재판","정치와 미디어"],["노란봉투법","파업했다고 노동자 개인에게 수십억을 물리지 못하게 한 법","사회와 복지"],["보유세","사고팔 때가 아니라 가지고 있는 동안 해마다 내는 세금","경제와 금융","요즘","2026-09-04"],["노동시간","주 오십이냐 사십팔이냐로 해마다 다투는 숫자","사회와 복지"],["학교폭력","교실에서 벌어졌는데 기록은 대학 갈 때까지 따라가는 일","사회와 복지"],["물가상승","장바구니는 그대로인데 계산대 숫자만 커지는 일","경제와 금융"],["해상풍력","바다에 흰 날개를 세워 전기를 만드는 사업","환경과 에너지"],["특수고용","회사가 시키는 대로 일하는데 근로자가 아니라 사장님이라 불리는 자리","사회와 복지"],["학생인권","교문 안에서도 사람으로서 누릴 것은 누리자는 조례의 이름","사회와 복지"],["추가경정","한 해 살림을 짜 놓고도 모자라 도중에 다시 짜는 예산","경제와 금융"],["응급실","받아 줄 병원을 찾아 구급차가 도는 동안 시간이 가는 곳","사회와 복지"],["반지하","창문이 발목 높이에 있어 비가 많이 오면 물이 차는 집","사회와 복지"],["저출생","한 해 태어나는 아이가 이십오만 명도 안 되는 일","사회와 복지"],["상호관세","우리가 매기면 저쪽도 매긴다며 세율을 서로 맞붙이는 것","경제와 금융"],["딥페이크","얼굴을 합성해, 하지도 않은 말을 하게 만든 영상","정치와 미디어"],["전공의","면허를 딴 뒤 병원에서 몇 년을 더 배우며 당직을 서는 의사","사회와 복지"],["갭투자","전세 보증금을 끼고 적은 돈으로 집을 사 두는 것","경제와 금융"],["종합부동산세","여러 채를 가졌거나 아주 비싼 한 채를 가진 사람에게 더 매기는 세금","경제와 금융","요즘","2026-09-04"],["고독사","혼자 살다 혼자 떠나 한참 뒤에야 발견되는 죽음","사회와 복지"],["선거관리","투표함을 나르고 표를 세고, 시비가 붙으면 판정까지 하는 일","정치와 미디어"],["파리협정","지구 온도를 산업화 이전보다 일점오 도 넘게 올리지 말자는 약속","환경과 에너지"],["결선투표","아무도 과반을 못 넘으면 위의 둘만 다시 붙는 방식","정치와 미디어"],["배당소득","주식을 가지고만 있어도 회사가 이익을 나눠 주는 몫","경제와 금융"],["개인정보","가입할 때 적어 넣은 이름과 번호. 새 나가면 되돌릴 수가 없다","정치와 미디어","요즘","2026-09-04"],["보완수사권","검찰이 넘겨받은 사건에서 모자란 데를 더 캐물을 수 있는 권한","정치와 미디어","요즘","2026-09-04"],["형사소송법","잡고 조사하고 재판에 넘기는 절차를 정해 둔 법","정치와 미디어","요즘","2026-09-04"],["전당대회","당원들이 모여 대표를 뽑고 갈 길을 정하는 정당의 큰 모임","정치와 미디어","요즘","2026-09-04"],["종합특검","여러 사건을 한 팀이 몰아 맡는 특별 수사","정치와 미디어","요즘","2026-09-04"],["특검법","누구를 어떤 사건까지 파헤칠지 국회가 법으로 못 박은 것","정치와 미디어","요즘","2026-09-04"],["개정안","고칠 데를 적어 국회에 내는 법률 초안","정치와 미디어","요즘","2026-09-04"],["대법원","세 번째이자 마지막 판단을 내리는 곳","정치와 미디어","요즘","2026-09-04"],["당대표","정당의 얼굴이자 공천에 큰 힘을 쓰는 자리","정치와 미디어","요즘","2026-09-04"],["지지율","누구를 밀겠느냐 물었을 때 백 명 가운데 몇 명인지","정치와 미디어","요즘","2026-09-04"],["수도권","서울과 인천과 경기를 묶어 부르는 말. 인구의 절반이 여기 산다","정치와 미디어","요즘","2026-09-04"],["국회의원","삼백 명이 사 년 임기로 법을 만들고 예산을 따지는 사람","정치와 미디어","요즘","2026-09-04"],["소셜미디어","친구 소식과 뉴스와 광고가 한 줄로 섞여 내려오는 곳","정치와 미디어","요즘","2026-09-04"],["유권자","표를 가진 사람. 선거 때만 귀하다는 말이 있다","정치와 미디어","요즘","2026-09-04"],["피의자","수사는 받고 있지만 아직 재판에 넘겨지지 않은 사람","정치와 미디어","요즘","2026-09-04"],["비서실장","대통령 곁에서 문서와 사람을 걸러 들이는 자리","정치와 미디어","요즘","2026-09-04"],["행정부","법을 집행하는 쪽. 입법·사법과 셋으로 나뉜다","정치와 미디어","요즘","2026-09-04"],["기자회견","묻는 사람들 앞에 서서 카메라를 켜 놓고 답하는 자리","정치와 미디어","요즘","2026-09-04"],["최고위원","대표와 나란히 앉아 아침 회의를 여는 정당 지도부의 한 자리","정치와 미디어","요즘","2026-09-04"],["수사기관","잡고 캐묻는 일을 맡은 곳. 검찰과 경찰이 여기 든다","정치와 미디어","요즘","2026-09-04"],["재판부","판사가 앉아 유무죄와 형을 정하는 자리","정치와 미디어","요즘","2026-09-04"],["피고인","재판에 넘겨져 법정에 서게 된 사람","정치와 미디어","요즘","2026-09-04"],["지도부","당의 방향과 공천을 쥐고 흔드는 윗선","정치와 미디어","요즘","2026-09-04"],["제조업","물건을 실제로 만들어 내는 산업. 공장이 여기 있다","경제와 금융","요즘","2026-09-04"],["후보자","표를 얻으려고 이름을 올리고 명함을 돌리는 사람","정치와 미디어","요즘","2026-09-04"],["토론회","서로 다른 쪽이 마주 앉아 말로 겨루는 자리","정치와 미디어","요즘","2026-09-04"]]}]},{"id":"kids","name":"어린이 어휘","emoji":"🧒","desc":"초등 저학년이 배우는 말 — 자연·놀이·명절에 사회와 상식까지","theme":"coral","deco":["🌈","🎈","🍭","🧁","🌻","🎠","🍓","🧸","🎨","🚂","⭐","🪁","🎪","🍎","🎁","🌸","❤️","👽","✨","💖","🌟","🎀","🍀","🫧","🛸","🦄","🍀","🎵","💫","🧡","🐣","🌼"],"groups":[{"name":"어린이 어휘","words":[["강아지풀","꼬리처럼 복슬복슬한 이삭이 달려 목덜미를 간질이기 좋은 풀","자연과 계절"],["해바라기","키가 사람만 하고 노란 얼굴을 해 쪽으로 돌리는 꽃","자연과 계절"],["코스모스","가을 길가에 가는 줄기로 하늘하늘 흔들리는 꽃","자연과 계절"],["민들레","노란 꽃이 지면 하얀 솜 뭉치가 되어 씨를 날려 보내는 풀","자연과 계절"],["은행나무","가을에 노랗게 물들고 열매에서 고약한 냄새가 나는 가로수","자연과 계절"],["단풍나무","손바닥처럼 갈라진 잎이 가을에 새빨개지는 것","자연과 계절"],["사과나무","봄에 흰 꽃이 피고 가을에 빨간 열매가 달리는 것","자연과 계절"],["나뭇가지","줄기에서 갈라져 나와 잎과 열매를 매다는 부분","자연과 계절"],["개나리","잎도 나기 전에 가지마다 노란 꽃이 다닥다닥 붙는 봄꽃","자연과 계절"],["진달래","봄 산을 온통 분홍으로 물들이는, 먹어도 되는 꽃","자연과 계절"],["도토리","떡갈나무에 열려 다람쥐가 물어 나르는 갈색 열매","자연과 계절"],["소나무","잎이 바늘처럼 뾰족하고 솔방울이 달리는, 겨울에도 푸른 것","자연과 계절"],["꽃봉오리","곧 필 준비를 하고 아직 입을 다물고 있는 꽃","자연과 계절"],["무지개","비 그친 하늘에 빨주노초파남보로 걸리는 다리","자연과 계절"],["소나기","먹구름이 몰려와 쏟아붓고는 금세 개어 버리는 비","자연과 계절"],["함박눈","손바닥에 받으면 송이가 보일 만큼 굵게 내리는 눈","자연과 계절"],["눈사람","굴려 만든 덩이 둘을 얹고 당근으로 코를 붙인 것","자연과 계절"],["고드름","처마 끝에서 물이 떨어지다 얼어 뾰족해진 얼음","자연과 계절"],["아지랑이","봄날 데워진 땅 위 공기가 아른아른 흔들려 보이는 것","자연과 계절"],["물웅덩이","비 온 뒤 길이 팬 자리에 고여 장화를 부르는 것","자연과 계절"],["산꼭대기","산에서 더 올라갈 데가 없는 맨 위","자연과 계절"],["모래사장","바닷가에 넓게 펼쳐져 발이 푹푹 빠지는 고운 흙밭","자연과 계절"],["조개껍데기","속살은 없고 딱딱한 겉만 남아 바닷가에 뒹구는 것","자연과 계절"],["보름달","한 달에 한 번, 이지러진 데 없이 동그랗게 뜨는 달","자연과 계절"],["별자리","밤하늘의 별을 선으로 이어 곰이나 사자라고 부른 것","자연과 계절"],["천둥소리","번쩍 빛난 뒤 몇 초 있다 우르릉 따라오는 것","자연과 계절"],["봄나들이","꽃 필 무렵 도시락을 들고 가볍게 밖으로 나가는 일","자연과 계절"],["여름방학","가장 더울 때 학교를 한 달쯤 쉬는 기간","자연과 계절"],["겨울방학","가장 추울 때 학교를 한 달쯤 쉬는 기간","자연과 계절"],["아이스크림","손에 들고 있으면 녹아 흘러서 서둘러 먹어야 하는 간식","먹을거리와 생활"],["김치볶음밥","찬밥과 매콤한 절임 채소를 기름에 함께 볶은 음식","먹을거리와 생활"],["카레라이스","노랗고 걸쭉한 국물을 흰밥 위에 부어 비벼 먹는 음식","먹을거리와 생활"],["바나나우유","길쭉한 노란 열매 맛이 나는, 배 나온 통에 든 음료","먹을거리와 생활"],["딸기우유","빨간 열매 맛이 나서 분홍빛이 도는 음료","먹을거리와 생활"],["계란말이","달걀을 얇게 부쳐 돌돌 말아 썬, 도시락 단골 반찬","먹을거리와 생활"],["감자튀김","길쭉하게 썬 뿌리채소를 기름에 튀겨 소금을 뿌린 간식","먹을거리와 생활"],["삼각김밥","세모나게 싸서 비닐을 순서대로 뜯어야 하는 밥","먹을거리와 생활"],["과일주스","열매를 갈거나 짜서 만든 음료","먹을거리와 생활"],["팥빙수","얼음을 눈처럼 갈고 달게 삶은 콩을 얹은 여름 간식","먹을거리와 생활"],["떡볶이","가래떡을 빨간 고추장 양념에 자작하게 볶은 음식","먹을거리와 생활"],["미역국","생일 아침에 끓이는, 바다에서 나는 것을 넣은 국","먹을거리와 생활"],["초콜릿","손에 쥐고 있으면 저 혼자 녹아 버리는 달고 쌉쌀한 갈색 간식","먹을거리와 생활"],["솜사탕","설탕을 실처럼 뽑아 구름만 하게 부풀린 간식","먹을거리와 생활"],["도토리묵","떨어진 열매를 갈아 쑤어 굳힌, 미끄덩한 갈색 반찬","먹을거리와 생활"],["피아노","검은 건반과 흰 건반을 손가락으로 눌러 치는 악기","먹을거리와 생활"],["리코더","구멍을 손가락으로 막아 가며 입으로 부는 악기","먹을거리와 생활"],["탬버린","동그란 테를 흔들면 쇳조각이 짤랑거리는 악기","먹을거리와 생활"],["자장가","아기를 재우려고 나직이 부르는 노래. 부르는 사람이 먼저 존다","먹을거리와 생활"],["예방주사","병에 걸리기 전에 미리 맞아 두는, 잠깐 따끔한 것","먹을거리와 생활"],["손소독제","밖에서 돌아와 손바닥에 짜서 쓱쓱 문지르는 것","먹을거리와 생활"],["체온계","겨드랑이나 이마에 대어 열이 있는지 재 보는 물건","먹을거리와 생활"],["반창고","까진 자리에 붙이면 딱지가 앉을 때까지 지켜 주는 것","먹을거리와 생활"],["양치질","칫솔에 치약을 짜서 이를 구석구석 닦는 일","먹을거리와 생활"],["손씻기","비누로 거품을 내 삼십 초쯤, 밖에서 돌아오면 제일 먼저 할 일","먹을거리와 생활"],["줄서기","먼저 온 사람이 먼저 하도록 뒤에 가 서서 기다리는 일","먹을거리와 생활"],["인사말","만나면 안녕, 헤어지면 잘 가. 그런 말","먹을거리와 생활"],["약속시간","몇 시에 어디서 만나기로 미리 정해 둔 때","먹을거리와 생활"],["운동화끈","구멍에 꿰어 나비 모양으로 묶는데 자꾸 풀리는 것","먹을거리와 생활"],["우산꽂이","비 오는 날 현관에서 젖은 것을 꽂아 두는 통","먹을거리와 생활"],["목도리","겨울에 목에 둘둘 감아 찬 바람을 막는 것","먹을거리와 생활"],["털장갑","겨울에 손가락이 시리지 않게 끼는 폭신한 것","먹을거리와 생활"],["모기장","여름밤 침대 위에 쳐서 물리지 않게 하는 그물","먹을거리와 생활"],["장난감","아이가 가지고 노는 물건","먹을거리와 생활"],["어린이집","아직 학교에 못 가는 아주 작은 아이들이 낮에 지내는 곳","학교와 공부"],["초등학교","여덟 살에 들어가 육 년 다니는 곳","학교와 공부"],["유치원","학교 가기 한두 해 전에 다니는 곳","학교와 공부"],["도서관","책이 줄줄이 꽂혀 있고 빌려 갈 수 있는, 조용한 곳","학교와 공부"],["박물관","옛날 사람이 쓰던 물건을 유리 안에 놓고 보여 주는 곳","학교와 공부"],["미술관","그림과 조각을 벽과 바닥에 놓고 보여 주는 곳","학교와 공부"],["과학관","직접 눌러 보고 만져 봐도 혼나지 않는, 원리를 배우는 곳","학교와 공부"],["수족관","커다란 유리 너머로 물고기와 상어를 구경하는 곳","학교와 공부"],["동물원","사자도 기린도 우리에 넣어 두고 보여 주는 곳","학교와 공부"],["수영장","물을 채워 놓고 헤엄치며 노는 곳","학교와 공부"],["체육관","비가 와도 안에서 공을 차고 뛸 수 있는 넓은 방","학교와 공부"],["운동장","달리기도 하고 축구도 하는, 학교의 넓은 흙바닥","학교와 공부"],["급식실","점심때 식판을 들고 줄을 서서 밥을 받는 곳","학교와 공부"],["칠판지우개","글씨를 쓱쓱 문질러 없애고, 탁탁 털면 가루가 날리는 물건","학교와 공부"],["스케치북","그림 그리라고 준, 한 장씩 뜯어 쓰는 두꺼운 종이 묶음","학교와 공부"],["크레파스","굵고 뭉툭해서 손에 묻어나는 그림 도구","학교와 공부"],["색연필","심에 색이 들어 있어 여러 빛깔로 칠하는 필기구","학교와 공부"],["색종이","네모나고 얇아서 접고 오려 만들기에 쓰는 것","학교와 공부"],["실내화","교실에 들어갈 때 갈아 신는, 흰 고무 밑창 신발","학교와 공부"],["학용품","연필 지우개 공책처럼 공부에 쓰는 물건을 몰아 부르는 말","학교와 공부"],["준비물","가위, 풀, 색종이… 수업에 챙겨 가야 하는 것","학교와 공부"],["알림장","선생님이 불러 준 것을 받아 적어 집에 보여 드리는 공책","학교와 공부"],["받아쓰기","선생님이 읽어 주는 문장을 그대로 적어 맞는지 보는 시험","학교와 공부"],["구구단","이 일은 이, 이 이는 사. 곱셈을 외우는 표","학교와 공부"],["일기장","그날 무슨 일이 있었고 어땠는지 날마다 적는 공책","학교와 공부"],["독후감","책을 다 읽고 어떤 생각이 들었는지 쓴 글","학교와 공부"],["시간표","월요일 첫째는 국어, 둘째는 수학. 수업 순서를 적어 둔 것","학교와 공부"],["방학숙제","한 달 내내 미루다 개학 전날 밤에 몰아 하는 것","학교와 공부"],["체험학습","교실을 나와 공장이든 갯벌이든 가서 직접 보고 배우는 일","학교와 공부"],["청소당번","그날 빗자루를 들고 교실을 치우기로 정해진 사람","학교와 공부"],["반장선거","칠판에 이름을 적고 손을 들어 우리 반 대표를 뽑는 일","학교와 공부"],["학예회","무대에 올라가 노래와 연극을 보여 주는 학교 행사","학교와 공부"],["운동회","청군 백군으로 갈라 달리기와 줄다리기를 하는 날","학교와 공부"],["입학식","가슴에 이름표를 달고 학교에 처음 들어가는 날의 행사","학교와 공부"],["졸업식","꽃다발을 받고 다니던 학교를 마치는 날의 행사","학교와 공부"],["놀이공원","관람차와 회전목마와 롤러코스터가 모여 있는 곳","놀이와 탈것"],["회전목마","위아래로 오르내리는 말 인형을 타고 빙글빙글 도는 기구","놀이와 탈것"],["미끄럼틀","계단으로 올라가 반질반질한 판을 타고 주르륵 내려오는 기구","놀이와 탈것"],["술래잡기","한 사람이 다른 아이들을 쫓아가 손으로 치면 되는 놀이","놀이와 탈것"],["숨바꼭질","술래가 열을 세는 동안 몸을 감추고 찾기를 기다리는 놀이","놀이와 탈것"],["고무줄놀이","양쪽에서 늘여 준 줄을 발로 걸고 넘나들며 뛰는 것","놀이와 탈것"],["사방치기","땅에 칸을 그리고 돌을 던진 뒤 외발로 뛰어 다니는 놀이","놀이와 탈것"],["딱지치기","접은 종이를 힘껏 내리쳐 남의 것을 뒤집으면 따는 놀이","놀이와 탈것"],["공기놀이","작은 알 다섯 개를 던지고 받으며 단수를 올리는 손장난","놀이와 탈것"],["소꿉놀이","작은 그릇과 살림살이로 밥 짓는 시늉을 하며 노는 것","놀이와 탈것"],["보물찾기","나무 밑이나 돌 틈에 숨겨 둔 쪽지를 찾아내는 놀이","놀이와 탈것"],["비눗방울","빨대에 물을 묻혀 불면 동그랗게 떠올랐다 톡 터지는 것","놀이와 탈것"],["색칠공부","까만 선으로 그려진 밑그림 안을 색으로 채우는 책","놀이와 탈것"],["종이접기","네모난 색지를 접어 학이나 배나 개구리를 만드는 일","놀이와 탈것"],["블록쌓기","네모난 조각을 차곡차곡 올리다 무너지면 다시 하는 놀이","놀이와 탈것"],["줄넘기","손잡이를 잡고 줄을 돌리며 발로 폴짝폴짝 넘는 운동","놀이와 탈것"],["모래놀이","삽과 통으로 고운 흙을 퍼서 성을 쌓고 터널을 뚫는 것","놀이와 탈것"],["소방차","빨갛고 사다리를 싣고 사이렌을 울리며 달려오는 차","놀이와 탈것"],["구급차","아픈 사람을 눕혀 병원으로 급히 실어 가는 차","놀이와 탈것"],["헬리콥터","위에 달린 날개가 빙글빙글 돌아 제자리에서도 뜨는 것","놀이와 탈것"],["종이비행기","네모난 것을 접어 손으로 던지면 훨훨 나는 장난감","놀이와 탈것"],["자전거","안장에 앉아 페달을 밟으면 두 바퀴가 굴러가는 것","놀이와 탈것"],["유모차","아기를 앉혀 태우고 어른이 밀고 다니는 작은 수레","놀이와 탈것"],["잠수함","물 위가 아니라 물속으로 들어가 다니는 배","놀이와 탈것"],["우주선","대기를 뚫고 나가 달이나 별까지 날아가는 탈것","놀이와 탈것"],["지하철","땅속에 뚫은 길을 따라 다니는 전철","놀이와 탈것"],["횡단보도","길을 건너라고 하얀 줄을 그어 놓은 자리","놀이와 탈것"],["교통안전","손을 들고 건너고 신호를 지키는, 길에서의 규칙","놀이와 탈것"],["신호등","빨강이면 서고 초록이면 가라고 알려 주는 세 눈의 등","놀이와 탈것"],["안전벨트","차에 타면 어깨와 허리를 가로질러 매는 띠","놀이와 탈것"],["어린이날","오월 오일, 아이들이 주인공이 되는 날","명절과 옛이야기"],["어버이날","오월 팔일, 부모님 가슴에 카네이션을 달아 드리는 날","명절과 옛이야기"],["크리스마스","십이월 이십오일, 트리를 꾸미고 선물을 기다리는 날","명절과 옛이야기"],["생일잔치","케이크에 초를 꽂고 태어난 날을 축하하는 자리","명절과 옛이야기"],["정월대보름","한 해 첫 둥근 달이 뜨면 부럼을 깨물고 나물을 먹는 날","명절과 옛이야기"],["강강술래","손을 맞잡고 둥글게 돌며 노래하는 우리 옛 놀이","명절과 옛이야기"],["연날리기","실을 풀었다 감았다 하며 하늘 높이 띄우는 겨울 놀이","명절과 옛이야기"],["윷놀이","나무 네 짝을 던져 나온 대로 말을 옮기는 명절 놀음","명절과 옛이야기"],["제기차기","깃털 달린 것을 발등으로 통통 차 올리는 놀이","명절과 옛이야기"],["세뱃돈","새해에 절을 하고 어른께 받는, 일 년에 한 번뿐인 수입","명절과 옛이야기"],["한글날","시월 구일, 우리 글자가 만들어진 것을 기리는 날","명절과 옛이야기"],["세종대왕","백성이 글을 몰라 딱하다며 우리 글자를 만드신 임금","명절과 옛이야기"],["태극기","흰 바탕에 붉고 푸른 동그라미와 네 귀의 검은 줄이 있는 깃발","명절과 옛이야기"],["거북선","등에 쇠못을 박고 용머리로 연기를 뿜던 옛 싸움배","명절과 옛이야기"],["첨성대","신라 때 별을 보려고 돌을 둥글게 쌓아 올린 탑","명절과 옛이야기"],["흥부놀부","제비 다리를 고쳐 준 아우와 일부러 부러뜨린 형의 이야기","명절과 옛이야기"],["콩쥐팥쥐","새엄마에게 구박받던 아이가 원님을 만나는 옛이야기","명절과 옛이야기"],["해님달님","호랑이를 피해 동아줄을 타고 하늘로 오른 남매 이야기","명절과 옛이야기"],["백설공주","독 사과를 먹고 잠들었다 왕자의 입맞춤에 깨어난 인물","명절과 옛이야기"],["신데렐라","열두 시 종이 울리자 유리 구두 한 짝을 두고 달아난 인물","명절과 옛이야기"],["동화책","공주와 요정과 말하는 동물이 나오는 어린이 책","명절과 옛이야기"],["만화영화","그린 그림을 이어 붙여 움직이게 만든, 이야기가 있는 것","명절과 옛이야기"],["선생님","교실 앞에 서서 가르쳐 주고 숙제를 내 주는 어른","명절과 옛이야기"],["소방관","불이 나면 호스를 들고 뛰어들어 끄고 사람을 구하는 사람","명절과 옛이야기"],["경찰관","제복을 입고 도둑을 잡고 길을 정리하는 사람","명절과 옛이야기"],["간호사","병원에서 주사를 놓고 열을 재며 환자를 돌보는 사람","명절과 옛이야기"],["요리사","주방에서 음식을 만드는 것이 직업인 사람","명절과 옛이야기"],["미용사","가위와 빗으로 머리를 잘라 주고 다듬어 주는 사람","명절과 옛이야기"],["집배원","우편물을 가방에 넣고 집집마다 배달하는 사람","명절과 옛이야기"],["운전기사","버스나 택시의 핸들을 잡고 손님을 태워 나르는 사람","명절과 옛이야기"],["우주비행사","무중력에서 둥둥 뜬 채로 밥을 먹는, 별까지 가는 사람","명절과 옛이야기"],["과학자","궁금한 것을 실험으로 확인해 새 사실을 알아내는 사람","명절과 옛이야기"],["가족사진","온 식구가 나란히 서서 어색하게 웃으며 찍는 것","명절과 옛이야기"],["할아버지","아빠의 아빠, 또는 엄마의 아빠","명절과 옛이야기"],["할머니","아빠나 엄마를 낳아 주신 분. 만나면 밥부터 먹었냐고 물으신다","명절과 옛이야기"]]},{"name":"사회와 상식","words":[["주민센터","동네 살림을 맡아보고 서류를 떼어 주는 곳","우리 동네"],["경찰서","잃어버린 물건이 모이고, 도둑을 잡아 오는 곳","우리 동네"],["소방서","빨간 차가 줄지어 서 있다가 불이 나면 달려 나가는 곳","우리 동네"],["우체국","편지와 소포를 부치는 곳. 저금도 할 수 있다","우리 동네"],["보건소","동네에서 예방주사도 맞고 몸무게도 재는 곳","우리 동네"],["재래시장","값을 깎기도 하고 덤도 얻는, 골목의 오래된 장","우리 동네"],["버스정류장","노선도를 보며 서서 기다리는 자리","우리 동네"],["국립공원","경치와 생물을 지키려고 나라가 정해 둔 산과 바다","우리 동네"],["대통령","오 년 동안 나라 살림을 맡는 사람","나라와 규칙"],["국회의사당","법을 만드는 사람들이 모이는, 초록 지붕 건물","나라와 규칙"],["투표용지","도장을 찍어 접은 뒤 상자에 넣는 종이","나라와 규칙"],["준법정신","모두가 편하도록 규칙을 지키려는 마음","나라와 규칙"],["어린이헌장","아이들이 어떻게 자라야 하는지 적어 둔 약속의 글","나라와 규칙"],["대한민국","우리나라의 이름. 태극기를 쓰는 나라","나라와 규칙"],["무궁화","여름 내내 피고 지고 또 피는, 우리나라를 나타내는 꽃","나라와 규칙"],["애국가","경기장에서 다 같이 일어나 부르는 노래","나라와 규칙"],["국경일","나라에 좋은 일이 있었던 날이라고 정해, 태극기를 다는 날","나라와 규칙"],["삼일절","만세를 부르며 거리로 쏟아져 나온 날. 삼월 일일","나라와 규칙"],["제헌절","나라의 으뜸 법을 만든 것을 기리는 날. 칠월 십칠일","나라와 규칙"],["광복절","일제에서 벗어난 날. 팔월 십오일","나라와 규칙"],["개천절","하늘이 열렸다는, 나라가 처음 세워진 것을 기리는 날","나라와 규칙"],["단군왕검","곰이 사람이 되어 낳았다는, 첫 나라를 세운 이","우리 역사"],["고조선","우리 역사에 처음 나오는 나라","우리 역사"],["삼국시대","고구려와 백제와 신라가 나란히 서 있던 때","우리 역사"],["고구려","만주 벌판까지 뻗었던, 광개토대왕의 나라","우리 역사"],["삼국통일","신라가 셋으로 갈린 나라를 하나로 합친 일","우리 역사"],["석굴암","돌을 쌓아 만든 굴 안에 부처를 모신 곳","우리 역사"],["불국사","다보탑과 석가탑이 나란히 서 있는 절","우리 역사"],["고려청자","비색이라 부르는 푸른빛으로 구워 낸 옛 그릇","우리 역사"],["팔만대장경","몽골이 쳐들어왔을 때 나무판에 새겨 남긴 불경","우리 역사"],["훈민정음","백성을 가르치는 바른 소리라는 뜻의, 우리 글자의 첫 이름","우리 역사"],["임진왜란","1592년에 일본이 쳐들어와 칠 년을 끈 전쟁","우리 역사"],["명량해전","열두 척으로 백서른 척을 막아 낸 싸움","우리 역사"],["독립운동","빼앗긴 나라를 되찾으려고 목숨을 걸고 한 일","우리 역사"],["유관순","만세를 부르다 옥에서 숨진 열일곱 살 학생","우리 역사"],["안중근","하얼빈 역에서 이토 히로부미를 쏜 사람","우리 역사"],["임시정부","나라를 빼앗긴 동안 상하이에 세웠던, 나라를 대신하던 조직","우리 역사"],["한국전쟁","1950년, 같은 겨레끼리 삼 년을 싸운 일","우리 역사"],["판문점","군사분계선 위에 있어 남과 북이 마주 앉는 곳","우리 역사"],["문화유산","조상이 남긴 것 가운데 함께 지키기로 한 것","우리 역사"],["아리랑","누구나 따라 부를 줄 아는, 우리 겨레의 노래","우리 역사"],["태권도","우리나라에서 시작해 온 세계로 퍼진 발차기 운동","우리 역사"],["김장문화","겨울 앞두고 온 식구가 모여 김치를 담그는 일","우리 역사"],["세시풍속","철마다 되풀이해 온, 옛 살림의 버릇","우리 역사"],["피라미드","파라오를 묻으려고 돌을 쌓아 올린 삼각 무덤","세계 역사"],["스핑크스","사람 얼굴에 사자 몸을 한, 사막의 커다란 돌 조각","세계 역사"],["만리장성","북쪽에서 오는 적을 막으려고 산줄기를 따라 쌓은 성","세계 역사"],["콜로세움","옛 로마 사람들이 모여 검투 경기를 보던 둥근 건물","세계 역사"],["로마제국","지중해를 빙 둘러싼 땅을 모두 차지했던 옛 나라","세계 역사"],["실크로드","낙타를 몰고 비단을 실어 나르던, 동서를 잇는 길","세계 역사"],["콜럼버스","인도로 가는 줄 알고 서쪽으로 가다 아메리카에 닿은 사람","세계 역사"],["마젤란","배를 타고 지구를 한 바퀴 도는 길을 처음 연 사람","세계 역사"],["나폴레옹","프랑스 황제가 된, 키가 작다고 잘못 알려진 장군","세계 역사"],["산업혁명","기계가 사람 손을 대신하기 시작한, 공장이 생겨난 때","세계 역사"],["세계대전","온 세상이 두 편으로 갈려 싸운 전쟁","세계 역사"],["자유여신상","뉴욕 항구에 횃불을 들고 서 있는 커다란 조각","세계 역사"],["용돈기입장","받은 돈과 쓴 돈을 날마다 적어 두는 공책","돈과 살림"],["저금통","동전을 넣다 보면 무거워져 자꾸 흔들어 보게 되는 것","돈과 살림"],["영수증","무엇을 얼마에 샀는지 적혀 나오는 종이","돈과 살림"],["물물교환","돈이 없던 시절, 쌀과 소금을 서로 바꾸던 일","돈과 살림"],["신용카드","지금 사고 다음 달에 갚는, 얇은 플라스틱 조각","돈과 살림"],["봉사활동","돈을 받지 않고 남을 돕는 일","돈과 살림"],["재활용","쓰던 것을 버리지 않고 다시 쓸 수 있게 만드는 일","돈과 살림"],["분리배출","종이는 종이끼리, 캔은 캔끼리 나눠 내놓는 일","돈과 살림"],["저작권","남이 만든 노래나 그림을 함부로 못 베끼게 하는 권리","돈과 살림"],["대피훈련","불이 나거나 땅이 흔들릴 때를 미리 해 보는 연습","안전"],["비상구","초록 불빛에 뛰어가는 사람이 그려진 문","안전"],["소화기","안전핀을 뽑고 손잡이를 눌러 뿌리는 빨간 통","안전"],["구명조끼","물에 빠져도 몸이 뜨게 해 주는 것","안전"],["심폐소생술","숨이 멎은 사람의 가슴을 힘껏 눌러 되살리는 응급 처치","안전"],["지구본","손으로 빙그르르 돌려 보는 작은 세상","세상 보기"],["나침반","어디서든 바늘이 북쪽을 가리키는 것","세상 보기"],["세계지도","나라들이 색색으로 칠해진, 벽에 붙여 두는 그림","세상 보기"],["다문화","여러 나라에서 온 사람들이 어울려 사는 것","세상 보기"]]}]},{"id":"animal","name":"동물 퀴즈","emoji":"🐾","desc":"숲과 물속과 남극까지 — 어린이가 좋아하는 동물 어휘","default":["기초"],"theme":"mint","deco":["🐶","🐱","🐰","🐻","🐼","🦊","🐯","🐸","🐥","🦋","🐝","🐢","🦔","🐙","🐳","🦄","🌈","❤️","🎈","👽","✨","💖","🌟","🎀","🍀","🫧","🛸","🌼","🍄","🎵","💫","🧡"],"groups":[{"name":"기초","words":[["고슴도치","안아 주고 싶은데 도무지 안을 수 없는, 등이 바늘밭인 짐승","숲과 들"],["너구리","눈가에 까만 동그라미를 그리고 밤에만 슬금슬금 다니는 짐승","숲과 들"],["두더지","눈은 거의 안 쓰고 앞발로 흙을 헤치며 사는 땅속 짐승","숲과 들"],["다람쥐","볼주머니가 터지도록 열매를 넣고 나무를 타는 작은 짐승","숲과 들"],["산토끼","귀가 길고 뒷다리가 튼튼해 언덕을 껑충껑충 오르는 것","숲과 들"],["사슴뿔","해마다 떨어졌다 다시 자라는, 머리에 난 나뭇가지","숲과 들"],["겨울잠","가을에 잔뜩 먹어 두고 봄이 올 때까지 자 버리는 것","숲과 들"],["나무늘보","하루에 몇 미터밖에 안 움직이는, 세상에서 제일 느긋한 짐승","숲과 들"],["원숭이","손으로 가지를 잡고 옮겨 다니며 껍질을 까먹는 짐승","숲과 들"],["침팬지","막대기를 개미굴에 넣어 개미를 낚아먹는 똑똑한 짐승","숲과 들"],["고릴라","가슴을 두드려 소리를 내는, 숲에서 제일 힘센 짐승","숲과 들"],["판다곰","하루 종일 대나무만 오도독오도독 씹는 흑백 짐승","숲과 들"],["주머니쥐","위험하면 죽은 척 드러눕기로 유명한, 나무를 타는 짐승","숲과 들"],["돌고래","물 위로 뛰어올랐다 들어가며 삐삐 소리로 이야기하는 것","물속 친구"],["가오리","넓적한 몸을 날개처럼 흔들며 바닥 가까이 헤엄치는 것","물속 친구"],["해파리","속이 다 비쳐 보이는 몸으로 둥실둥실 떠다니는 것","물속 친구"],["불가사리","팔 하나가 떨어져도 새로 자라는 별 모양의 바다 것","물속 친구"],["소라게","남이 버린 껍데기를 집으로 삼고 크면 이사 가는 것","물속 친구"],["바다거북","모래밭에 알을 묻으면 새끼가 밤에 물가로 기어가는 것","물속 친구"],["바다표범","얼음 구멍으로 숨을 쉬며 물속에서 잠도 자는 짐승","물속 친구"],["바다사자","코에 공을 얹고 재주를 부리는, 지느러미 발의 짐승","물속 친구"],["갑오징어","몸속에 하얗고 넓적한 뼈가 든, 다리 열 개짜리 바다 것","물속 친구"],["오징어","놀라면 먹물을 뿜고 도망가는, 다리 열 개짜리 것","물속 친구"],["미꾸라지","진흙 속에 살며 손에 잡아도 스르륵 빠져나가는 것","물속 친구"],["송사리","개울에 떼로 모여 손 그림자만 져도 흩어지는 작은 물고기","물속 친구"],["금붕어","입을 뻐끔거리며 어항 속을 도는, 지느러미가 하늘거리는 것","물속 친구"],["열대어","따뜻한 물이 아니면 못 사는, 알록달록한 어항 물고기","물속 친구"],["산호초","죽은 것 위에 새것이 자라 몇천 년 만에 이룬 바다 숲","물속 친구"],["고등어","등에 물결무늬가 있고 잡히면 금방 상하는 바닷물고기","물속 친구"],["딱따구리","부리로 나무를 다다다 두드려 벌레를 꺼내 먹는 새","하늘을 나는"],["올빼미","고개를 빙 돌려 뒤를 보고 소리도 없이 나는 밤의 새","하늘을 나는"],["부엉이","낮에는 자고 밤에 눈을 크게 뜨는, 귀깃이 솟은 새","하늘을 나는"],["기러기","가을이면 브이 자로 줄 맞춰 하늘을 건너는 무리","하늘을 나는"],["갈매기","배를 따라다니며 새우깡을 노리는 바닷가의 흰 새","하늘을 나는"],["까치집","높은 나뭇가지에 잔가지를 얼기설기 쌓아 올린 집","하늘을 나는"],["오목눈이","솜뭉치에 꼬리가 달린 것처럼 작고 동그란 새","하늘을 나는"],["제비집","처마 밑에 진흙을 물어다 붙여 만든, 봄에 돌아와 쓰는 집","하늘을 나는"],["앵무새","들은 말을 그대로 흉내 내는 알록달록한 새","하늘을 나는"],["공작새","꼬리를 부채처럼 활짝 펴 눈알 무늬를 자랑하는 새","하늘을 나는"],["방아깨비","뒷다리를 잡으면 절구질하듯 몸을 위아래로 끄덕이는 곤충","하늘을 나는"],["황제펭귄","알을 발등에 얹고 눈보라 속에 서서 겨울을 나는 새","하늘을 나는"],["가마우지","물속으로 잠수해 고기를 잡고, 젖은 날개를 활짝 펴 말리는 새","하늘을 나는"],["소쩍새","밤새 우는 소리가 그대로 제 이름이 되어 버린 산의 새","하늘을 나는"],["저어새","주걱처럼 넓적한 부리를 물에 넣고 좌우로 휘휘 흔들어 먹이를 찾는 새","하늘을 나는"],["곤줄박이","손바닥에 씨앗을 올려 두면 날아와 앉는, 겁 없는 작은 새","하늘을 나는"],["물벼룩","물 한 방울 속에서 콩콩 튀는, 눈에 겨우 보이는 것","하늘을 나는"],["무당벌레","빨간 등에 까만 점을 찍고 진딧물을 잡아먹는 것","작은 벌레"],["사슴벌레","집게처럼 생긴 큰 턱을 맞대고 밀어내기를 하는 것","작은 벌레"],["장수풍뎅이","머리에 난 뿔로 상대를 뒤집어 버리는 검고 단단한 것","작은 벌레"],["반딧불이","여름밤 풀숲에서 꽁무니에 노란 불을 켜고 나는 것","작은 벌레"],["소금쟁이","가는 다리로 물 위에 서서 미끄러지듯 다니는 것","작은 벌레"],["귀뚜라미","가을밤 마루 밑에서 날개를 비벼 소리를 내는 것","작은 벌레"],["사마귀","앞다리를 낫처럼 접고 기도하듯 기다리는 사냥꾼","작은 벌레"],["잠자리","눈이 머리의 반이고 뒤로도 날 줄 아는 것","작은 벌레"],["호랑나비","노랑 바탕에 검은 줄무늬를 두르고 팔랑이는 큰 곤충","작은 벌레"],["여왕개미","날개를 떼고 굴로 들어가 평생 알만 낳는 것","작은 벌레"],["일개미","제 몸보다 큰 것을 이고 줄지어 굴로 나르는 것","작은 벌레"],["딱정벌레","등에 딱딱한 겉날개를 덮고 다니는 곤충의 큰 무리","작은 벌레"],["거미줄","밤새 쳐 두었다 아침 이슬이 맺히면 반짝이는 덫","작은 벌레"],["공벌레","건드리면 동그랗게 몸을 마는, 돌 밑에 사는 작은 것","작은 벌레"],["애벌레","알에서 나와 잎을 갉아 먹으며 몸을 불리는 때","작은 벌레"],["번데기","고치 안에서 꼼짝 않고 날개가 돋기를 기다리는 때","작은 벌레"],["탈바꿈","알에서 어른벌레까지 모습이 아주 달라지는 것","작은 벌레"],["하늘다람쥐","앞뒤 다리 사이 막을 펴고 나무에서 나무로 미끄러지는 것","작은 벌레"],["달팽이","등에 껍데기를 지고 축축한 데를 느릿느릿 기는 것","작은 벌레"],["지렁이","비 온 뒤 길 위로 나왔다 볕에 마르면 큰일 나는, 다리 없는 것","작은 벌레"],["코끼리","긴 코로 물을 빨아 등에 뿌리는, 귀가 부채만 한 짐승","더운 곳 추운 곳"],["얼룩말","줄무늬가 하나도 같지 않아 무늬로 서로를 알아보는 짐승","더운 곳 추운 곳"],["코뿔소","코 위에 뿔이 솟은, 갑옷을 두른 듯한 두꺼운 짐승","더운 곳 추운 곳"],["재규어","아메리카 정글에 사는, 점무늬가 겹동그라미인 큰 고양이붙이","더운 곳 추운 곳"],["청둥오리","수컷 머리가 초록빛으로 반짝이는, 겨울 강가에 떼로 앉는 새","더운 곳 추운 곳"],["단봉낙타","등에 혹이 하나뿐인, 사막을 며칠씩 걷는 짐승","더운 곳 추운 곳"],["사막여우","귀가 얼굴만 해서 더운 열을 내보내는 작은 짐승","더운 곳 추운 곳"],["캥거루","배에 주머니를 달고 뒷다리로 껑충껑충 뛰는 짐승","더운 곳 추운 곳"],["코알라","유칼립투스 잎만 먹고 하루 스무 시간을 자는 짐승","더운 곳 추운 곳"],["카피바라","세상에서 제일 큰 쥐붙이. 온천에 느긋이 앉은 사진으로 유명하다","더운 곳 추운 곳"],["하이에나","남이 잡아 놓은 것을 뺏어 먹기로 소문난, 웃는 소리를 내는 짐승","더운 곳 추운 곳"],["바다악어","짠물에서도 견디는, 세상에서 가장 큰 파충류","더운 곳 추운 곳"],["도마뱀","꼬리를 끊어 놓고 도망갔다 다시 자라게 하는 것","더운 곳 추운 곳"],["능구렁이","몸을 둘둘 감아 조이는 큰 뱀. 속을 안 보이는 사람도 이렇게 부른다","더운 곳 추운 곳"],["북극곰","얼음 위에서 물범이 숨 쉬러 나오기를 기다리는 흰 짐승","더운 곳 추운 곳"],["하루살이","여름밤 불빛에 구름처럼 몰려드는, 며칠 못 사는 벌레","더운 곳 추운 곳"],["강아지","꼬리를 흔들며 현관까지 마중 나오는 어린 개","함께 사는 동물"],["고양이","기분 좋으면 그르릉 소리를 내고 높은 데를 좋아하는 것","함께 사는 동물"],["병아리","알을 깨고 나와 삐약삐약 어미를 따라다니는 노란 것","함께 사는 동물"],["송아지","젖을 먹다가 비틀비틀 일어서는, 갓 태어난 소","함께 사는 동물"],["망아지","다리가 길쭉해 태어난 날부터 달릴 줄 아는 새끼","함께 사는 동물"],["맹꽁이","장마철 논에서 두 마리가 번갈아 우는, 배가 불룩한 것","함께 사는 동물"],["무당개구리","배가 빨갛고 검어서 뒤집어 보면 깜짝 놀라게 되는 것","함께 사는 동물"],["햄스터","볼주머니에 먹이를 잔뜩 넣고 밤새 쳇바퀴를 도는 것","함께 사는 동물"],["두꺼비","등이 우툴두툴하고 느릿느릿 걷는, 개구리보다 큰 것","함께 사는 동물"],["개구리","뒷다리로 폴짝 뛰고 목주머니를 부풀려 우는 것","함께 사는 동물"],["올챙이","물속에서 꼬리로 헤엄치다 다리가 돋는, 개구리의 어린 때","함께 사는 동물"],["반려동물","가족처럼 한집에서 같이 사는 짐승","함께 사는 동물"],["초식동물","이빨이 넓적하고 하루 종일 풀만 씹는 무리","몸과 살아가기"],["육식동물","송곳니가 날카롭고 다른 짐승을 잡아먹는 무리","몸과 살아가기"],["포유류","새끼를 낳아 젖을 먹여 키우는 무리","몸과 살아가기"],["파충류","비늘로 덮이고 알을 낳으며 볕을 쬐어 몸을 데우는 무리","몸과 살아가기"],["양서류","어릴 땐 물에서 아가미로, 자라면 뭍에서 숨 쉬는 무리","몸과 살아가기"],["먹이사슬","풀을 먹고, 그것을 먹고, 또 그것을 먹는 이어짐","몸과 살아가기"],["보호색","주변과 같은 빛깔이라 가만있으면 안 보이는 것","몸과 살아가기"],["야행성","낮에는 자고 해가 지면 움직이기 시작하는 성질","몸과 살아가기"],["알껍데기","새끼가 안에서 부리로 톡톡 깨고 나오는 것","몸과 살아가기"],["털갈이","철이 바뀌면 묵은 것을 벗고 새로 돋게 하는 일","몸과 살아가기"],["더듬이","앞머리에 달려 냄새도 맡고 앞도 짚어 보는 한 쌍","몸과 살아가기"],["아가미","물속에서 숨을 쉴 수 있게 해 주는 기관","몸과 살아가기"],["청개구리","비가 오려 하면 개굴개굴 우는 초록빛 것. 말 안 듣는 아이도 이렇게 부른다","함께 사는 동물"],["거북이","토끼와 달리기를 해서 이겼다는, 느림보의 대명사","함께 사는 동물"],["솔방울","솔잎 사이에 달렸다 떨어져 비늘이 벌어지는 것","숲과 들"],["발자국","눈이나 진흙에 찍혀 누가 지나갔는지 알려 주는 표시","숲과 들"],["사육사","동물원에서 밥을 주고 우리를 치우고 건강을 살피는 사람","함께 사는 동물"],["수의사","말 못 하는 환자의 배를 만져 보고 아픈 데를 찾는 사람","함께 사는 동물"],["동물병원","강아지가 들어가기 싫어 네 다리로 버티는 곳","함께 사는 동물"],["먹이주기","정해진 때에 정해진 양만 주어야 탈이 안 나는 일","함께 사는 동물"],["산책줄","밖에 나갈 때 반드시 채워야 하는, 남을 위한 약속","함께 사는 동물"],["예방접종","강아지도 때가 되면 병원에 가서 맞아야 하는 것","함께 사는 동물"]]},{"name":"심화","words":[["오소리","땅속에 방을 여러 개 파고 이웃까지 들이는 굴 살림꾼","숲과 들"],["청설모","꼬리가 몸통만 하고 잣을 좋아하는, 나무 위의 회색 이웃","숲과 들"],["고라니","송곳니가 삐죽 나온, 우리나라 들에 흔한 작은 사슴붙이","숲과 들"],["멧돼지","코로 땅을 갈아엎으며 다니는, 산에서 마주치면 안 될 짐승","숲과 들"],["살쾡이","집고양이보다 크고 사나운, 산에 사는 얼룩무늬 사냥꾼","숲과 들"],["스라소니","귀 끝에 붓털이 뾰족 솟은, 눈밭을 소리 없이 걷는 짐승","숲과 들"],["족제비","몸이 길쭉해서 손바닥만 한 틈으로도 쏙 들어가는 사냥꾼","숲과 들"],["반달가슴곰","털옷 앞섶에 하얀 초승달이 그려진, 지리산에 사는 큰 짐승","숲과 들"],["살모사","머리가 세모나고 독이 있는 뱀. 함부로 다가가면 안 된다","숲과 들"],["오랑우탄","기다란 팔로 나무를 건너다니는 주황빛 털의 짐승","숲과 들"],["알파카","털이 복슬복슬하고 기분 나쁘면 침을 뱉는, 안데스의 짐승","숲과 들"],["개미핥기","긴 혀를 쑥 내밀어 굴속의 작은 벌레를 핥아 먹는 짐승","숲과 들"],["범고래","등지느러미를 높이 세우고 무리 지어 사냥하는 검고 흰 짐승","물속 친구"],["혹등고래","노래를 몇 시간씩 부르며 바다를 건너는 커다란 짐승","물속 친구"],["향유고래","깊은 물속까지 내려가 오징어를 잡아먹는 머리 큰 짐승","물속 친구"],["백상아리","이빨이 빠지면 뒷줄 이빨이 앞으로 나오는 바다의 사냥꾼","물속 친구"],["흰동가리","말미잘 촉수 사이에 숨어 사는 주황빛 줄무늬 물고기","물속 친구"],["말미잘","바위에 붙어 촉수를 흔들며 다가온 것을 잡는 것","물속 친구"],["바다코끼리","윗니 두 개가 길게 자라 얼음을 짚는 데 쓰는 짐승","물속 친구"],["다슬기","계곡 돌에 붙어 있다 국을 끓이면 파랗게 우러나는 것","물속 친구"],["우렁이","논에 살며 등에 나선 껍데기를 지고 다니는 것","물속 친구"],["민물가재","맑은 계곡 돌 밑에 숨어 집게를 치켜드는 것","물속 친구"],["피라미","물살 빠른 데서 반짝이며 몸을 뒤채는 작은 물고기","물속 친구"],["가자미","두 눈이 한쪽으로 몰린, 바닥에 납작 붙어 사는 물고기","물속 친구"],["대왕조개","사람이 들어갈 만큼 크게 자라는, 산호밭의 두 짝 껍데기","물속 친구"],["전복껍데기","안쪽이 무지개처럼 반짝여 단추로도 쓰던 것","물속 친구"],["황조롱이","공중에 멈춰 선 듯 날개를 떨며 들쥐를 노리는 새","하늘을 나는"],["검독수리","높은 데서 맴돌다 발톱을 펴고 내리꽂는 큰 새","하늘을 나는"],["물총새","물가에 앉아 있다 파랗게 번쩍 뛰어들어 물고기를 무는 새","하늘을 나는"],["뻐꾸기","남의 둥지에 알을 몰래 낳아 놓고 가 버리는 새","하늘을 나는"],["두루미","다리와 목이 길어 논에 서 있으면 그림 같은 흰 새","하늘을 나는"],["펠리컨","부리 밑에 그물주머니를 달고 물고기를 퍼 담는 새","하늘을 나는"],["원앙새","암수가 나란히 붙어 다녀 사이좋은 짝에 빗대는 새","하늘을 나는"],["직박구리","감을 쪼아 먹으며 시끄럽게 우는, 도시에도 흔한 새","하늘을 나는"],["동박새","동백꽃에 부리를 넣어 꿀을 빨아 먹는 연둣빛 작은 새","하늘을 나는"],["종달새","보리밭 위로 솟구쳐 올라 지저귀며 내려오는 새","하늘을 나는"],["물수리","물 위를 맴돌다 발톱을 펴고 내리꽂아 고기를 낚는 새","하늘을 나는"],["물방개","뒷다리로 노를 젓듯 연못을 헤엄치는 딱딱한 벌레","하늘을 나는"],["배추흰나비","밭 잎사귀에 알을 낳는, 하얗게 팔랑이는 곤충","작은 벌레"],["하늘소","더듬이가 몸보다 길고 나무를 갉아 먹는 곤충","작은 벌레"],["무당거미","노랗고 검은 몸으로 커다란 그물을 치는 것","작은 벌레"],["땅강아지","앞발이 삽처럼 생겨 흙을 파고드는 것","작은 벌레"],["실잠자리","몸이 실처럼 가늘고 앉을 때 날개를 접는 것","작은 벌레"],["진딧물","새순에 다닥다닥 붙어 즙을 빨아 먹는 작은 것","작은 벌레"],["노린재","건드리면 고약한 냄새를 뿜고 달아나는 것","작은 벌레"],["풍뎅이","초록빛 등딱지가 금속처럼 반들거리는 것","작은 벌레"],["물장군","논물에 살며 개구리까지 잡아먹는 커다란 물벌레","작은 벌레"],["눈표범","높은 산 바위에 무늬가 섞여 좀처럼 안 보이는 짐승","더운 곳 추운 곳"],["미어캣","뒷발로 서서 망을 보다 위험하면 삑 하고 알리는 것","더운 곳 추운 곳"],["오리너구리","알을 낳는데 젖을 먹이고 부리까지 달린 이상한 짐승","더운 곳 추운 곳"],["이구아나","등에 갈기 같은 가시를 세우고 볕을 쬐는 도마뱀붙이","더운 곳 추운 곳"],["카멜레온","눈을 따로따로 굴리고 몸빛을 바꾸는 도마뱀붙이","더운 곳 추운 곳"],["북극여우","여름엔 갈색, 겨울엔 하얗게 옷을 갈아입는 짐승","더운 곳 추운 곳"],["흰올빼미","눈밭에서 하얀 깃털로 감쪽같이 숨는 북쪽의 새","더운 곳 추운 곳"],["점박이물범","백령도 바위에 올라 볕을 쬐는, 얼룩무늬의 짐승","더운 곳 추운 곳"],["도롱뇽","맑은 계곡에만 사는, 꼬리 달린 개구리붙이","함께 사는 동물"],["남생이","우리나라 민물에 사는, 등딱지가 검은 거북붙이","함께 사는 동물"],["왜가리","논두렁에 꼼짝 않고 서 있다 먹이가 오면 목을 쭉 뻗는 회색 새","함께 사는 동물"],["유기동물","기르던 사람이 버려서 갈 데가 없어진 짐승","함께 사는 동물"],["잡식동물","풀도 고기도 가리지 않고 먹는 무리. 사람도 여기 든다","몸과 살아가기"],["갑각류","딱딱한 껍질을 두르고 벗어 가며 자라는 무리","몸과 살아가기"],["연체동물","뼈가 없어 물렁물렁하고 껍데기를 지기도 하는 무리","몸과 살아가기"],["척추동물","등에 뼈가 줄지어 있는 무리","몸과 살아가기"],["변온동물","바깥이 추우면 몸도 식어 잘 움직이지 못하는 무리","몸과 살아가기"],["위장술","나뭇잎이나 나뭇가지인 척해서 눈을 속이는 재주","몸과 살아가기"],["되새김질","한 번 삼킨 풀을 다시 올려 오래오래 씹는 일","몸과 살아가기"],["짝짓기","새끼를 낳으려고 암수가 짝을 이루는 일","몸과 살아가기"],["새끼주머니","배에 달린 자루 속에 아기를 넣고 다니는 것","몸과 살아가기"],["이동경로","해마다 같은 길로 수천 킬로미터를 오가는 길","몸과 살아가기"],["서식지","그 짐승이 먹고 자고 새끼를 치는 곳","몸과 살아가기"],["멸종위기","수가 너무 줄어 이대로면 아주 사라질 형편","몸과 살아가기"],["날카로운발톱","나무를 오르고 먹이를 붙드는 데 쓰는 것","몸과 살아가기"],["허파숨","뭍으로 올라와 공기를 들이마시며 쉬는 숨","몸과 살아가기"],["남극대륙","한여름에도 얼음이 안 녹고 나무 한 그루 없는 땅","더운 곳 추운 곳"],["초원지대","풀만 끝없이 펼쳐져 무리 지어 다니는 짐승이 사는 곳","더운 곳 추운 곳"],["사막모래","낮엔 발이 델 만큼 뜨겁고 밤엔 서늘해지는 바닥","더운 곳 추운 곳"],["돼지우리","진흙에 뒹굴어 몸을 식히는 것들이 사는 곳","함께 사는 동물"],["비단잉어","붉고 흰 무늬가 어우러진, 연못에서 기르는 큰 물고기","함께 사는 동물"],["보호소","주인을 잃은 것들을 데려다 새 가족을 찾아 주는 곳","함께 사는 동물"],["배변봉투","산책 나갈 때 주머니에 꼭 챙겨야 하는 것","함께 사는 동물"],["발톱깎기","너무 길면 걸음이 아프니 때때로 해 주어야 하는 일","함께 사는 동물"],["빗질하기","털이 뭉치지 않게 쓸어 주는, 서로 기분 좋은 시간","함께 사는 동물"],["천연기념물","나라가 정해 두고 함부로 못 잡게 지키는 것","몸과 살아가기"],["생태통로","길에 갈린 숲을 잇도록 도로 위아래로 낸 짐승의 길","몸과 살아가기"],["흰수염고래","지구에서 제일 큰 짐승. 심장 하나가 자동차만 하다","더운 곳 추운 곳"]]}]}];</script>
+
+
+<header>
+  <button id="packname" title="단어장 바꾸기">단어장</button>
+  <div class="stats">
+    <span>지나온 줄<b id="depth">0</b></span>
+    <span>단어<b id="solved">0</b></span>
+    <span>점수<b id="score">0</b></span>
+  </div>
+  <div class="tools">
+    <button id="kbtoggle" title="자판 켜기/끄기">⌨</button>
+    <button id="help" title="도움말">?</button>
+    <button id="new" title="이 단어장 새로 시작">↻</button>
+  </div>
+</header>
+
+<main>
+  <div id="scroller"><div id="board"><div id="layer"></div></div></div>
+  <aside id="list"></aside>
+</main>
+
+<footer>
+  <div id="caps" hidden>⇪ 캡스락을 꺼 주세요 — 켜 두면 ㅂ 이 ㅃ 로 들어갑니다</div>
+  <div class="cluebar" id="clue"></div>
+  <div class="cluenav">
+    <button id="prev" title="이전 단어">‹ 이전</button>
+    <button id="hint" class="wide" title="한 칸 열기">💡 한 칸</button>
+    <button id="open" class="wide" title="이 단어 통째로 열기">🔓 단어 열기</button>
+    <button id="next" title="다음 단어">다음 ›</button>
+  </div>
+  <div id="kb"></div>
+  <!-- 기기 자판을 불러오기 위한, 보이지 않는 입력칸 -->
+  <input id="ime" autocomplete="off" autocorrect="off" autocapitalize="off"
+         spellcheck="false" aria-label="글자 입력">
+</footer>
+
+<div id="flash"></div>
+
+<dialog id="chooser">
+  <div id="pane1">
+    <h2>무엇을 외우실 건가요</h2>
+    <div class="sub">단어장마다 진행 상황이 따로 저장됩니다.</div>
+    <div id="packs"></div>
+    <button id="easy" class="switch" aria-pressed="false">
+      <span class="dot"></span>
+      <span class="lab"><b>쉽게</b><i>기초 낱말을 먼저 깔고, 💡 값을 반만 깎습니다.
+        아무 데도 안 걸린 낱말은 첫 글자를 열어 줍니다.
+        「로봇」처럼 기초·심화로 갈린 단어장은 이 스위치가 두 쪽을 오갑니다 — 진행은 쪽마다 따로 남습니다</i></span>
+    </button>
+  </div>
+  <div id="pane2" hidden>
+    <h2 id="p2title"></h2>
+    <div class="sub">넣을 갈래를 고르세요. 골라 둔 조합마다 진행이 따로 저장됩니다.</div>
+    <div id="kinds"></div>
+    <div id="poolnote"></div>
+    <div class="prow">
+      <button class="ghost" id="backpane">‹ 단어장</button>
+      <button class="close" id="startpack">시작</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="howto">
+  <h2>어떻게 노나요</h2>
+  <div class="sub">스크롤로 내려가며 푸는, 끝이 없는 낱말 퍼즐</div>
+  <ul>
+    <li>퍼즐은 <b>아래로 끝없이</b> 이어집니다. 내려가며 푸세요.</li>
+    <li>화면 안의 어떤 칸이든 <b>순서 없이</b> 아무 때나 풀 수 있습니다.</li>
+    <li>맨 윗부분이 <b>빈틈없이 다 풀리면</b> 그 줄은 <b>지나온 줄</b>이 되어 위에 남습니다.
+        지워지지 않으니 <b>위로 올려 언제든 다시 읽을 수 있습니다</b>(복습).
+        지나온 밴드일수록 파랑이 한 단계씩 옅어져, 처리한 데라는 걸 색으로 보여 줍니다.</li>
+    <li>칸을 누르면 선택, 같은 칸을 다시 누르면 <b>가로↔세로</b> 전환.</li>
+    <li>글자는 <b>늘 쓰던 자판</b>으로 칩니다. 폰은 칸을 누르면 평소 한글 자판이 올라오고,
+        PC는 한/영이 한글이든 영문이든 두벌식대로 치면 됩니다.</li>
+    <li>AGV, SLAM 같은 <b>알파벳 약어</b> 칸을 고르면 영문 자판이 저절로 올라옵니다.</li>
+    <li>스페이스로 가로↔세로 전환, Tab으로 다음 단어.</li>
+    <li>기기 자판이 말을 안 들으면 오른쪽 위 ⌨ 로 <b>내장 자판</b>을 꺼내 쓸 수 있습니다.</li>
+    <li>💡는 한 칸을, 🔓는 그 단어를 통째로 열어 줍니다. 점수는 깎입니다.</li>
+    <li>어려우면 단어장 고르는 화면에서 <b>쉽게</b>를 켜세요. 기초 낱말이 먼저 깔리고,
+        💡 값도 반만 깎입니다. 다른 낱말과 한 칸도 안 겹치는 낱말만 첫 글자를 열어 줍니다.</li>
+    <li>「로봇」은 기초와 심화가 <b>한 단어장</b>입니다. <b>쉽게</b>를 켜면 기초 132개,
+        끄면 심화 70개가 앞에 깔립니다. 두 쪽은 진행이 따로 남아 오가도 판이 안 섞입니다.</li>
+    <li>다 채웠는데 <b>틀린 단어</b>는 칸이 레몬색으로 표시됩니다.
+        밴드가 안 걷히면 노란 데를 보세요.</li>
+    <li>왼쪽 위 단어장 이름을 누르면 <b>다른 단어장</b>으로 바꿀 수 있습니다.</li>
+    <li>창을 닫았다 들어와도 <b>그대로 이어집니다</b> — 판, 채워 둔 글자, 점수,
+        고르고 있던 칸, 보던 자리까지. 단어장마다 따로 남습니다.</li>
+  </ul>
+  <button class="close" onclick="this.closest('dialog').close()">시작하기</button>
+</dialog>
+
+<script>
+/* 무한 크로스워드 — 아래로 계속 이어지고, 다 푼 윗부분은 걷어내며 올라붙는 낱말 퍼즐 */
+(() => {
+'use strict';
+
+/* ───────── 한글 조합기 ───────── */
+const CHO  = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+const JUNG = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+const JONG = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+const VOWEL_PAIR = {'ㅗㅏ':'ㅘ','ㅗㅐ':'ㅙ','ㅗㅣ':'ㅚ','ㅜㅓ':'ㅝ','ㅜㅔ':'ㅞ','ㅜㅣ':'ㅟ','ㅡㅣ':'ㅢ'};
+const JONG_PAIR  = {'ㄱㅅ':'ㄳ','ㄴㅈ':'ㄵ','ㄴㅎ':'ㄶ','ㄹㄱ':'ㄺ','ㄹㅁ':'ㄻ','ㄹㅂ':'ㄼ','ㄹㅅ':'ㄽ','ㄹㅌ':'ㄾ','ㄹㅍ':'ㄿ','ㄹㅎ':'ㅀ','ㅂㅅ':'ㅄ'};
+const JONG_SPLIT = Object.fromEntries(Object.entries(JONG_PAIR).map(([k, v]) => [v, [k[0], k[1]]]));
+const isVowel = j => JUNG.includes(j);
+
+/*
+ * 낱말은 두 갈래다. 한글 음절 낱말과 알파벳 약어(AGV, SLAM …).
+ * 격자는 글자가 같은지만 보므로 섞여 있어도 그만이지만,
+ * 한글 음절과 알파벳 한 글자는 절대 같을 수 없어 알파벳은 알파벳끼리만 교차한다.
+ * 입력도 갈라야 한다 — 알파벳 낱말을 고르면 자판이 영문으로 바뀐다.
+ */
+const isAlpha = ch => ch >= 'A' && ch <= 'Z';
+
+/** 조합 상태 → 화면에 보일 글자 */
+function assemble(s) {
+  if (!s.cho && !s.jung) return '';
+  if (!s.cho) return s.jung;
+  if (!s.jung) return s.cho;
+  const code = 0xac00 + (CHO.indexOf(s.cho) * 21 + JUNG.indexOf(s.jung)) * 28 + JONG.indexOf(s.jong || '');
+  return String.fromCharCode(code);
+}
+const isFull = s => !!(s.cho && s.jung);
+
+/**
+ * 자모 하나를 넣는다.
+ * @returns {{done?:string, cur:object}} done 이 있으면 그 글자를 확정하고 다음 칸으로 넘어간다.
+ */
+function feed(s, j) {
+  const cur = { cho: s.cho || '', jung: s.jung || '', jong: s.jong || '' };
+  if (isVowel(j)) {
+    if (!cur.jung) { cur.jung = j; return { cur }; }               // ㄱ + ㅏ
+    if (!cur.cho)  { return { cur: { cho: '', jung: j, jong: '' } }; }
+    if (!cur.jong) {                                                // 가 + ㅣ → 개? (ㅏㅣ 는 미조합) / 고 + ㅏ → 과
+      const pair = VOWEL_PAIR[cur.jung + j];
+      if (pair) { cur.jung = pair; return { cur }; }
+      return { done: assemble(cur), cur: { cho: '', jung: j, jong: '' } };
+    }
+    // 각 + ㅏ → 가 + 가  (받침이 다음 글자의 초성으로 넘어감)
+    const sp = JONG_SPLIT[cur.jong];
+    const moved = sp ? sp[1] : cur.jong;
+    const kept  = sp ? sp[0] : '';
+    const done = assemble({ cho: cur.cho, jung: cur.jung, jong: kept });
+    return { done, cur: { cho: CHO.includes(moved) ? moved : '', jung: j, jong: '' } };
+  }
+  // 자음
+  if (!cur.cho && !cur.jung) return { cur: { cho: j, jung: '', jong: '' } };
+  if (!cur.jung) return { cur: { cho: j, jung: '', jong: '' } };   // 미완성은 버리고 새로 시작
+  if (!cur.cho)  return { cur: { cho: j, jung: '', jong: '' } };
+  if (!cur.jong) {
+    if (JONG.includes(j)) { cur.jong = j; return { cur }; }
+    return { done: assemble(cur), cur: { cho: j, jung: '', jong: '' } };
+  }
+  const pair = JONG_PAIR[cur.jong + j];
+  if (pair) { cur.jong = pair; return { cur }; }
+  return { done: assemble(cur), cur: { cho: j, jung: '', jong: '' } };
+}
+
+/** 조합 상태에서 자모 하나 지우기 */
+function unfeed(s) {
+  const cur = { cho: s.cho || '', jung: s.jung || '', jong: s.jong || '' };
+  if (cur.jong) {
+    const sp = JONG_SPLIT[cur.jong];
+    cur.jong = sp ? sp[0] : '';
+  } else if (cur.jung) {
+    const pair = Object.entries(VOWEL_PAIR).find(([, v]) => v === cur.jung);
+    cur.jung = pair ? pair[0][0] : '';
+  } else if (cur.cho) {
+    cur.cho = '';
+  } else return null;
+  return cur;
+}
+
+/** 완성된 음절을 조합 상태로 되돌린다 (칸을 이어서 고칠 때) */
+function disassemble(ch) {
+  if (!ch) return { cho: '', jung: '', jong: '' };
+  const code = ch.charCodeAt(0) - 0xac00;
+  if (code < 0 || code > 11171) {
+    if (CHO.includes(ch)) return { cho: ch, jung: '', jong: '' };
+    if (isVowel(ch)) return { cho: '', jung: ch, jong: '' };
+    return { cho: '', jung: '', jong: '' };
+  }
+  return { cho: CHO[Math.floor(code / 588)], jung: JUNG[Math.floor(code / 28) % 21], jong: JONG[code % 28] };
+}
+
+/* ───────── 격자 ───────── */
+const W = 8;                 // 열 수 (4~5음절 단어가 여유 있게 들어가도록)
+const AHEAD = 26;            // 화면 아래로 미리 만들어 두는 줄 수
+const BAND = 6;              // 세로 단어가 넘지 못하는 경계의 간격 (= 걷어낼 수 있는 자리)
+const TARGET_CROSS = 4;      // 단어 하나가 다른 단어와 겹쳤으면 하는 목표 횟수
+const KEEP = BAND * 40;      // 다 푼 줄을 이만큼(240줄) 남겨 두고, 그보다 오래된 것만 버린다
+const WINDOW = 14;           // 화면 위아래로 이만큼 줄만 DOM 에 둔다 (판이 끝없이 길어지므로)
+const RECENT = 16;            // 최근 이만큼 안에서는 같은 단어를 다시 쓰지 않는다
+const key = (x, y) => x + ',' + y;
+
+/*
+ * 격자 규칙 — 겹침을 많이 만들기 위한 뼈대.
+ *   · 가로 단어는 "가로줄"(한 줄 걸러 한 줄)에만 놓는다.
+ *   · 세로 단어는 짝수 칸에만, 가로줄에서 시작하고, 홀수 글자여야 하며,
+ *     한 밴드(BAND줄) 안에 다 들어가야 한다.
+ * 그래서 겹침은 (짝수 칸 × 가로줄)에서만 생긴다. 한 칸 걸러 한 칸이므로
+ * 네 글자 단어는 최대 두 번, 다섯 글자는 세 번, 일곱 글자는 네 번 겹칠 수 있다.
+ * 밴드 경계는 세로 단어가 절대 넘지 않으므로 언제나 "걷어낼 수 있는 줄"이 된다.
+ * 이러면 새로 놓는 칸이 직각 방향 이웃과 맞닿는 일이 아예 안 생기므로
+ * (뜻 없는 두 글자 덩어리가 생길 걱정 없이) 촘촘하게 겹쳐 짤 수 있다.
+ * 줄을 걷어내면 줄 번호가 밀리므로 G.par 로 홀짝을 따라간다.
+ */
+const isARow = y => ((y + G.par) & 1) === 0;
+const bandOf = y => Math.floor((y + G.bandOff) / BAND);
+
+let PACK = null;             // 지금 고른 단어장
+let PICK = new Set();        // 그중 고른 갈래 이름들
+let ONTOPIC = new Set();     // 고른 갈래에 든 단어들 (나머지는 벌점을 받고 뒤로 밀린다)
+let KIND = new Map();        // 단어 → 갈래 이름
+let BASIC = new Set();       // "기초" 로 표시해 둔 단어 (쉽게 모드에서 먼저 깔린다)
+let FRESH = new Set();       // "요즘 말" — 요즘 뉴스에 실제로 자주 나온 말. 앞자리를 준다
+let DECO = [];               // 빈자리에 붙일 꾸밈 이모지 (어린이 단어장만 준다)
+let EASY = false;            // 쉽게 — 기초 낱말 위주로 깔고, 낱말마다 첫 글자를 열어 준다
+let TIERED = false;          // 이 단어장은 «쉽게» 가 난이도를 가른다 — 켜면 기초, 끄면 심화
+let BANK = [];               // [[단어, 힌트], ...] — 고른 갈래의 단어만
+let INDEX = new Map();       // 음절 → [{wi, pos}]
+let EVEN = new Map();        // 음절 → 그 음절을 짝수 번째에 가진 단어 수 (세로로 엮을 여지)
+let ALL = new Map();         // 음절 → 그 음절을 가진 단어 수 (가로로 엮을 여지)
+
+const allKinds = pack => pack.groups.map(g => g.name);
+
+// 단어장이 배색을 고를 수 있다. 없으면 기본(델프트 블루)
+function paintTheme(pack) {
+  if (pack && pack.theme) document.body.dataset.theme = pack.theme;
+  else delete document.body.dataset.theme;
+}
+
+/*
+ * 갈래를 골라도 그 단어만 쓰지는 않는다.
+ * 한 갈래는 서른몇 개뿐이라 그것만으로는 서로 물릴 음절이 모자라서
+ * 판이 텅텅 비고 겹치지 않는 단어가 절반 가까이 나온다.
+ * 그래서 고른 갈래를 크게 우선하되, 자리가 안 나올 때만 같은 단어장의
+ * 다른 갈래에서 끌어와 촘촘함을 지킨다.
+ */
+function loadBank(pack, picked) {
+  PACK = pack;
+  DECO = Array.isArray(pack.deco) ? pack.deco : [];
+  paintTheme(pack);
+  TIERED = pack.tiered === true;
+  PICK = new Set(picked && picked.length ? picked : allKinds(pack));
+  ONTOPIC = new Set();
+  KIND = new Map();
+  BASIC = new Set();
+  FRESH = new Set();
+  BANK = [];
+  for (const g of pack.groups) {
+    for (const w of g.words) {
+      BANK.push(w);
+      KIND.set(w[0], w[2] || g.name);
+      if (w[3] === '기초' || g.name === '기초') BASIC.add(w[0]);
+      if (w[3] === '요즘' || g.name === '요즘 말') FRESH.add(w[0]);
+      if (PICK.has(g.name)) ONTOPIC.add(w[0]);
+    }
+  }
+  INDEX = new Map();
+  EVEN = new Map();
+  ALL = new Map();
+  BANK.forEach(([w], wi) => {
+    [...w].forEach((c, pos) => {
+      if (!INDEX.has(c)) INDEX.set(c, []);
+      INDEX.get(c).push({ wi, pos });
+      ALL.set(c, (ALL.get(c) || 0) + 1);
+      if (!(pos & 1)) EVEN.set(c, (EVEN.get(c) || 0) + 1);
+    });
+  });
+}
+
+const pick = a => a[(Math.random() * a.length) | 0];
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = (Math.random() * (i + 1)) | 0;
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const G = {
+  cells: new Map(),   // "x,y" → {x,y,ans,ch,solved,across,down,num}
+  words: new Map(),   // id → {id,word,clue,x,y,dir,len,solved}
+  nextId: 1,
+  maxY: -1,
+  filledTo: 0,        // 이 줄까지는 겹침을 보강해 둠
+  strad: new Map(),   // 줄 → 그 경계를 가로지르는 세로 단어 수
+  used: new Map(),    // 단어 → 지금까지 쓴 횟수 (많이 쓴 것은 뒤로 미룬다)
+  par: 0,             // 가로줄의 홀짝
+  bandOff: 0,         // 밴드 경계의 위치
+  top: 0,             // 여기서부터가 아직 푸는 중인 줄. 그 위는 다 푼 줄로 남겨 둔다
+  numBase: 0,         // 지나간 줄에 이미 매긴 번호 (번호가 흔들리지 않게 이어서 매긴다)
+  depth: 0,           // 지나온 줄 수
+  solvedCount: 0,
+  score: 0,
+  hints: 0,
+  recent: [],         // 최근에 쓴 단어 (근처 중복 방지)
+};
+
+function fits(word, x, y, dir, needCross) {
+  const len = word.length;
+  if (x < 0 || y < 0) return -1;
+  if (!isARow(y)) return -1;                 // 두 방향 모두 가로줄에서 시작
+  if (dir === 'D') {
+    if (x & 1) return -1;                    // 세로는 짝수 칸에만
+    if (!(len & 1)) return -1;               // 세로는 홀수 글자만 (끝도 가로줄에 떨어지게)
+    if (bandOf(y) !== bandOf(y + len - 1)) return -1;   // 밴드를 넘지 않게
+  }
+  if (dir === 'A' ? x + len > W : x >= W) return -1;
+  const before = dir === 'A' ? key(x - 1, y) : key(x, y - 1);
+  const after  = dir === 'A' ? key(x + len, y) : key(x, y + len);
+  if (G.cells.has(before) || G.cells.has(after)) return -1;
+  let cross = 0;
+  for (let i = 0; i < len; i++) {
+    const cx = dir === 'A' ? x + i : x, cy = dir === 'A' ? y : y + i;
+    const c = G.cells.get(key(cx, cy));
+    if (c) {
+      if (c.ans !== word[i]) return -1;
+      if (dir === 'A' ? c.across !== null : c.down !== null) return -1;
+      cross++;
+    } else if (dir === 'A') {
+      if (G.cells.has(key(cx, cy - 1)) || G.cells.has(key(cx, cy + 1))) return -1;
+    } else {
+      if (G.cells.has(key(cx - 1, cy)) || G.cells.has(key(cx + 1, cy))) return -1;
+    }
+  }
+  if (needCross && cross === 0) return -1;
+  return cross;
+}
+
+function place(wi, x, y, dir) {
+  const [word, clue] = BANK[wi];
+  const id = G.nextId++;
+  const w = { id, word, clue, x, y, dir, len: word.length, solved: false };
+  G.words.set(id, w);
+  for (let i = 0; i < word.length; i++) {
+    const cx = dir === 'A' ? x + i : x, cy = dir === 'A' ? y : y + i;
+    const k = key(cx, cy);
+    let c = G.cells.get(k);
+    if (!c) { c = { x: cx, y: cy, ans: word[i], ch: '', solved: false, across: null, down: null, num: 0 }; G.cells.set(k, c); }
+    if (dir === 'A') c.across = id; else c.down = id;
+    if (cy > G.maxY) G.maxY = cy;
+  }
+  stradAdd(w, 1);
+  G.used.set(word, (G.used.get(word) || 0) + 1);
+  G.recent.push(word);
+  if (G.recent.length > Math.max(4, Math.min(RECENT, BANK.length >> RECSHIFT))) G.recent.shift();
+  return w;
+}
+
+/**
+ * 세로 단어가 y 줄의 경계를 가로지르면 그 줄은 걷어낼 수 없다.
+ * G.strad 는 "그 경계를 가로지르는 세로 단어 수"를 줄마다 세어 둔 것.
+ */
+function stradAdd(w, sign) {
+  if (w.dir !== 'D') return;
+  for (let r = w.y + 1; r < w.y + w.len; r++) {
+    const n = (G.strad.get(r) || 0) + sign;
+    if (n > 0) G.strad.set(r, n); else G.strad.delete(r);
+  }
+}
+
+function rebuildStrad() {
+  G.strad = new Map();
+  for (const w of G.words.values()) stradAdd(w, 1);
+}
+
+/** 이 단어가 다른 단어와 겹치는 횟수 */
+function crossCount(w) {
+  let n = 0;
+  for (const c of wordCells(w)) if (c.across !== null && c.down !== null) n++;
+  return n;
+}
+
+/** 이미 여러 번 쓴 단어는 뒤로 미룬다 (겹침 하나 값은 못 넘게 벌점을 묶어 둔다) */
+let WEAR = 6, WEARCAP = 24, RECSHIFT = 3;    // 같은 단어를 돌려 쓰지 않게 하는 벌점
+let OFFPICK = 26;    // 고르지 않은 갈래의 단어에 매기는 벌점.
+                     // 겹침 하나 값이 100 이므로 이 값이 100 을 넘으면 사실상 하드 필터가 되는데,
+                     // 그러면 고른 갈래 비율은 100% 가 되지만 채움이 0.30, 겹침이 0.78 로 무너진다.
+                     // 26 이면 판은 그대로 촘촘하고(겹침 1.4~1.5) 고른 갈래가 절반 남짓 나온다.
+let HARD = 34;      // 쉽게 모드에서 기초가 아닌 말에 매기는 벌점.
+                    // 겹침 하나 값(100)보다 한참 낮게 둬야 판이 안 성긴다 —
+                    // 그래도 200줄 기준 기초 비율이 44% 에서 74% 로 올라간다
+let DEEP = 20;      // 난이도를 가른 단어장에서 «쉽게» 를 껐을 때 기초 말에 매기는 벌점.
+                    // HARD 보다 가볍게 둔다 — 심화가 일흔 개뿐이라 세게 밀면 같은 말만 돌고,
+                    // 20 이면 심화 말이 서너 번 쓰인 뒤 기초와 값이 맞아 자연히 섞인다
+let NEW = 11;       // 요즘 말에 주는 가산점. 벌점을 깎아 앞자리로 당긴다.
+                    // 요즘 말이 일흔다섯 개로 늘어 22 로는 판의 삼분의 이를 차지했다
+const wornOut = word =>
+  Math.min(WEARCAP, WEAR * (G.used.get(word) || 0)) + (ONTOPIC.has(word) ? 0 : OFFPICK)
+  + (EASY && BASIC.size && !BASIC.has(word) ? HARD : 0)
+  + (!EASY && TIERED && BASIC.has(word) ? DEEP : 0)
+  - (FRESH.has(word) ? NEW : 0);
+
+/**
+ * 이 단어를 여기 놓으면 나중에 몇 개나 더 엮을 수 있을지.
+ * 아직 안 겹친 "겹칠 수 있는 칸"마다, 거기에 붙일 수 있는 단어가 몇 개인지 더한다.
+ * 세로로 붙이려면 그 음절이 단어의 짝수 번째에 있어야 하지만(세로는 가로줄에서 시작),
+ * 가로로 붙이는 데는 그런 제약이 없다.
+ */
+function lookahead(word, x, y, dir) {
+  let n = 0;
+  const step = dir === 'A' ? 1 : 2;
+  const start = dir === 'A' ? ((x & 1) ? 1 : 0) : 0;   // 가로는 짝수 칸에 놓인 글자만
+  for (let i = start; i < word.length; i += step * (dir === 'A' ? 2 : 1)) {
+    const cx = dir === 'A' ? x + i : x, cy = dir === 'A' ? y : y + i;
+    const c = G.cells.get(key(cx, cy));
+    if (c && c.across !== null && c.down !== null) continue;     // 이미 겹친 자리
+    const table = dir === 'A' ? EVEN : ALL;
+    n += Math.min(table.get(word[i]) || 0, 10);
+  }
+  return n;
+}
+
+/**
+ * 한 칸을 발판 삼아 직각 방향으로 단어 하나 놓기.
+ * 맞는 것 아무거나 집지 않고 후보를 모두 재 본 뒤,
+ * 겹침이 가장 많이 생기는 자리를 고른다 (같으면 긴 단어 쪽).
+ */
+function tryAt(cell, dir, lo, hi) {
+  if ((dir === 'A' ? cell.across : cell.down) !== null) return false;
+  const cands = INDEX.get(cell.ans);
+  if (!cands) return false;
+  let best = null, bestScore = -1;
+  for (const { wi, pos } of cands) {
+    const [word] = BANK[wi];
+    if (G.recent.includes(word)) continue;
+    const x = dir === 'A' ? cell.x - pos : cell.x;
+    const y = dir === 'A' ? cell.y : cell.y - pos;
+    if (y < lo) continue;
+    if ((dir === 'D' ? y + word.length - 1 : y) > hi) continue;
+    const cross = fits(word, x, y, dir, true);
+    if (cross < 0) continue;
+    const score = cross * 100 + lookahead(word, x, y, dir) + word.length - wornOut(word) + Math.random();
+    if (score > bestScore) { bestScore = score; best = { wi, x, y }; }
+  }
+  if (!best) return false;
+  place(best.wi, best.x, best.y, dir);
+  return true;
+}
+
+/** 겹침이 모자란 단어를 찾아, 아직 안 겹친 칸마다 직각 단어를 붙인다 */
+function reinforce(lo, hi) {
+  let placed = 0;
+  const targets = [];
+  for (const w of G.words.values()) {
+    const end = w.y + (w.dir === 'D' ? w.len - 1 : 0);
+    if (w.y >= lo && end <= hi && crossCount(w) < TARGET_CROSS) targets.push(w);
+  }
+  for (const w of shuffle(targets)) {
+    const cells = wordCells(w);
+    const dir = w.dir === 'A' ? 'D' : 'A';
+    for (const i of shuffle(cells.map((_, i) => i))) {
+      if (crossCount(w) >= TARGET_CROSS) break;
+      if (tryAt(cells[i], dir, lo, hi)) placed++;
+    }
+  }
+  return placed;
+}
+
+const rowHasAcross = y => {
+  for (const c of G.cells.values()) if (c.y === y && c.across !== null) return true;
+  return false;
+};
+
+/** 한 가로줄에 가로 단어 놓기. free 면 맨땅에도 심는다 */
+function seedAcross(y, lo, hi, free) {
+  const anchors = [];
+  for (const c of G.cells.values()) if (c.y === y && c.across === null) anchors.push(c);
+  for (const c of shuffle(anchors)) if (tryAt(c, 'A', lo, hi)) return true;
+  if (!free) return false;
+  let best = null, bestScore = -1;
+  for (let t = 0; t < 120; t++) {
+    const wi = (Math.random() * BANK.length) | 0;
+    const [word] = BANK[wi];
+    if (word.length > W || G.recent.includes(word)) continue;
+    const x = (Math.random() * (W - word.length + 1)) | 0;
+    if (fits(word, x, y, 'A', false) < 0) continue;
+    const score = lookahead(word, x, y, 'A') + word.length - wornOut(word) + Math.random();
+    if (score > bestScore) { bestScore = score; best = { wi, x }; }
+  }
+  if (!best) return false;
+  place(best.wi, best.x, y, 'A');
+  return true;
+}
+
+/**
+ * 밴드 하나를 짠다.
+ * 순서가 중요하다 — 가로줄을 먼저 다 채워 놓고 세로를 끼우려 하면
+ * 세로 단어가 서너 글자를 한꺼번에 맞춰야 해서 거의 안 들어간다.
+ * 그래서 이미 놓인 단어에 "한 글자만" 걸치는 자리를 번갈아 늘려 간다.
+ */
+function buildBand(top) {
+  const bottom = top + BAND - 1;
+  const aRows = [];
+  for (let y = top; y <= bottom; y += 2) aRows.push(y);
+  seedAcross(aRows[0], top, bottom, true);
+  for (let round = 0; round < 40; round++) {
+    let placed = reinforce(top, bottom);
+    // 세로 단어가 지나가며 생긴 칸에만 가로 단어를 엮는다
+    for (const y of aRows) if (!rowHasAcross(y) && seedAcross(y, top, bottom, false)) placed++;
+    if (placed) continue;
+    // 더는 엮을 데가 없으면 빈 가로줄 하나에 새 뭉치를 시작한다
+    const y = aRows.find(r => !rowHasAcross(r));
+    if (y === undefined || !seedAcross(y, top, bottom, true)) break;
+  }
+}
+
+/** 밴드에 놓인 단어를 모두 되돌린다 (밴드끼리는 서로 물려 있지 않으므로 안전하다) */
+function undoFrom(mark, recentMark) {
+  for (const [id, w] of [...G.words]) {
+    if (id < mark) continue;
+    for (const c of wordCells(w)) {
+      if (w.dir === 'A') c.across = null; else c.down = null;
+      if (c.across === null && c.down === null) G.cells.delete(key(c.x, c.y));
+    }
+    stradAdd(w, -1);
+    const n = (G.used.get(w.word) || 0) - 1;
+    if (n > 0) G.used.set(w.word, n); else G.used.delete(w.word);
+    G.words.delete(id);
+  }
+  G.nextId = mark;
+  G.recent.length = recentMark;
+}
+
+/** 같은 밴드를 여러 번 짜 보고 제일 촘촘하게 물린 것을 남긴다 */
+function buildBandBest(top, tries) {
+  const mark = G.nextId, recentMark = G.recent.length;
+  let best = null;
+  for (let t = 0; t < tries; t++) {
+    buildBand(top);
+    let cross = 0, cells = 0, onTopic = 0;
+    for (const [id, w] of G.words) if (id >= mark) { cross += crossCount(w); if (ONTOPIC.has(w.word)) onTopic++; }
+    for (const c of G.cells.values()) if (c.y >= top && c.y < top + BAND) cells++;
+    const score = cross * 3 + cells + onTopic * 3;   // 촘촘하고, 고른 갈래가 많이 든 밴드로
+    const snap = [...G.words.values()].filter(w => w.id >= mark).map(w => [w.word, w.x, w.y, w.dir]);
+    if (!best || score > best.score) best = { score, snap };
+    undoFrom(mark, recentMark);
+    if (best.score >= 9 * 3 + 40) break;      // 충분히 잘 나왔으면 그만
+  }
+  if (!best) return;
+  const at = new Map(BANK.map(([w], i) => [w, i]));
+  const made = [];
+  for (const [word, x, y, dir] of best.snap) made.push(place(at.get(word), x, y, dir));
+  if (G.maxY < top) G.maxY = top;
+  G.filledTo = Math.max(G.filledTo, top + BAND - 1);
+  if (EASY) giveFirst(made);
+}
+
+/*
+ * 쉽게 모드에서 첫 글자를 여는 낱말은 «아무 데도 안 걸린 것» 뿐이다.
+ * 처음에는 모든 낱말의 첫 글자를 열어 봤는데, 그러면 떠올릴 일이 없어져
+ * 외우려고 푸는 판에서 남는 게 없다. 다른 낱말과 한 칸도 겹치지 않는 낱말은
+ * 힌트 말고는 실마리가 아예 없으니, 거기만 한 글자를 준다.
+ */
+function giveFirst(ws) {
+  for (const w of ws) {
+    if (crossCount(w)) continue;
+    const c = wordCells(w)[0];
+    if (c && !c.ch) { c.ch = c.ans; c.given = true; }
+  }
+}
+
+const bandTopAtOrAfter = y => {
+  const off = (((y + G.bandOff) % BAND) + BAND) % BAND;
+  return off === 0 ? y : y + (BAND - off);
+};
+
+/** targetY 줄까지 밴드를 이어 붙인다 */
+function grow(targetY) {
+  if (G.cells.size === 0) buildBandBest(bandTopAtOrAfter(0), 12);
+  let guard = 0;
+  while (G.filledTo < targetY && guard++ < 200) buildBandBest(bandTopAtOrAfter(G.filledTo + 1), 12);
+  number();
+}
+
+/** 화면 순서대로 단어 번호 매기기 (지나간 줄의 번호는 건드리지 않고 그 뒤로 잇는다) */
+function number() {
+  const starts = [...G.cells.values()].filter(c => !c.past).sort((a, b) => a.y - b.y || a.x - b.x);
+  let n = G.numBase;
+  for (const c of starts) {
+    const a = c.across !== null && G.words.get(c.across).x === c.x && G.words.get(c.across).y === c.y;
+    const d = c.down !== null && G.words.get(c.down).x === c.x && G.words.get(c.down).y === c.y;
+    c.num = (a || d) ? ++n : 0;
+    if (a) G.words.get(c.across).num = c.num;
+    if (d) G.words.get(c.down).num = c.num;
+  }
+}
+
+const wordCells = w => Array.from({ length: w.len }, (_, i) =>
+  G.cells.get(key(w.dir === 'A' ? w.x + i : w.x, w.dir === 'A' ? w.y : w.y + i)));
+
+/* ───────── 상태·판정 ───────── */
+const S = { cur: null, dir: 'A', comp: { cho: '', jung: '', jong: '' } };
+
+function checkWords(cell) {
+  let gained = 0;
+  for (const id of [cell.across, cell.down]) {
+    if (id === null) continue;
+    const w = G.words.get(id);
+    if (w.solved) continue;
+    const cs = wordCells(w);
+    if (cs.every(c => c.ch === c.ans)) {
+      w.solved = true;
+      cs.forEach(c => { c.solved = true; });
+      G.solvedCount++;
+      gained += 10 + w.len * 2;
+    }
+  }
+  if (gained) { G.score += gained; flash(gained); }
+  return gained;
+}
+
+/**
+ * 다 채웠는데 틀린 단어를 표시해 둔다.
+ * 밴드가 안 걷히는데 어디가 틀렸는지 모르면 손쓸 데가 없다.
+ * 어느 칸이 틀렸는지까지는 알려 주지 않는다 — 그건 답을 알려 주는 것이나 같다.
+ */
+function markBad() {
+  for (const w of G.words.values()) {
+    if (w.past) continue;
+    const cs = wordCells(w);
+    w.bad = !w.solved && cs.every(c => c.ch) && cs.some(c => c.ch !== c.ans);
+  }
+}
+
+/** 아직 푸는 중인 줄 가운데, 위에서부터 통째로 풀린 데까지의 새 경계 (절대 좌표) */
+function clearableY() {
+  let limit = G.top;
+  for (let y = G.top; y <= G.maxY; y++) {
+    let ok = true;
+    for (let x = 0; x < W; x++) {
+      const c = G.cells.get(key(x, y));
+      if (c && c.ch !== c.ans) { ok = false; break; }
+    }
+    if (!ok) break;
+    limit = y + 1;
+  }
+  if (limit === G.top) return G.top;
+  let best = G.top;
+  for (let y = G.top + 1; y <= limit; y++) {
+    let straddle = false;
+    for (const w of G.words.values()) {
+      if (w.dir === 'D' && w.y < y && w.y + w.len > y) { straddle = true; break; }
+    }
+    if (!straddle) best = y;
+  }
+  return best;
+}
+
+/*
+ * 윗줄을 다 풀면 걷어내는 대신 "지나온 줄"로 넘긴다.
+ * 지우지 않으므로 위로 스크롤하면 언제든 다시 볼 수 있고(복습),
+ * 대신 색을 한 단계씩 옅게 해서 처리한 데라는 것을 보여 준다.
+ * 좌표가 밀리지 않으니 홀짝도 밴드 경계도 번호도 그대로다.
+ */
+function collapse() {
+  const n = clearableY();
+  if (n <= G.top) return false;
+  const rows = n - G.top;
+  for (const c of G.cells.values()) if (c.y >= G.top && c.y < n) c.past = true;
+  for (const w of G.words.values())
+    if (!w.past && w.y + (w.dir === 'D' ? w.len - 1 : 0) < n) w.past = true;
+  G.top = n;
+  G.depth += rows;
+  G.score += rows * 5;
+  // 지나간 칸의 번호는 그대로 두고, 아직 푸는 줄만 그 뒤로 이어 매긴다
+  for (const c of G.cells.values()) if (c.past && c.num > G.numBase) G.numBase = c.num;
+  if (S.cur) {
+    const y = +S.cur.split(',')[1];
+    if (y < G.top) S.cur = null;
+  }
+  forget();
+  number();
+  return true;
+}
+
+/** 너무 오래된 줄은 버린다 — 끝없이 쌓이면 저장도 그리기도 무거워진다 */
+function forget() {
+  let cut = G.top - KEEP;
+  if (cut <= 0) return;
+  // 세로 단어가 걸친 자리에서 자르면 반쪽 단어가 남는다. 안 걸친 줄까지 물러난다
+  const straddles = y => {
+    for (const w of G.words.values()) if (w.dir === 'D' && w.y < y && w.y + w.len > y) return true;
+    return false;
+  };
+  while (cut > 0 && straddles(cut)) cut--;
+  if (cut <= 0) return;
+  for (const [k, c] of [...G.cells]) if (c.y < cut) G.cells.delete(k);
+  for (const [id, w] of [...G.words]) if (w.y + (w.dir === 'D' ? w.len - 1 : 0) < cut) G.words.delete(id);
+}
+
+/* ───────── 화면 ───────── */
+const board = document.getElementById('board');
+const layer = document.getElementById('layer');
+const scroller = document.getElementById('scroller');
+const els = new Map();       // 칸 객체 → div (화면 언저리에 있는 것만 들고 있는다)
+const decos = new Map();     // "x,y" → 빈자리에 붙인 이모지
+const nowline = document.createElement('div');   // 여기서부터가 아직 푸는 줄
+nowline.id = 'nowline';
+nowline.hidden = true;
+layer.appendChild(nowline);
+let C = 44;                  // 칸 크기(px)
+
+function sizeCells() {
+  const avail = Math.min(scroller.clientWidth - 12, 520);
+  C = Math.max(28, Math.floor(avail / W));
+  document.documentElement.style.setProperty('--c', C + 'px');
+  layer.style.width = W * C + 'px';
+}
+
+function vanish(cell) {
+  const el = els.get(cell);
+  if (!el) return;
+  els.delete(cell);
+  el.remove();      // 화면 밖으로 나간 칸일 뿐이다 — 다시 올라오면 그대로 다시 그린다
+}
+
+/*
+ * 빈자리 꾸미기 — 어린이 단어장은 판이 휑하면 재미가 없다.
+ * 칸이 없는 자리 열몇 곳에 하나꼴로 이모지를 놓는다. 자리와 그림은 좌표로만
+ * 정하므로(어림수 아님) 스크롤해서 다시 와도 그 자리에 그대로 있다.
+ * 누를 수 없고, 나중에 그 자리에 칸이 생기면 저절로 비켜난다.
+ */
+const 어림 = (x, y) => {
+  let h = (x * 374761393 + y * 668265263) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return (h ^ (h >>> 16)) >>> 0;
+};
+
+function renderDeco(from, to) {
+  if (!DECO.length) {
+    if (decos.size) { for (const el of decos.values()) el.remove(); decos.clear(); }
+    return;
+  }
+  const live = new Set();
+  for (let y = Math.max(0, from); y <= to; y++) {
+    for (let x = 0; x < W; x++) {
+      const k = key(x, y);
+      if (G.cells.has(k)) continue;
+      const h = 어림(x, y);
+      if (h % 6) continue;                     // 여섯 자리에 하나쯤 — 팍팍 붙인다
+      live.add(k);
+      let el = decos.get(k);
+      if (!el) {
+        // 그림은 «다른» 해시로 고른다. 자리를 고른 h 를 그대로 나누면
+        // 스티커가 열여덟 개라도 h%9==0 인 것들의 h%18 은 두 값뿐이라
+        // 판에 강아지와 개구리만 깔린다
+        const g = 어림(y + 7919, x + 104729);
+        el = document.createElement('div');
+        el.className = 'deco';
+        el.innerHTML = '<b></b>';
+        el.firstChild.textContent = DECO[g % DECO.length];
+        // 크기와 기울기를 조금씩 달리해 손으로 붙인 스티커처럼 보이게 한다
+        el.style.setProperty('--dz', (0.44 + (g >> 5) % 5 * 0.045).toFixed(3));
+        el.style.setProperty('--dr', (((g >> 11) % 25) - 12) + 'deg');
+        layer.appendChild(el);
+        decos.set(k, el);
+      }
+      const tf = `translate(${x * C}px, ${y * C}px)`;
+      if (el._tf !== tf) { el.style.transform = tf; el._tf = tf; }
+      el.classList.toggle('past', y < G.top);
+    }
+  }
+  for (const [k, el] of [...decos]) if (!live.has(k)) { el.remove(); decos.delete(k); }
+}
+
+function render() {
+  layer.style.height = (G.maxY + 2) * C + 'px';
+  const w = curWord();
+  const inWord = w ? new Set(wordCells(w)) : null;
+  const bad = new Set();
+  for (const w of G.words.values()) if (w.bad) for (const c of wordCells(w)) bad.add(c);
+  // 판은 이제 지워지지 않고 계속 길어지므로, 화면 언저리만 DOM 에 둔다
+  const from = Math.floor(scroller.scrollTop / C) - WINDOW;
+  const to = Math.ceil((scroller.scrollTop + scroller.clientHeight) / C) + WINDOW;
+  const live = new Set();
+  for (const [k, c] of G.cells) {
+    if (c.y < from || c.y > to) continue;
+    live.add(c);
+    let el = els.get(c);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'cell';
+      el.innerHTML = '<b></b><i></i>';
+      el._b = el.firstChild; el._i = el.lastChild;
+      el.addEventListener('pointerdown', e => { e.preventDefault(); tap(key(c.x, c.y)); });
+      layer.appendChild(el);
+      els.set(c, el);
+      el.style.transform = `translate(${c.x * C}px, ${c.y * C}px)`;
+      if (!c.seen) {                        // 새로 생긴 칸만 나타나는 시늉을 한다
+        c.seen = true;
+        el.classList.add('born');
+        requestAnimationFrame(() => el.classList.remove('born'));
+      }
+    }
+    const txt = c.ch || '', num = c.num ? String(c.num) : '';
+    if (el._b.textContent !== txt) el._b.textContent = txt;
+    if (el._i.textContent !== num) el._i.textContent = num;
+    const tf = `translate(${c.x * C}px, ${c.y * C}px)`;
+    if (el._tf !== tf) { el.style.transform = tf; el._tf = tf; }
+    el.classList.toggle('solved', c.solved);
+    el.classList.toggle('wrong', !c.solved && bad.has(c));
+    el.classList.toggle('cur', k === S.cur);
+    el.classList.toggle('inword', !!inWord && inWord.has(c));
+    el.classList.toggle('past', !!c.past);
+  }
+  for (const c of [...els.keys()]) if (!live.has(c)) vanish(c);
+  renderDeco(from, to);
+  nowline.style.transform = `translateY(${G.top * C}px)`;
+  nowline.hidden = !G.top;
+  document.getElementById('depth').textContent = G.depth;
+  document.getElementById('solved').textContent = G.solvedCount;
+  document.getElementById('score').textContent = G.score;
+  syncKeyboard();
+  renderClue();
+  renderList();
+}
+
+function curWord() {
+  if (!S.cur) return null;
+  const c = G.cells.get(S.cur);
+  if (!c) return null;
+  const id = S.dir === 'A' ? c.across : c.down;
+  if (id !== null) return G.words.get(id);
+  const alt = S.dir === 'A' ? c.down : c.across;
+  return alt !== null ? G.words.get(alt) : null;
+}
+
+function renderClue() {
+  const w = curWord();
+  const bar = document.getElementById('clue');
+  if (!w) { bar.innerHTML = '<span class="ph">칸을 눌러 시작하세요</span>'; return; }
+  const kind = KIND.get(w.word) || '';
+  bar.innerHTML =
+    '<div class="meta">' +
+      `<span class="tag ${w.dir === 'A' ? 'a' : 'd'}">${w.num} ${w.dir === 'A' ? '가로' : '세로'}</span>` +
+      (w.bad ? '<span class="tag bad">틀림</span>' : '') +
+      `<span class="len">${kind ? kind + ' · ' : ''}${w.len}${isAlpha(w.word[0]) ? '자 (영문)' : '글자'}</span>` +
+    '</div>' +
+    `<p class="txt">${w.clue}</p>`;
+}
+
+function renderList() {
+  const box = document.getElementById('list');
+  if (!box.offsetParent) return;
+  const from = Math.floor(scroller.scrollTop / C) - 2;
+  const to = Math.ceil((scroller.scrollTop + scroller.clientHeight) / C) + 2;
+  const ws = [...G.words.values()]
+    .filter(w => w.y + (w.dir === 'D' ? w.len - 1 : 0) >= from && w.y <= to)
+    .sort((a, b) => a.num - b.num);
+  const row = w => `<li class="${w.solved ? 'ok' : ''} ${curWord() === w ? 'on' : ''}" data-id="${w.id}">` +
+    `<b>${w.num}</b><span>${w.clue}</span></li>`;
+  box.innerHTML =
+    `<h3>가로</h3><ul>${ws.filter(w => w.dir === 'A').map(row).join('')}</ul>` +
+    `<h3>세로</h3><ul>${ws.filter(w => w.dir === 'D').map(row).join('')}</ul>`;
+}
+
+document.getElementById('list').addEventListener('click', e => {
+  const li = e.target.closest('li');
+  if (!li) return;
+  const w = G.words.get(+li.dataset.id);
+  if (!w) return;
+  S.dir = w.dir;
+  const cs = wordCells(w);
+  S.cur = key((cs.find(c => !c.solved) || cs[0]).x, (cs.find(c => !c.solved) || cs[0]).y);
+  S.comp = disassemble(G.cells.get(S.cur).ch);
+  scrollTo(G.cells.get(S.cur));
+  render();
+});
+
+let flashT;
+function flash(v) {
+  const el = document.getElementById('flash');
+  el.textContent = typeof v === 'number' ? '+' + v : v;
+  el.classList.add('on');
+  clearTimeout(flashT);
+  flashT = setTimeout(() => el.classList.remove('on'), 700);
+}
+
+function scrollTo(c) {
+  const top = c.y * C, bot = top + C;
+  const h = scroller.clientHeight;
+  // 자판이 올라오면 판이 보이는 높이가 세 줄도 안 된다. 여백을 그만큼 줄여야 칸이 안 가린다
+  const m = Math.min(C * 2, Math.max(0, (h - C) / 2));
+  const vt = scroller.scrollTop, vb = vt + h;
+  if (top < vt + m) scroller.scrollTo({ top: Math.max(0, top - m), behavior: 'smooth' });
+  else if (bot > vb - m) scroller.scrollTo({ top: bot - h + m, behavior: 'smooth' });
+}
+
+/* ───────── 조작 ───────── */
+function tap(k) {
+  const c = G.cells.get(k);
+  if (!c) return;
+  resetShift();
+  if (S.cur === k) {
+    const other = S.dir === 'A' ? 'D' : 'A';
+    if ((other === 'A' ? c.across : c.down) !== null) S.dir = other;
+  } else {
+    S.cur = k;
+    if ((S.dir === 'A' ? c.across : c.down) === null) S.dir = S.dir === 'A' ? 'D' : 'A';
+  }
+  S.comp = disassemble(c.ch);
+  render();
+  focusIME();
+  scrollTo(c);
+}
+
+function advance() {
+  const w = curWord();
+  if (!w) return;
+  const cs = wordCells(w);
+  const i = cs.findIndex(c => key(c.x, c.y) === S.cur);
+  for (let j = i + 1; j < cs.length; j++) {
+    if (!cs[j].solved) { S.cur = key(cs[j].x, cs[j].y); S.comp = disassemble(cs[j].ch); return; }
+  }
+  const next = cs[i + 1];
+  if (next) { S.cur = key(next.x, next.y); S.comp = disassemble(next.ch); }
+}
+
+function retreat() {
+  const w = curWord();
+  if (!w) return false;
+  const cs = wordCells(w);
+  const i = cs.findIndex(c => key(c.x, c.y) === S.cur);
+  if (i <= 0) return false;
+  S.cur = key(cs[i - 1].x, cs[i - 1].y);
+  S.comp = disassemble(cs[i - 1].ch);
+  return true;
+}
+
+function input(j) {
+  if (!S.cur) return;
+  let c = G.cells.get(S.cur);
+  if (!c) return;
+  if (c.solved) { advance(); c = G.cells.get(S.cur); if (!c || c.solved) { render(); return; } }
+  const r = feed(S.comp, j);
+  if (r.done !== undefined) {
+    c.ch = r.done;
+    checkWords(c);
+    advance();
+    const n = G.cells.get(S.cur);
+    if (n && !n.solved) { S.comp = r.cur; n.ch = assemble(r.cur); checkWords(n); }
+    else S.comp = disassemble(n ? n.ch : '');
+  } else {
+    S.comp = r.cur;
+    c.ch = assemble(r.cur);
+    checkWords(c);
+  }
+  after();
+}
+
+/** 알파벳 칸에 글자 하나를 넣고 다음 칸으로 */
+function putChar(ch) {
+  if (!S.cur) return;
+  let c = G.cells.get(S.cur);
+  if (!c) return;
+  if (c.solved) { advance(); c = G.cells.get(S.cur); if (!c || c.solved) { render(); return; } }
+  c.ch = ch.toUpperCase();
+  S.comp = { cho: '', jung: '', jong: '' };
+  checkWords(c);
+  advance();
+  after();
+}
+
+function backspace() {
+  if (!S.cur) return;
+  const c = G.cells.get(S.cur);
+  if (!c) return;
+  if (!c.solved) {
+    const u = unfeed(S.comp);
+    if (u && (u.cho || u.jung)) { S.comp = u; c.ch = assemble(u); render(); return; }
+    if (c.ch) { c.ch = ''; S.comp = { cho: '', jung: '', jong: '' }; render(); return; }
+  }
+  if (retreat()) {
+    const p = G.cells.get(S.cur);
+    if (p && !p.solved) { p.ch = ''; S.comp = { cho: '', jung: '', jong: '' }; }
+  }
+  render();
+}
+
+function hint() {
+  resetShift();
+  if (!S.cur) return;
+  const w = curWord();
+  const c = G.cells.get(S.cur);
+  const target = (c && !c.solved) ? c : (w ? wordCells(w).find(x => !x.solved) : null);
+  if (!target) return;
+  target.ch = target.ans;
+  G.hints++;
+  G.score = Math.max(0, G.score - (EASY ? 4 : 8));
+  S.cur = key(target.x, target.y);
+  S.comp = disassemble(target.ch);
+  checkWords(target);
+  advance();
+  after();
+}
+
+/** 도저히 안 되는 단어를 통째로 연다. 한 칸씩 여는 것과 값은 같다 */
+function openWord() {
+  resetShift();
+  const w = curWord();
+  if (!w) return;
+  for (const c of wordCells(w)) {
+    if (c.solved || c.ch === c.ans) continue;
+    c.ch = c.ans;
+    G.hints++;
+    G.score = Math.max(0, G.score - 8);
+    checkWords(c);
+  }
+  after();
+  focusIME();
+}
+
+function move(dx, dy) {
+  if (!S.cur) return;
+  let [x, y] = S.cur.split(',').map(Number);
+  for (let i = 0; i < 30; i++) {
+    x += dx; y += dy;
+    if (x < 0 || x >= W || y < 0) return;
+    const c = G.cells.get(key(x, y));
+    if (c) { S.cur = key(x, y); S.comp = disassemble(c.ch); scrollTo(c); render(); focusIME(); return; }
+    if (y > G.maxY) return;
+  }
+}
+
+/** 지금 자리에서 가장 가까운 미해결 단어로 옮겨 간다 */
+/*
+ * 지금 단어를 다 풀었을 때 옮겨 갈 자리.
+ * 방금 있던 칸을 지나는 다른 단어가 아직 안 풀렸으면 거기가 제일 자연스럽고,
+ * 없으면 화면 안에 있는 단어를 먼저 고른다. 화면 밖으로 튀면 어디로 갔는지 모른다.
+ */
+/*
+ * 지금 낱말을 다 풀었을 때 옮겨 갈 자리.
+ *
+ * 기준은 «맨 위에 남은 낱말» 이다. 가까운 데로 옮겨 가게 했더니 아래로만
+ * 쭉쭉 흘러, 윗줄 여섯 줄을 못 채운 채 판만 길어졌다. 아래를 먼저 풀 수는
+ * 있어도 그다음에는 위로 돌아와 마저 채워야 밴드가 걷히고 «해냈다» 가 생긴다.
+ *
+ * 다만 지금 칸에 십자로 걸린 낱말이 «맨 위에 남은 낱말과 같은 밴드» 에 있으면
+ * 그리로 간다. 같은 밴드 안에서는 십자로 이어 가는 편이 훨씬 자연스럽다.
+ */
+function jumpNearest(quiet) {
+  const c = S.cur ? G.cells.get(S.cur) : null;
+  let best = null;
+  for (const w of G.words.values()) {              // 맨 위에 남은 낱말
+    if (w.solved || w.past) continue;
+    if (!best || w.y < best.y || (w.y === best.y && w.x < best.x)) best = w;
+  }
+  if (c && best) {
+    for (const id of [c.across, c.down]) {
+      const w = id !== null ? G.words.get(id) : null;
+      if (w && !w.solved && !w.past && bandOf(w.y) === bandOf(best.y)) { best = w; break; }
+    }
+  }
+  if (!best) return;
+  S.dir = best.dir;
+  const t = wordCells(best).find(x => !x.solved) || wordCells(best)[0];
+  S.cur = key(t.x, t.y);
+  S.comp = disassemble(t.ch);
+  if (!quiet) scrollTo(t);        // 줄을 넘긴 직후에는 따라 내려가는 스크롤 하나만 쓴다
+}
+
+function nextWord(step) {
+  resetShift();
+  const ws = [...G.words.values()].filter(w => !w.solved).sort((a, b) => a.num - b.num || (a.dir < b.dir ? -1 : 1));
+  if (!ws.length) return;
+  const cw = curWord();
+  let i = cw ? ws.indexOf(cw) : -1;
+  i = (i + step + ws.length) % ws.length;
+  const w = ws[i];
+  S.dir = w.dir;
+  const c = wordCells(w).find(x => !x.solved) || wordCells(w)[0];
+  S.cur = key(c.x, c.y);
+  S.comp = disassemble(c.ch);
+  scrollTo(c);
+  render();
+  focusIME();
+}
+
+/** 입력 뒤 뒷정리: 줄 걷어내기 + 아래 생성 + 저장 */
+function after() {
+  let cleared = 0;
+  for (;;) {
+    const before = G.depth;
+    if (!collapse()) break;
+    cleared += G.depth - before;
+  }
+  ensureAhead();
+  markBad();
+  if (cleared) {
+    flash(cleared + '줄 넘김!');
+    board.classList.add('lift');
+    setTimeout(() => board.classList.remove('lift'), 400);
+  }
+  const w = curWord();
+  if (!S.cur || (w && w.solved)) jumpNearest(cleared > 0);
+  if (cleared) {
+    const want = Math.max(0, G.top * C - 6);      // 지나온 줄은 위에 남기고 시선만 내린다
+    if (scroller.scrollTop < want) scroller.scrollTo({ top: want, behavior: 'smooth' });
+  } else {
+    // 지금 쓰는 칸은 언제나 보이는 데 있어야 한다 (자판이 아래를 가리는 폰에서 특히)
+    const cc = S.cur && G.cells.get(S.cur);
+    if (cc) scrollTo(cc);
+  }
+  render();
+  save();
+  if (useIME() && !composing) anchorIME();
+}
+
+function ensureAhead() {
+  const bottomRow = Math.ceil((scroller.scrollTop + scroller.clientHeight) / C);
+  // 위로 올려 복습하는 중이어도 푸는 자리는 늘 넉넉히 깔려 있어야 한다
+  const need = Math.max(bottomRow, G.top) + AHEAD;
+  if (G.maxY < need) grow(need);
+}
+
+
+/* ───────── 기기 자판(IME) 입력 ─────────
+ * 화면 자판을 쓰지 않을 때는 눈에 안 보이는 입력칸에 포커스를 준다.
+ * 그러면 폰은 자기가 쓰던 한글 자판(두벌식이든 천지인이든)이 그대로 올라오고,
+ * PC는 한/영을 한글에 두고 쳐도 된다.
+ *
+ * 조합 중인 글자는 브라우저가 입력칸 안에서 만들어 주므로,
+ * 우리는 입력칸의 값을 그대로 칸에 비추기만 한다 (imeSync).
+ * 조합 중에는 줄을 걷어내지 않는다 — 칸이 사라지면 비출 자리가 어긋나기 때문에,
+ * 걷어내기는 조합이 끝나는 순간으로 미룬다.
+ */
+const ime = document.getElementById('ime');
+let imeCells = [];        // 지금 입력이 차례로 들어갈 칸들
+let composing = false;
+let pendingAfter = false;
+
+/** 지금 고른 낱말이 알파벳 약어인가 */
+function alphaMode() {
+  const w = curWord();
+  return !!w && isAlpha(w.word[0]);
+}
+
+// 알파벳 낱말일 때는 기기 자판 대신 내장 영문 자판을 쓴다.
+// 한글 자판을 켜 둔 폰에서 영문으로 갈아 끼우게 하는 건 번거롭기만 하다.
+//
+// 캡스락이 켜져 있는 동안도 기기 IME 를 비켜 간다. 윈도 한글 IME 는 캡스락을
+// 시프트처럼 써서 ㅂ 자리에 ㅃ 을 보내는데, 그건 조합이 끝난 결과로 오기 때문에
+// 우리 쪽에서 되돌릴 방법이 없다. 숨은 입력칸에서 손을 떼면 IME 가 붙을 자리가
+// 없어져 글쇠가 날것으로 오고, 그러면 자리(e.code)와 시프트로 우리가 조합한다.
+const useIME = () => document.body.classList.contains('nokb') && !alphaMode() && !CAPS;
+
+/** 지금 선택한 자리에 맞춰 입력칸을 비우고 다시 겨눈다 */
+function anchorIME(force) {
+  const w = curWord();
+  imeCells = [];
+  if (w) {
+    const cs = wordCells(w);
+    const i = Math.max(0, cs.findIndex(c => key(c.x, c.y) === S.cur));
+    for (let j = i; j < cs.length; j++) if (!cs[j].solved) imeCells.push(cs[j]);
+  }
+  if (!composing || force) ime.value = '';
+}
+
+function focusIME() {
+  if (!useIME()) return;
+  anchorIME();
+  if (document.activeElement !== ime) ime.focus({ preventScroll: true });
+}
+
+/** 입력칸의 글자를 칸에 그대로 비춘다 */
+function imeSync() {
+  // 줄이 걷혀 칸이 사라졌으면 다시 겨눈다
+  if (imeCells.some(c => G.cells.get(key(c.x, c.y)) !== c)) { anchorIME(true); return; }
+  if (!imeCells.length) { ime.value = ''; return; }
+  const chars = [...ime.value].slice(0, imeCells.length);
+  imeCells.forEach((c, i) => { c.ch = chars[i] || ''; });
+  const at = imeCells[Math.min(chars.length, imeCells.length - 1)];
+  if (at) S.cur = key(at.x, at.y);
+  S.comp = disassemble(at ? at.ch : '');
+  for (const c of imeCells) checkWords(c);
+  if (composing) { render(); save(); pendingAfter = true; }   // 조합 중엔 걷어내기 보류
+  else after();
+}
+
+ime.addEventListener('compositionstart', () => { composing = true; });
+ime.addEventListener('compositionend', () => {
+  composing = false;
+  // 조합이 끝난 뒤에 값을 손대야 안전하다
+  setTimeout(() => {
+    if (pendingAfter) { pendingAfter = false; after(); }
+    anchorIME(true);
+  }, 0);
+});
+ime.addEventListener('input', imeSync);
+ime.addEventListener('blur', () => { composing = false; });
+
+/* ───────── 화면 자판 ───────── */
+const ROWS = [
+  ['ㅂ','ㅈ','ㄷ','ㄱ','ㅅ','ㅛ','ㅕ','ㅑ','ㅐ','ㅔ'],
+  ['ㅁ','ㄴ','ㅇ','ㄹ','ㅎ','ㅗ','ㅓ','ㅏ','ㅣ'],
+  ['⇧','ㅋ','ㅌ','ㅊ','ㅍ','ㅠ','ㅜ','ㅡ','⌫'],
+];
+const SHIFTED = { 'ㅂ':'ㅃ','ㅈ':'ㅉ','ㄷ':'ㄸ','ㄱ':'ㄲ','ㅅ':'ㅆ','ㅐ':'ㅒ','ㅔ':'ㅖ' };
+const QWERTY = { q:'ㅂ',w:'ㅈ',e:'ㄷ',r:'ㄱ',t:'ㅅ',y:'ㅛ',u:'ㅕ',i:'ㅑ',o:'ㅐ',p:'ㅔ',
+                 a:'ㅁ',s:'ㄴ',d:'ㅇ',f:'ㄹ',g:'ㅎ',h:'ㅗ',j:'ㅓ',k:'ㅏ',l:'ㅣ',
+                 z:'ㅋ',x:'ㅌ',c:'ㅊ',v:'ㅍ',b:'ㅠ',n:'ㅜ',m:'ㅡ',
+                 Q:'ㅃ',W:'ㅉ',E:'ㄸ',R:'ㄲ',T:'ㅆ',O:'ㅒ',P:'ㅖ' };
+let shift = false;
+
+/*
+ * 붙어 있는 자판으로 칠 때 어느 자모인지 고른다.
+ * e.key 를 그대로 보면 캡스락이 켜져 있을 때 q 가 'Q' 로 와서 ㅂ 자리에 ㅃ 이 박히고,
+ * ㅁ(a) 처럼 된소리가 없는 자리는 아예 안 먹힌다. 캡스락은 시프트가 아니다.
+ * 그래서 자판의 «자리»(e.code) 로 글쇠를 찾고, 된소리 여부는 시프트로만 정한다.
+ *
+ * 단, 한글 IME 가 잡고 있는 키는 손대지 않는다. 그때는 조합 결과가 숨은 입력칸으로
+ * 따로 들어오므로, 여기서 또 넣으면 둘이 같은 칸을 놓고 다툰다.
+ */
+function jamoOf(e) {
+  if (e.isComposing || e.keyCode === 229) return '';   // IME 조합 중
+  if (!/^[A-Za-z]$/.test(e.key)) return '';            // 'Process' · 자모 · 음절은 IME 몫
+  const m = /^Key([A-Z])$/.exec(e.code || '');
+  const low = (m ? m[1] : e.key).toLowerCase();
+  // 시프트를 눌렀어도 된소리가 없는 자리(ㅁ, ㄴ …)는 홑소리 그대로
+  return (e.shiftKey && QWERTY[low.toUpperCase()]) || QWERTY[low] || '';
+}
+
+/*
+ * 한글 IME 를 켜 둔 채 캡스락을 켜면, 운영체제가 캡스락을 시프트처럼 써서
+ * ㅂ 자리에 ㅃ 을 보낸다 (소꿉놀이의 «꿉» 이 «꾸ㅃ» 이 되는 그 증상).
+ * 두벌식에서 시프트 없이 된소리를 칠 방법은 없으므로, 시프트를 안 눌렀는데 온
+ * 된소리는 홑소리로 되돌린다. 반대쪽(시프트를 눌렀는데 홑소리로 오는 것)은
+ * 멀쩡한 입력과 구별할 수가 없어 건드리지 않는다.
+ */
+const SINGLE = { 'ㅃ':'ㅂ', 'ㅉ':'ㅈ', 'ㄸ':'ㄷ', 'ㄲ':'ㄱ', 'ㅆ':'ㅅ', 'ㅒ':'ㅐ', 'ㅖ':'ㅔ' };
+const capsOn = e => !!(e.getModifierState && e.getModifierState('CapsLock'));
+let CAPS = false;
+const unCaps = (j, e) => (!e.shiftKey && capsOn(e) && SINGLE[j]) || j;
+
+const ABC = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['Z','X','C','V','B','N','M','⌫'],
+];
+let kbMode = '';
+
+function buildKeyboard(mode) {
+  if (mode === kbMode) return;
+  kbMode = mode;
+  const kb = document.getElementById('kb');
+  kb.innerHTML = '';
+  (mode === 'en' ? ABC : ROWS).forEach(row => {
+    const r = document.createElement('div');
+    r.className = 'krow';
+    row.forEach(k => {
+      const b = document.createElement('button');
+      b.className = 'key' + (k === '⇧' || k === '⌫' ? ' fn' : '');
+      b.dataset.k = k;
+      b.textContent = k;
+      r.appendChild(b);
+    });
+    kb.appendChild(r);
+  });
+  if (mode !== 'en') paintShift();
+}
+
+// 자판을 갈아 끼워도 누름은 한 번만 — 판마다 붙이면 두 번씩 들어간다
+document.getElementById('kb').addEventListener('pointerdown', e => {
+  const b = e.target.closest('.key');
+  if (!b) return;
+  e.preventDefault();
+  const k = b.dataset.k;
+  if (k === '⌫') { backspace(); resetShift(); return; }
+  if (k === '⇧') { shift = !shift; paintShift(); return; }
+  if (kbMode === 'en') { putChar(k); return; }
+  input(shift ? (SHIFTED[k] || k) : k);
+  if (shift) { shift = false; paintShift(); }
+});
+
+/** 고른 낱말에 맞춰 자판을 갈아 끼운다 */
+function syncKeyboard() {
+  const en = alphaMode();
+  if (en !== (kbMode === 'en')) shift = false;    // 자판이 갈리면 눌러 둔 ⇧ 도 푼다
+  buildKeyboard(en ? 'en' : 'ko');
+  document.body.classList.toggle('abc', en);   // 영문일 때는 내장 자판을 반드시 보인다
+  if (en) ime.blur();
+}
+
+/*
+ * ⇧ 는 한 글자짜리다 — 누른 뒤 다음 자음 하나에만 걸리고 곧바로 풀린다.
+ * 지우거나, 다른 칸으로 옮기거나, 자판이 갈리면 그때도 푼다.
+ * 안 그러면 눌러 둔 채로 이어져 다음에 엉뚱한 된소리가 들어간다.
+ */
+function resetShift() {
+  if (!shift) return;
+  shift = false;
+  if (kbMode !== 'en') paintShift();
+}
+
+function paintShift() {
+  document.querySelectorAll('#kb .key').forEach(b => {
+    const k = b.dataset.k;
+    if (k === '⇧') { b.classList.toggle('on', shift); return; }
+    if (k === '⌫') return;
+    b.textContent = shift ? (SHIFTED[k] || k) : k;
+  });
+}
+
+/* 캡스락은 켜 두면 한글이 깨진다. 켜져 있는 동안은 대놓고 알려 주고,
+   그동안은 기기 IME 대신 우리 조합기로 받는다 */
+function paintCaps(e) {
+  const on = capsOn(e);
+  if (on === CAPS) return;
+  CAPS = on;
+  const bar = document.getElementById('caps');
+  if (bar) bar.hidden = !on;
+  if (useIME()) focusIME(); else ime.blur();
+  sizeCells(); render();
+}
+window.addEventListener('keyup', paintCaps);
+
+window.addEventListener('keydown', e => {
+  paintCaps(e);
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (k === 'Backspace') {
+    if (useIME() && document.activeElement === ime && ime.value) return;  // 입력칸이 알아서 지운다
+    e.preventDefault(); backspace(); return;
+  }
+  if (k === 'Tab') { e.preventDefault(); nextWord(e.shiftKey ? -1 : 1); return; }
+  if (k === 'Enter') { e.preventDefault(); nextWord(1); return; }
+  if (k === ' ') { e.preventDefault(); if (S.cur) { const c = G.cells.get(S.cur); S.dir = S.dir === 'A' ? 'D' : 'A'; if ((S.dir === 'A' ? c.across : c.down) === null) S.dir = S.dir === 'A' ? 'D' : 'A'; render(); } return; }
+  if (k === 'ArrowLeft')  { e.preventDefault(); move(-1, 0); return; }
+  if (k === 'ArrowRight') { e.preventDefault(); move(1, 0); return; }
+  if (k === 'ArrowUp')    { e.preventDefault(); move(0, -1); return; }
+  if (k === 'ArrowDown')  { e.preventDefault(); move(0, 1); return; }
+  if (/^[A-Za-z]$/.test(k) && alphaMode()) {
+    e.preventDefault(); putChar(k); return;
+  }
+  const jamo = jamoOf(e);
+  if (jamo) { e.preventDefault(); ime.value = ''; anchorIME(true); input(jamo); return; }
+  // 한글 IME 가 켜져 있어 자모/음절이 그대로 들어오는 경우
+  if (k.length === 1) {
+    const cc = k.charCodeAt(0);
+    if (cc >= 0x3131 && cc <= 0x3163) { e.preventDefault(); input(unCaps(k, e)); return; }
+    if (cc >= 0xac00 && cc <= 0xd7a3) {
+      e.preventDefault();
+      const d = disassemble(k);
+      input(unCaps(d.cho, e)); input(d.jung); if (d.jong) input(d.jong);
+    }
+  }
+});
+
+/* ───────── 저장 (단어장마다 따로) ───────── */
+// 갈래 조합이 다르면 다른 판이므로 저장도 따로 둔다
+const kindSig = (pack, picked) => allKinds(pack).map(n => picked.includes(n) ? '1' : '0').join('');
+// 난이도를 가른 단어장은 기초 쪽과 심화 쪽이 사실상 다른 판이라 진행도 따로 둔다.
+// 기초 쪽은 열쇠를 그대로 둔다 — 갈라지기 전 «로봇 기초» 진행이 그대로 이어지도록
+const tierSig = pack => (pack.tiered && !EASY) ? ':심화' : '';
+const boardKey = (pack, picked) => 'infinite-crossword:' + pack.id + ':' + kindSig(pack, picked) + tierSig(pack);
+const saveKey = () => boardKey(PACK, [...PICK]);
+const pickKey = id => 'infinite-crossword:pick:' + id;
+const LAST_KEY = 'infinite-crossword:last';
+const EASY_KEY = 'infinite-crossword:easy';
+
+/** 그 단어장에서 지난번에 고른 갈래 (없으면 단어장이 정해 둔 기본, 그것도 없으면 전부) */
+function savedPick(pack) {
+  try {
+    const v = JSON.parse(localStorage.getItem(pickKey(pack.id)) || 'null');
+    if (Array.isArray(v)) {
+      const keep = v.filter(n => allKinds(pack).includes(n));
+      if (keep.length) return keep;
+    }
+  } catch (_) {}
+  const def = (pack.default || []).filter(n => allKinds(pack).includes(n));
+  return def.length ? def : allKinds(pack);
+}
+let saveT;
+
+function writeSave() {
+  clearTimeout(saveT);
+  if (!PACK) return;
+  try {
+    localStorage.setItem(saveKey(), JSON.stringify({
+      depth: G.depth, score: G.score, solvedCount: G.solvedCount, hints: G.hints, filledTo: G.filledTo, par: G.par, bandOff: G.bandOff,
+      top: G.top, numBase: G.numBase,
+      words: [...G.words.values()].map(w => [w.word, w.x, w.y, w.dir]),
+      entries: [...G.cells.values()].filter(c => c.ch).map(c => [c.x, c.y, c.ch]),
+      cur: S.cur, dir: S.dir, scroll: Math.round(scroller.scrollTop),
+    }));
+  } catch (_) {}
+}
+
+function save() {
+  clearTimeout(saveT);
+  saveT = setTimeout(writeSave, 300);
+}
+
+/* 탭을 덮거나 앱을 내리면 미뤄 둔 저장을 그 자리에서 마친다.
+   폰은 여기서 못 쓰면 그대로 프로세스가 죽어 마지막 몇 글자가 날아간다. */
+addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') writeSave(); });
+addEventListener('pagehide', writeSave);
+
+let pendingScroll = 0;
+let settling = 0;        // 이 시각까지는 화면 크기가 바뀌어도 스크롤을 건드리지 않는다
+
+function load() {
+  let data;
+  try { data = JSON.parse(localStorage.getItem(saveKey()) || 'null'); } catch (_) { return false; }
+  if (!data || !data.words || !data.words.length) return false;
+  const at = new Map(BANK.map(([w], i) => [w, i]));
+  G.cells = new Map(); G.words = new Map(); G.nextId = 1; G.maxY = -1; G.strad = new Map(); G.used = new Map();
+  G.par = data.par | 0; G.bandOff = data.bandOff | 0;
+  G.top = data.top | 0; G.numBase = data.numBase | 0;
+  for (const [word, x, y, dir] of data.words) {
+    const wi = at.get(word);
+    if (wi === undefined) continue;      // 단어장이 바뀌어 사라진 단어는 건너뛴다
+    place(wi, x, y, dir);
+  }
+  for (const [x, y, ch] of (data.entries || [])) {
+    const c = G.cells.get(key(x, y));
+    if (c) c.ch = ch;
+  }
+  for (const w of G.words.values()) {
+    const cs = wordCells(w);
+    if (cs.every(c => c.ch === c.ans)) { w.solved = true; cs.forEach(c => { c.solved = true; }); }
+    if (w.y + (w.dir === 'D' ? w.len - 1 : 0) < G.top) w.past = true;   // 지나온 줄인지는 위치가 말해 준다
+  }
+  for (const c of G.cells.values()) if (c.y < G.top) c.past = true;
+  G.filledTo = data.filledTo | 0; G.depth = data.depth | 0;
+  G.score = data.score | 0; G.solvedCount = data.solvedCount | 0; G.hints = data.hints | 0;
+  number();
+  if (data.cur && G.cells.has(data.cur)) { S.cur = data.cur; S.dir = data.dir === 'D' ? 'D' : 'A'; }
+  pendingScroll = data.scroll | 0;
+  return true;
+}
+
+/* ───────── 단어장 고르기 ───────── */
+function clearBoard() {
+  G.cells = new Map(); G.words = new Map(); G.nextId = 1; G.maxY = -1; G.filledTo = 0;
+  G.strad = new Map(); G.used = new Map(); G.par = 0; G.bandOff = 0;
+  G.top = 0; G.numBase = 0;
+  G.depth = 0; G.score = 0; G.solvedCount = 0; G.hints = 0; G.recent = [];
+  S.cur = null; S.dir = 'A'; S.comp = { cho: '', jung: '', jong: '' };
+  els.forEach(el => el.remove());
+  els.clear();
+  decos.forEach(el => el.remove());
+  decos.clear();
+  scroller.scrollTop = 0;
+}
+
+function startPack(pack, fresh, picked) {
+  loadBank(pack, picked);
+  clearBoard();
+  if (fresh) { try { localStorage.removeItem(saveKey()); } catch (_) {} }
+  try {
+    localStorage.setItem(LAST_KEY, pack.id);
+    localStorage.setItem(pickKey(pack.id), JSON.stringify([...PICK]));
+  } catch (_) {}
+  document.getElementById('packname').textContent = packLabel(pack, [...PICK]);
+  document.title = pack.name + ' 크로스워드';
+  pendingScroll = 0;
+  if (!load()) grow(AHEAD);
+  if (pendingScroll) {                       // 보던 자리까지는 판이 깔려 있어야 그리로 갈 수 있다
+    const need = Math.ceil((pendingScroll + scroller.clientHeight) / C) + AHEAD;
+    if (G.maxY < need) grow(need);
+  }
+  ensureAhead();
+  render();
+  if (pendingScroll) { scroller.scrollTop = pendingScroll; settling = Date.now() + 900; render(); }
+}
+
+const packSize = (pack, picked) =>
+  pack.groups.reduce((n, g) => n + (picked.includes(g.name) ? g.words.length : 0), 0);
+
+function progressOf(pack, picked) {
+  try {
+    const d = JSON.parse(localStorage.getItem(boardKey(pack, picked)) || 'null');
+    return d ? (d.depth | 0) : 0;
+  } catch (_) { return 0; }
+}
+
+/** 그 단어장에 기초로 표시된 말이 몇 개인지 */
+const basicCount = p => p.groups.reduce((a, g) =>
+  a + (g.name === '기초' ? g.words.length : g.words.filter(w => w[3] === '기초').length), 0);
+
+/** 단어장 딱지에 붙일 난이도 꼬리표 */
+function basicOf(p) {
+  const n = basicCount(p);
+  if (p.tiered) {                       // 두 쪽으로 갈린 단어장은 지금 어느 쪽인지 늘 적어 준다
+    const all = p.groups.reduce((a, g) => a + g.words.length, 0);
+    return EASY ? ` · 기초 ${n}개` : ` · 심화 ${all - n}개`;
+  }
+  return EASY && n ? ` · 기초 ${n}개` : '';
+}
+
+/** 위쪽 단어장 이름표 — 갈래와 난이도까지 붙인다 */
+function packLabel(pack, picked) {
+  // 갈래 하나만 골랐으면 숫자 대신 그 이름을 보여 준다 (동물 퀴즈 · 기초)
+  const part = (pack.groups.length > 1 && picked.length < pack.groups.length)
+    ? (picked.length === 1 ? ` · ${picked[0]}` : ` · ${picked.length}/${pack.groups.length}갈래`) : '';
+  const tier = pack.tiered ? (EASY ? ' · 기초' : ' · 심화') : (EASY ? ' · 쉽게' : '');
+  return pack.emoji + ' ' + pack.name + part + tier;
+}
+
+function buildChooser() {
+  document.getElementById('packs').innerHTML = window.PACKS.map(p => {
+    const picked = savedPick(p);
+    const n = packSize(p, picked);
+    const done = progressOf(p, picked);
+    const part = (p.groups.length > 1 && picked.length < p.groups.length)
+      ? (picked.length === 1 ? ` · ${picked[0]}` : ` · ${picked.length}/${p.groups.length}갈래`) : '';
+    return `<button class="pack" data-id="${p.id}">
+      <span class="pe">${p.emoji}</span>
+      <span class="pt"><b>${p.name}</b><i>${p.desc}</i>
+        <u>단어 ${n}개${part}${basicOf(p)}${done ? ` · 지나온 줄 ${done}` : ''}</u></span>
+    </button>`;
+  }).join('');
+}
+
+let kindPack = null, kindPick = [];
+
+function buildKinds() {
+  document.getElementById('p2title').textContent = kindPack.emoji + ' ' + kindPack.name;
+  document.getElementById('kinds').innerHTML = kindPack.groups.map(g =>
+    `<button class="kind${kindPick.includes(g.name) ? ' on' : ''}" data-k="${g.name}">
+       <b>${g.name}</b><u>${g.words.length}</u></button>`).join('');
+  const n = packSize(kindPack, kindPick);
+  const all = kindPick.length === kindPack.groups.length;
+  const note = document.getElementById('poolnote');
+  note.textContent = all
+    ? `단어 ${n}개 — 이 단어장 전부`
+    : `고른 갈래 ${n}개를 우선해서 냅니다 — 판의 ${kindPick.length === 1 ? '절반 남짓' : kindPick.length === 2 ? '일곱 할쯤' : '여덟 할쯤'}.`
+      + ` 한 갈래만으로는 서로 물릴 음절이 모자라 판이 성겨지므로, 남는 자리는 같은 단어장에서 채웁니다.`;
+  note.classList.toggle('warn', kindPick.length === 1);
+}
+
+function openKinds(pack) {
+  kindPack = pack;
+  paintTheme(pack);            // 고른 단어장의 배색을 미리 입어 본다
+  kindPick = savedPick(pack);
+  buildKinds();
+  document.getElementById('pane1').hidden = true;
+  document.getElementById('pane2').hidden = false;
+}
+
+document.getElementById('packs').addEventListener('click', e => {
+  const b = e.target.closest('.pack');
+  if (!b) return;
+  const pack = window.PACKS.find(p => p.id === b.dataset.id);
+  if (pack.groups.length < 2) {          // 갈래가 하나뿐이면 고를 게 없다
+    document.getElementById('chooser').close();
+    startPack(pack, false, null);
+    focusIME();
+    return;
+  }
+  openKinds(pack);
+});
+
+document.getElementById('kinds').addEventListener('click', e => {
+  const b = e.target.closest('.kind');
+  if (!b) return;
+  const k = b.dataset.k;
+  if (kindPick.includes(k)) {
+    if (kindPick.length === 1) return;          // 하나는 남겨 둔다
+    kindPick = kindPick.filter(x => x !== k);
+  } else {
+    kindPick = allKinds(kindPack).filter(n => n === k || kindPick.includes(n));
+  }
+  buildKinds();
+});
+
+document.getElementById('backpane').addEventListener('click', () => {
+  paintTheme(PACK);            // 안 고르고 돌아왔으니 원래 배색으로
+  buildChooser();
+  document.getElementById('pane2').hidden = true;
+  document.getElementById('pane1').hidden = false;
+});
+
+document.getElementById('startpack').addEventListener('click', () => {
+  document.getElementById('chooser').close();
+  startPack(kindPack, false, kindPick);
+  focusIME();
+});
+
+function paintEasy() {
+  const b = document.getElementById('easy');
+  b.setAttribute('aria-pressed', EASY ? 'true' : 'false');
+}
+
+document.getElementById('easy').addEventListener('click', () => {
+  const 갈린판 = !!(PACK && PACK.tiered);
+  if (갈린판) writeSave();       // 지금 판은 지금 쪽(기초/심화)에 남겨 두고 넘어간다
+  EASY = !EASY;
+  try { localStorage.setItem(EASY_KEY, EASY ? '1' : '0'); } catch (_) {}
+  paintEasy();
+  buildChooser();
+  if (갈린판) { startPack(PACK, false, [...PICK]); return; }   // 반대쪽 판을 꺼내 온다
+  // 켠 보람이 바로 있어야 한다 — 지금 판에 깔린 낱말에도 첫 글자를 열어 준다
+  if (EASY && PACK) {
+    giveFirst([...G.words.values()].filter(w => !w.past && !w.solved));
+    render(); writeSave();      // 곧바로 써 둔다 — 여기서 단어장을 바로 고르면 미뤄 둔 저장은 늦는다
+  }
+  if (PACK) document.getElementById('packname').textContent = packLabel(PACK, [...PICK]);
+});
+
+// 갈래 고르다 그냥 닫으면(Esc 등) 미리 입어 본 배색을 벗는다
+document.getElementById('chooser').addEventListener('close', () => paintTheme(PACK));
+
+function openChooser() {
+  buildChooser();
+  paintEasy();
+  document.getElementById('pane2').hidden = true;
+  document.getElementById('pane1').hidden = false;
+  document.getElementById('chooser').showModal();
+}
+
+/* ───────── 조작 붙이기 ───────── */
+document.getElementById('packname').addEventListener('click', openChooser);
+document.getElementById('new').addEventListener('click', () => {
+  if (G.solvedCount && !confirm('이 단어장의 진행을 버리고 새로 시작할까요?')) return;
+  startPack(PACK, true, [...PICK]);
+});
+document.querySelector('.cluebar').addEventListener('pointerdown', e => {
+  if (e.target.closest('button')) e.preventDefault();   // 눌러도 자판이 내려가지 않게
+});
+document.getElementById('hint').addEventListener('click', () => { hint(); focusIME(); });
+document.getElementById('open').addEventListener('click', openWord);
+document.getElementById('prev').addEventListener('click', () => nextWord(-1));
+document.getElementById('next').addEventListener('click', () => nextWord(1));
+document.getElementById('help').addEventListener('click', () => document.getElementById('howto').showModal());
+document.getElementById('howto').addEventListener('click', e => { if (e.target.id === 'howto') e.target.close(); });
+document.getElementById('kbtoggle').addEventListener('click', () => {
+  document.body.classList.toggle('nokb');
+  if (useIME()) focusIME(); else ime.blur();     // 두 자판이 같이 뜨지 않게
+  setTimeout(() => { sizeCells(); render(); }, 50);
+});
+
+let scrollT;
+scroller.addEventListener('scroll', () => {
+  clearTimeout(scrollT);
+  scrollT = setTimeout(() => { ensureAhead(); render(); save(); }, 80);   // 보던 자리도 같이 남긴다
+}, { passive: true });
+
+let resizeT;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => { sizeCells(); render(); }, 120);
+});
+
+/*
+ * 폰에서 자판이 올라오면 화면 아래가 덮인다.
+ * 어떤 브라우저는 화면 높이를 줄여 주지만(안드로이드) 어떤 브라우저는
+ * 그냥 위에 덮어씌운다(iOS). 그래서 실제로 보이는 높이에 몸통을 맞춰
+ * 힌트 줄이 자판에 가리지 않게 하고, 고른 칸을 다시 보이는 곳으로 끌어온다.
+ */
+const vv = window.visualViewport;
+if (vv) {
+  let vvT;
+  const fit = () => {
+    clearTimeout(vvT);
+    vvT = setTimeout(() => {
+      document.body.style.height = Math.round(vv.height) + 'px';
+      sizeCells();
+      render();
+      // 자판이 올라와 칸을 가릴 때만 끌어온다. 그리고 막 들어와 보던 자리로
+      // 옮기는 동안에는 건드리지 않는다 — 안 그러면 복원한 자리가 딸려 간다
+      const covered = vv.height < window.innerHeight - 60;
+      if (covered && Date.now() > settling) {
+        const c = S.cur && G.cells.get(S.cur);
+        if (c) scrollTo(c);
+      }
+    }, 60);
+  };
+  vv.addEventListener('resize', fit);
+  vv.addEventListener('scroll', fit);
+}
+
+/* ───────── 시작 ───────── */
+/*
+ * 단어장은 packs/*.json 에 따로 두고 여기서 읽어 온다.
+ * 파일을 하나 더 얹고 index.json 에 이름만 적으면 단어장이 늘어난다.
+ * 다만 fetch 를 쓰므로 file:// 로 열면 브라우저가 막는다 — 서버가 있어야 한다.
+ */
+async function loadPacks() {
+  // 한 파일로 묶어 배포할 때는 단어장을 미리 박아 넣는다 (fetch 할 데가 없다)
+  if (Array.isArray(window.PACKS_INLINE) && window.PACKS_INLINE.length) return window.PACKS_INLINE;
+  const base = new URL('packs/', location.href);
+  const names = await (await fetch(new URL('index.json', base))).json();
+  const packs = await Promise.all(
+    names.map(async n => {
+      const r = await fetch(new URL(n, base));
+      if (!r.ok) throw new Error(`${n}: ${r.status}`);
+      return r.json();
+    }));
+  return packs.filter(p => p && p.groups && p.groups.length);
+}
+
+function showLoadError(err) {
+  document.getElementById('clue').innerHTML =
+    '<span class="ph">단어장을 못 읽었습니다 — ' + String(err.message || err) + '</span>';
+  document.getElementById('board').innerHTML =
+    '<div class="oops"><b>단어장을 불러오지 못했습니다.</b>' +
+    '<p>파일을 직접 열면(file://) 브라우저가 packs 폴더 읽기를 막습니다.' +
+    ' 간단한 서버로 여세요.</p><code>npx http-server .</code>' +
+    '<p>깃허브 페이지스로 올린 주소에서는 그냥 됩니다.</p></div>';
+  console.error(err);
+}
+
+async function boot() {
+  try { EASY = localStorage.getItem(EASY_KEY) === '1'; } catch (_) {}
+  document.body.classList.add('nokb');    // 기본은 기기 자판, ⌨ 로 내장 자판 전환
+  buildKeyboard('ko');
+  sizeCells();
+  // 단어장이 오기 전까지는 빈 판이라, 무슨 일이 일어나는지 알려 준다
+  document.getElementById('clue').innerHTML = '<span class="ph">단어장 불러오는 중…</span>';
+  window.PACKS = await loadPacks();
+  if (!window.PACKS.length) throw new Error('단어장이 비어 있습니다');
+
+  let first = null;
+  try { first = window.PACKS.find(p => p.id === localStorage.getItem(LAST_KEY)); } catch (_) {}
+  const firstPack = first || window.PACKS[0];
+  startPack(firstPack, false, savedPick(firstPack));
+  if (!first) openChooser();     // 처음 왔으면 단어장부터 고르게 한다
+}
+
+boot().catch(showLoadError);
+
+if (location.search.includes('debug'))
+  window.__cw = { G, S, get W() { return W; }, key, grow, collapse, clearableY, render, wordCells,
+                  input, hint, openWord, after, markBad, nextWord, crossCount, startPack, curWord, focusIME, anchorIME,
+                  tune: (w, c, r, o) => { WEAR = w; WEARCAP = c; RECSHIFT = r; if (o !== undefined) OFFPICK = o; },
+                  useIME,
+                  get ONTOPIC() { return ONTOPIC; }, get PACK() { return PACK; }, get BANK() { return BANK; } };
+})();
+
+</script>
