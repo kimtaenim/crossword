@@ -122,6 +122,7 @@ let ONTOPIC = new Set();     // 고른 갈래에 든 단어들 (나머지는 벌
 let KIND = new Map();        // 단어 → 갈래 이름
 let BASIC = new Set();       // "기초" 로 표시해 둔 단어 (쉽게 모드에서 먼저 깔린다)
 let FRESH = new Set();       // "요즘 말" — 요즘 뉴스에 실제로 자주 나온 말. 앞자리를 준다
+let DECO = [];               // 빈자리에 붙일 꾸밈 이모지 (어린이 단어장만 준다)
 let EASY = false;            // 쉽게 — 기초 낱말 위주로 깔고, 낱말마다 첫 글자를 열어 준다
 let BANK = [];               // [[단어, 힌트], ...] — 고른 갈래의 단어만
 let INDEX = new Map();       // 음절 → [{wi, pos}]
@@ -139,6 +140,7 @@ const allKinds = pack => pack.groups.map(g => g.name);
  */
 function loadBank(pack, picked) {
   PACK = pack;
+  DECO = Array.isArray(pack.deco) ? pack.deco : [];
   PICK = new Set(picked && picked.length ? picked : allKinds(pack));
   ONTOPIC = new Set();
   KIND = new Map();
@@ -589,6 +591,7 @@ const board = document.getElementById('board');
 const layer = document.getElementById('layer');
 const scroller = document.getElementById('scroller');
 const els = new Map();       // 칸 객체 → div (화면 언저리에 있는 것만 들고 있는다)
+const decos = new Map();     // "x,y" → 빈자리에 붙인 이모지
 const nowline = document.createElement('div');   // 여기서부터가 아직 푸는 줄
 nowline.id = 'nowline';
 nowline.hidden = true;
@@ -607,6 +610,51 @@ function vanish(cell) {
   if (!el) return;
   els.delete(cell);
   el.remove();      // 화면 밖으로 나간 칸일 뿐이다 — 다시 올라오면 그대로 다시 그린다
+}
+
+/*
+ * 빈자리 꾸미기 — 어린이 단어장은 판이 휑하면 재미가 없다.
+ * 칸이 없는 자리 열몇 곳에 하나꼴로 이모지를 놓는다. 자리와 그림은 좌표로만
+ * 정하므로(어림수 아님) 스크롤해서 다시 와도 그 자리에 그대로 있다.
+ * 누를 수 없고, 나중에 그 자리에 칸이 생기면 저절로 비켜난다.
+ */
+const 어림 = (x, y) => {
+  let h = (x * 374761393 + y * 668265263) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return (h ^ (h >>> 16)) >>> 0;
+};
+
+function renderDeco(from, to) {
+  if (!DECO.length) {
+    if (decos.size) { for (const el of decos.values()) el.remove(); decos.clear(); }
+    return;
+  }
+  const live = new Set();
+  for (let y = Math.max(0, from); y <= to; y++) {
+    for (let x = 0; x < W; x++) {
+      const k = key(x, y);
+      if (G.cells.has(k)) continue;
+      const h = 어림(x, y);
+      if (h % 9) continue;                     // 아홉 자리에 하나쯤
+      live.add(k);
+      let el = decos.get(k);
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'deco';
+        el.innerHTML = '<b></b>';
+        el.firstChild.textContent = DECO[h % DECO.length];
+        // 크기와 기울기를 조금씩 달리해 손으로 붙인 스티커처럼 보이게 한다
+        el.style.setProperty('--dz', (0.44 + (h >> 3) % 5 * 0.045).toFixed(3));
+        el.style.setProperty('--dr', (((h >> 7) % 25) - 12) + 'deg');
+        layer.appendChild(el);
+        decos.set(k, el);
+      }
+      const tf = `translate(${x * C}px, ${y * C}px)`;
+      if (el._tf !== tf) { el.style.transform = tf; el._tf = tf; }
+      el.classList.toggle('past', y < G.top);
+    }
+  }
+  for (const [k, el] of [...decos]) if (!live.has(k)) { el.remove(); decos.delete(k); }
 }
 
 /** 지나온 줄을 몇 단계 옅은 파랑으로 보일지 (0 = 방금 지나온 밴드) */
@@ -655,6 +703,7 @@ function render() {
     if (el._age !== age) { el._age = age; if (age) el.dataset.age = age; else delete el.dataset.age; }
   }
   for (const c of [...els.keys()]) if (!live.has(c)) vanish(c);
+  renderDeco(from, to);
   nowline.style.transform = `translateY(${G.top * C}px)`;
   nowline.hidden = !G.top;
   document.getElementById('depth').textContent = G.depth;
@@ -1234,6 +1283,8 @@ function clearBoard() {
   S.cur = null; S.dir = 'A'; S.comp = { cho: '', jung: '', jong: '' };
   els.forEach(el => el.remove());
   els.clear();
+  decos.forEach(el => el.remove());
+  decos.clear();
   scroller.scrollTop = 0;
 }
 

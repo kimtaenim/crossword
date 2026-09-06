@@ -110,6 +110,20 @@
   .cell.past i { color: rgba(255,255,255,.62); text-shadow: none; }
   .cell.past.cur { box-shadow: var(--sheen), 0 0 0 2px rgba(29,89,179,.4); border-color: var(--cobalt); }
 
+  /* 빈자리 스티커 — 어린이 단어장에서만 나온다. 누를 수 없고 칸을 가리지 않는다 */
+  .deco {
+    position: absolute; top: 0; left: 0;
+    width: calc(var(--c) - 3px); height: calc(var(--c) - 3px);
+    display: grid; place-items: center; pointer-events: none;
+    font-size: calc(var(--c) * var(--dz, .52)); line-height: 1;
+    opacity: .8; transition: opacity .3s;
+  }
+  .deco b {
+    display: block; transform: rotate(var(--dr, 0deg));
+    filter: drop-shadow(0 1px 1px rgba(14,43,87,.18));
+  }
+  .deco.past { opacity: .3; }
+
   /* 지나온 줄과 푸는 줄의 경계 */
   #nowline {
     position: absolute; top: 0; left: 0; right: 0; height: 0;
