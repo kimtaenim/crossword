@@ -113,28 +113,29 @@
   /* 어린이 단어장은 민트로 갈아입는다 — 델프트가 코발트라면 이쪽은 청자빛이다.
      토큰만 바꿔 끼우므로 유약도 그늘도 그대로 따라온다 */
   body[data-theme="mint"] {
-    --bg: #edfcf7; --panel: #ffffff; --line: #c3edde; --ink: #14685a; --dim: #74ada0;
-    --accent: #1fbd9c; --cobalt: #2ccfab; --deep: #129077; --ok: #1fbd9c;
-    --tile-in: #e3fbf3; --tile-cur: #cbf5e8;
-    --glaze: linear-gradient(180deg, #ffffff 0%, #f5fdfa 58%, #eafaf4 100%);
-    --glaze-blue: linear-gradient(180deg, #5fdcbe 0%, #35cbaa 46%, #1cb094 100%);
-    --sheen: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 2px rgba(31,189,156,.09);
-    --sheen-blue: inset 0 1px 0 rgba(255,255,255,.6), inset 0 -2px 5px rgba(10,110,90,.3);
+    --bg: #f3fdfa; --panel: #ffffff; --line: #cdf1e6; --ink: #1c7264; --dim: #85bcb0;
+    --accent: #38caab; --cobalt: #46d6b8; --deep: #1ba489; --ok: #38caab;
+    --tile-in: #eafdf7; --tile-cur: #d7f8ee;
+    --glaze: linear-gradient(180deg, #ffffff 0%, #f8fefc 58%, #effcf8 100%);
+    --glaze-blue: linear-gradient(180deg, #79e3ca 0%, #52d5b8 46%, #33bfa4 100%);
+    --sheen: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 2px rgba(56,202,171,.08);
+    --sheen-blue: inset 0 1px 0 rgba(255,255,255,.65), inset 0 -2px 5px rgba(12,120,98,.26);
   }
-  body[data-theme="mint"] header { background: linear-gradient(180deg, #ffffff 0%, #f3fdf9 100%); }
-  body[data-theme="mint"] footer { background: linear-gradient(180deg, #ffffff 0%, #f7fdfb 100%); }
-  body[data-theme="mint"] #kb { background: linear-gradient(180deg, #e9faf4, #dff6ee); }
-  body[data-theme="mint"] .key.fn { background: linear-gradient(180deg, #f2fdf9, #e6f9f2); }
-  body[data-theme="mint"] #nowline { border-top-color: #9ee3cd; }
-  body[data-theme="mint"] #nowline::after { color: #79bfab; }
-  body[data-theme="mint"] .cell i { color: #93cdbd; }
-  body[data-theme="mint"] .cell.past i { color: rgba(255,255,255,.72); }
-  body[data-theme="mint"] .cell.solved, body[data-theme="mint"] .cell.past { text-shadow: 0 1px 2px rgba(9,105,86,.4); }
-  body[data-theme="mint"] .cell.past[data-age="0"] { background: linear-gradient(180deg,#57d9ba 0%,#33c5a4 100%); border-color: #34bfa0; }
-  body[data-theme="mint"] .cell.past[data-age="1"] { background: linear-gradient(180deg,#6ce0c5 0%,#48ceaf 100%); border-color: #4ac8ab; }
-  body[data-theme="mint"] .cell.past[data-age="2"] { background: linear-gradient(180deg,#80e6ce 0%,#5cd6ba 100%); border-color: #5fd0b6; }
-  body[data-theme="mint"] .cell.past[data-age="3"] { background: linear-gradient(180deg,#94ecd8 0%,#70ddc4 100%); border-color: #73d8c1; }
-  body[data-theme="mint"] .cell.past[data-age="4"] { background: linear-gradient(180deg,#a8f1e1 0%,#85e5cf 100%); border-color: #88e0cb; }
+  body[data-theme="mint"] header { background: linear-gradient(180deg, #ffffff 0%, #f7fefc 100%); }
+  body[data-theme="mint"] footer { background: linear-gradient(180deg, #ffffff 0%, #fafffd 100%); }
+  body[data-theme="mint"] #kb { background: linear-gradient(180deg, #effdf8, #e6faf3); }
+  body[data-theme="mint"] .key.fn { background: linear-gradient(180deg, #f6fefb, #ecfbf6); }
+  body[data-theme="mint"] #nowline { border-top-color: #aee9d8; }
+  body[data-theme="mint"] #nowline::after { color: #8aceba; }
+  body[data-theme="mint"] .cell i { color: #a2d6c8; }
+  body[data-theme="mint"] .cell.past i { color: rgba(255,255,255,.78); }
+  /* 밝아진 만큼 흰 글자가 묽어진다. 그늘을 조금 더 깔아 읽히게 한다 */
+  body[data-theme="mint"] .cell.solved, body[data-theme="mint"] .cell.past { text-shadow: 0 1px 2px rgba(9,100,82,.45); }
+  body[data-theme="mint"] .cell.past[data-age="0"] { background: linear-gradient(180deg,#71e0c7 0%,#4bd0b3 100%); border-color: #4cc9ad; }
+  body[data-theme="mint"] .cell.past[data-age="1"] { background: linear-gradient(180deg,#83e6d0 0%,#5cd7bd 100%); border-color: #5fd2b8; }
+  body[data-theme="mint"] .cell.past[data-age="2"] { background: linear-gradient(180deg,#95ecda 0%,#6fdec7 100%); border-color: #72d9c3; }
+  body[data-theme="mint"] .cell.past[data-age="3"] { background: linear-gradient(180deg,#a6f0e2 0%,#81e5d1 100%); border-color: #84e0cd; }
+  body[data-theme="mint"] .cell.past[data-age="4"] { background: linear-gradient(180deg,#b6f4e9 0%,#93ebda 100%); border-color: #96e6d6; }
   body[data-theme="mint"] dialog::backdrop { background: rgba(16,120,100,.32); }
 
   /* 빈자리 스티커 — 어린이 단어장에서만 나온다. 누를 수 없고 칸을 가리지 않는다 */
