@@ -130,6 +130,12 @@ let ALL = new Map();         // 음절 → 그 음절을 가진 단어 수 (가�
 
 const allKinds = pack => pack.groups.map(g => g.name);
 
+// 단어장이 배색을 고를 수 있다. 없으면 기본(델프트 블루)
+function paintTheme(pack) {
+  if (pack && pack.theme) document.body.dataset.theme = pack.theme;
+  else delete document.body.dataset.theme;
+}
+
 /*
  * 갈래를 골라도 그 단어만 쓰지는 않는다.
  * 한 갈래는 서른몇 개뿐이라 그것만으로는 서로 물릴 음절이 모자라서
@@ -140,9 +146,7 @@ const allKinds = pack => pack.groups.map(g => g.name);
 function loadBank(pack, picked) {
   PACK = pack;
   DECO = Array.isArray(pack.deco) ? pack.deco : [];
-  // 단어장이 배색을 고를 수 있다. 없으면 기본(델프트 블루)
-  if (pack.theme) document.body.dataset.theme = pack.theme;
-  else delete document.body.dataset.theme;
+  paintTheme(pack);
   PICK = new Set(picked && picked.length ? picked : allKinds(pack));
   ONTOPIC = new Set();
   KIND = new Map();
@@ -1367,6 +1371,7 @@ function buildKinds() {
 
 function openKinds(pack) {
   kindPack = pack;
+  paintTheme(pack);            // 고른 단어장의 배색을 미리 입어 본다
   kindPick = savedPick(pack);
   buildKinds();
   document.getElementById('pane1').hidden = true;
@@ -1400,6 +1405,7 @@ document.getElementById('kinds').addEventListener('click', e => {
 });
 
 document.getElementById('backpane').addEventListener('click', () => {
+  paintTheme(PACK);            // 안 고르고 돌아왔으니 원래 배색으로
   buildChooser();
   document.getElementById('pane2').hidden = true;
   document.getElementById('pane1').hidden = false;
@@ -1429,6 +1435,9 @@ document.getElementById('easy').addEventListener('click', () => {
   if (PACK) document.getElementById('packname').textContent =
     PACK.emoji + ' ' + PACK.name + (EASY ? ' · 쉽게' : '');
 });
+
+// 갈래 고르다 그냥 닫으면(Esc 등) 미리 입어 본 배색을 벗는다
+document.getElementById('chooser').addEventListener('close', () => paintTheme(PACK));
 
 function openChooser() {
   buildChooser();

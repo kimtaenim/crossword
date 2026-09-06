@@ -15,6 +15,8 @@
     --bg: #eaf0f8; --panel: #fbfcfe; --line: #b9d0ea; --ink: #0e2b57; --dim: #5f7796;
     --accent: #164691; --cobalt: #1d59b3; --deep: #0a2554; --ok: #164691;
     --tile: #ffffff; --tile-in: #dfebfa; --tile-cur: #c6dcf8;
+    --tile-in-top: #eef5fd; --tile-cur-top: #dcebfd;
+    --ring: rgba(29,89,179,.26); --ring-strong: rgba(29,89,179,.4); --cast: rgba(14,43,87,.14);
     --glaze: linear-gradient(180deg, #ffffff 0%, #f2f7fd 58%, #e8f0fa 100%);
     --glaze-blue: linear-gradient(180deg, #2f6ccb 0%, #1d59b3 46%, #123f85 100%);
     --sheen: inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 2px rgba(29,89,179,.09);
@@ -80,10 +82,10 @@
     position: absolute; top: 2px; left: 3px; font-style: normal;
     font-size: calc(var(--c) * .24); color: #93a9c6; line-height: 1;
   }
-  .cell.inword { background: linear-gradient(180deg, #eef5fd 0%, var(--tile-in) 100%); }
+  .cell.inword { background: linear-gradient(180deg, var(--tile-in-top) 0%, var(--tile-in) 100%); }
   .cell.cur {
-    background: linear-gradient(180deg, #dcebfd 0%, var(--tile-cur) 100%); border-color: var(--cobalt);
-    box-shadow: var(--sheen), 0 0 0 2px rgba(29,89,179,.26), 0 2px 5px rgba(14,43,87,.14);
+    background: linear-gradient(180deg, var(--tile-cur-top) 0%, var(--tile-cur) 100%); border-color: var(--cobalt);
+    box-shadow: var(--sheen), 0 0 0 2px var(--ring), 0 2px 5px var(--cast);
   }
   .cell.solved {
     background: var(--glaze-blue); border-color: var(--deep); color: #f4f8ff;
@@ -111,7 +113,7 @@
     transition: transform .38s cubic-bezier(.2,.85,.25,1), background .55s, color .55s, border-color .55s;
   }
   .cell.past i { color: rgba(255,255,255,.75); text-shadow: none; }
-  .cell.past.cur { box-shadow: var(--sheen), 0 0 0 2px rgba(29,89,179,.4); border-color: var(--cobalt); }
+  .cell.past.cur { box-shadow: var(--sheen), 0 0 0 2px var(--ring-strong); border-color: var(--cobalt); }
 
   /* 어린이 단어장은 민트로 갈아입는다 — 델프트가 코발트라면 이쪽은 청자빛이다.
      토큰만 바꿔 끼우므로 유약도 그늘도 그대로 따라온다 */
@@ -141,6 +143,45 @@
   }
   body[data-theme="mint"] .cell.past i { color: rgba(255,255,255,.75); }
   body[data-theme="mint"] dialog::backdrop { background: rgba(16,120,100,.32); }
+
+  /* 어린이 어휘는 코랄핑크 — 같은 유약에 물감만 산호빛으로 바꿔 끼운다.
+     밑그림이 파랑을 전제로 쓴 자리(칸 배경·바탕 번짐)까지 같이 덮어야
+     분홍 위에 파란 기가 비치지 않는다 */
+  body[data-theme="coral"] {
+    --bg: #fff5f3; --panel: #ffffff; --line: #ffd3cc; --ink: #9b2f45; --dim: #cf8f95;
+    --accent: #f4536f; --cobalt: #ff7a8b; --deep: #dd3557; --ok: #f4536f;
+    --tile-in: #ffeceb; --tile-cur: #ffd8d6;
+    --tile-in-top: #fff7f6; --tile-cur-top: #ffe9e7;
+    --ring: rgba(244,83,111,.3); --ring-strong: rgba(244,83,111,.42); --cast: rgba(155,47,69,.14);
+    --glaze: linear-gradient(180deg, #ffffff 0%, #fffaf9 58%, #fff2f0 100%);
+    --glaze-blue: linear-gradient(180deg, #ff8296 0%, #f4536f 46%, #dd3557 100%);
+    --sheen: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 2px rgba(244,83,111,.09);
+    --sheen-blue: inset 0 1px 0 rgba(255,255,255,.6), inset 0 -2px 5px rgba(150,20,48,.3);
+  }
+  body[data-theme="coral"] {
+    background:
+      radial-gradient(120% 70% at 50% -10%, #ffffff 0%, rgba(255,255,255,0) 62%),
+      radial-gradient(90% 60% at 8% 108%, #ffe0dc 0%, rgba(255,224,220,0) 70%),
+      var(--bg);
+  }
+  body[data-theme="coral"] header { background: linear-gradient(180deg, #ffffff 0%, #fff7f6 100%); }
+  body[data-theme="coral"] footer { background: linear-gradient(180deg, #ffffff 0%, #fffbfa 100%); }
+  body[data-theme="coral"] #kb { background: linear-gradient(180deg, #fff2f0, #ffeae7); }
+  body[data-theme="coral"] .key.fn { background: linear-gradient(180deg, #fffbfa, #fff1ef); }
+  body[data-theme="coral"] #packname:hover { border-color: #ffbdb5; }
+  body[data-theme="coral"] #nowline { border-top-color: #ffb9b3; }
+  body[data-theme="coral"] #nowline::after { color: #e29aa0; }
+  body[data-theme="coral"] .cell i { color: #e0a6a9; }
+  body[data-theme="coral"] .cell.solved { color: #fff6f7; text-shadow: 0 1px 2px rgba(120,15,42,.5); }
+  body[data-theme="coral"] .cell.solved i { color: #ffc3cd; }
+  body[data-theme="coral"] .cell.past {
+    background: linear-gradient(180deg,#fff0ef 0%,#ffdcdc 55%,#ffd2d3 100%);
+    border-color: #ffc3c3;
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,.95), inset 0 -2px 4px rgba(200,60,85,.13);
+    color: #ffffff; text-shadow: none;
+  }
+  body[data-theme="coral"] .cell.past i { color: rgba(255,255,255,.8); }
+  body[data-theme="coral"] dialog::backdrop { background: rgba(150,40,60,.3); }
 
   /* 빈자리 스티커 — 어린이 단어장에서만 나온다. 누를 수 없고 칸을 가리지 않는다 */
   .deco {
