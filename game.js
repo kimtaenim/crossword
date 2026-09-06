@@ -123,6 +123,7 @@ let BASIC = new Set();       // "기초" 로 표시해 둔 단어 (쉽게 모드
 let FRESH = new Set();       // "요즘 말" — 요즘 뉴스에 실제로 자주 나온 말. 앞자리를 준다
 let DECO = [];               // 빈자리에 붙일 꾸밈 이모지 (어린이 단어장만 준다)
 let EASY = false;            // 쉽게 — 기초 낱말 위주로 깔고, 낱말마다 첫 글자를 열어 준다
+let TIERED = false;          // 이 단어장은 «쉽게» 가 난이도를 가른다 — 켜면 기초, 끄면 심화
 let BANK = [];               // [[단어, 힌트], ...] — 고른 갈래의 단어만
 let INDEX = new Map();       // 음절 → [{wi, pos}]
 let EVEN = new Map();        // 음절 → 그 음절을 짝수 번째에 가진 단어 수 (세로로 엮을 여지)
@@ -147,6 +148,7 @@ function loadBank(pack, picked) {
   PACK = pack;
   DECO = Array.isArray(pack.deco) ? pack.deco : [];
   paintTheme(pack);
+  TIERED = pack.tiered === true;
   PICK = new Set(picked && picked.length ? picked : allKinds(pack));
   ONTOPIC = new Set();
   KIND = new Map();
@@ -287,11 +289,15 @@ let OFFPICK = 26;    // 고르지 않은 갈래의 단어에 매기는 벌점.
 let HARD = 34;      // 쉽게 모드에서 기초가 아닌 말에 매기는 벌점.
                     // 겹침 하나 값(100)보다 한참 낮게 둬야 판이 안 성긴다 —
                     // 그래도 200줄 기준 기초 비율이 44% 에서 74% 로 올라간다
+let DEEP = 20;      // 난이도를 가른 단어장에서 «쉽게» 를 껐을 때 기초 말에 매기는 벌점.
+                    // HARD 보다 가볍게 둔다 — 심화가 일흔 개뿐이라 세게 밀면 같은 말만 돌고,
+                    // 20 이면 심화 말이 서너 번 쓰인 뒤 기초와 값이 맞아 자연히 섞인다
 let NEW = 11;       // 요즘 말에 주는 가산점. 벌점을 깎아 앞자리로 당긴다.
                     // 요즘 말이 일흔다섯 개로 늘어 22 로는 판의 삼분의 이를 차지했다
 const wornOut = word =>
   Math.min(WEARCAP, WEAR * (G.used.get(word) || 0)) + (ONTOPIC.has(word) ? 0 : OFFPICK)
   + (EASY && BASIC.size && !BASIC.has(word) ? HARD : 0)
+  + (!EASY && TIERED && BASIC.has(word) ? DEEP : 0)
   - (FRESH.has(word) ? NEW : 0);
 
 /**
@@ -1101,6 +1107,21 @@ const QWERTY = { q:'ㅂ',w:'ㅈ',e:'ㄷ',r:'ㄱ',t:'ㅅ',y:'ㅛ',u:'ㅕ',i:'ㅑ'
                  Q:'ㅃ',W:'ㅉ',E:'ㄸ',R:'ㄲ',T:'ㅆ',O:'ㅒ',P:'ㅖ' };
 let shift = false;
 
+/*
+ * 붙어 있는 자판으로 칠 때 어느 자모인지 고른다.
+ * e.key 를 그대로 보면 캡스락이 켜져 있을 때 q 가 'Q' 로 와서 ㅂ 자리에 ㅃ 이 박히고,
+ * ㅁ(a) 처럼 된소리가 없는 자리는 아예 안 먹힌다. 캡스락은 시프트가 아니다.
+ * 그래서 자판의 «자리»(e.code) 로 글쇠를 찾고, 된소리 여부는 시프트로만 정한다.
+ */
+function jamoOf(e) {
+  const m = /^Key([A-Z])$/.exec(e.code || '');
+  const low = m ? m[1].toLowerCase()
+            : /^[A-Za-z]$/.test(e.key) ? e.key.toLowerCase() : '';
+  if (!low) return '';
+  // 시프트를 눌렀어도 된소리가 없는 자리(ㅁ, ㄴ …)는 홑소리 그대로
+  return (e.shiftKey && QWERTY[low.toUpperCase()]) || QWERTY[low] || '';
+}
+
 const ABC = [
   ['Q','W','E','R','T','Y','U','I','O','P'],
   ['A','S','D','F','G','H','J','K','L'],
@@ -1187,7 +1208,8 @@ window.addEventListener('keydown', e => {
   if (/^[A-Za-z]$/.test(k) && alphaMode()) {
     e.preventDefault(); putChar(k); return;
   }
-  if (QWERTY[k]) { e.preventDefault(); ime.value = ''; anchorIME(true); input(QWERTY[k]); return; }
+  const jamo = jamoOf(e);
+  if (jamo) { e.preventDefault(); ime.value = ''; anchorIME(true); input(jamo); return; }
   // 한글 IME 가 켜져 있어 자모/음절이 그대로 들어오는 경우
   if (k.length === 1) {
     const cc = k.charCodeAt(0);
@@ -1203,7 +1225,11 @@ window.addEventListener('keydown', e => {
 /* ───────── 저장 (단어장마다 따로) ───────── */
 // 갈래 조합이 다르면 다른 판이므로 저장도 따로 둔다
 const kindSig = (pack, picked) => allKinds(pack).map(n => picked.includes(n) ? '1' : '0').join('');
-const saveKey = () => 'infinite-crossword:' + PACK.id + ':' + kindSig(PACK, [...PICK]);
+// 난이도를 가른 단어장은 기초 쪽과 심화 쪽이 사실상 다른 판이라 진행도 따로 둔다.
+// 기초 쪽은 열쇠를 그대로 둔다 — 갈라지기 전 «로봇 기초» 진행이 그대로 이어지도록
+const tierSig = pack => (pack.tiered && !EASY) ? ':심화' : '';
+const boardKey = (pack, picked) => 'infinite-crossword:' + pack.id + ':' + kindSig(pack, picked) + tierSig(pack);
+const saveKey = () => boardKey(PACK, [...PICK]);
 const pickKey = id => 'infinite-crossword:pick:' + id;
 const LAST_KEY = 'infinite-crossword:last';
 const EASY_KEY = 'infinite-crossword:easy';
@@ -1302,11 +1328,7 @@ function startPack(pack, fresh, picked) {
     localStorage.setItem(LAST_KEY, pack.id);
     localStorage.setItem(pickKey(pack.id), JSON.stringify([...PICK]));
   } catch (_) {}
-  // 갈래 하나만 골랐으면 숫자 대신 그 이름을 보여 준다 (로봇 스터디 · 기초)
-  const part = (pack.groups.length > 1 && PICK.size < pack.groups.length)
-    ? (PICK.size === 1 ? ` · ${[...PICK][0]}` : ` · ${PICK.size}/${pack.groups.length}갈래`) : '';
-  document.getElementById('packname').textContent =
-    pack.emoji + ' ' + pack.name + part + (EASY ? ' · 쉽게' : '');
+  document.getElementById('packname').textContent = packLabel(pack, [...PICK]);
   document.title = pack.name + ' 크로스워드';
   pendingScroll = 0;
   if (!load()) grow(AHEAD);
@@ -1324,17 +1346,32 @@ const packSize = (pack, picked) =>
 
 function progressOf(pack, picked) {
   try {
-    const d = JSON.parse(localStorage.getItem('infinite-crossword:' + pack.id + ':' + kindSig(pack, picked)) || 'null');
+    const d = JSON.parse(localStorage.getItem(boardKey(pack, picked)) || 'null');
     return d ? (d.depth | 0) : 0;
   } catch (_) { return 0; }
 }
 
-/** 쉽게 모드일 때, 그 단어장에 기초로 표시된 말이 몇 개인지 */
+/** 그 단어장에 기초로 표시된 말이 몇 개인지 */
+const basicCount = p => p.groups.reduce((a, g) =>
+  a + (g.name === '기초' ? g.words.length : g.words.filter(w => w[3] === '기초').length), 0);
+
+/** 단어장 딱지에 붙일 난이도 꼬리표 */
 function basicOf(p) {
-  if (!EASY) return '';
-  const n = p.groups.reduce((a, g) =>
-    a + (g.name === '기초' ? g.words.length : g.words.filter(w => w[3] === '기초').length), 0);
-  return n ? ` · 기초 ${n}개` : '';
+  const n = basicCount(p);
+  if (p.tiered) {                       // 두 쪽으로 갈린 단어장은 지금 어느 쪽인지 늘 적어 준다
+    const all = p.groups.reduce((a, g) => a + g.words.length, 0);
+    return EASY ? ` · 기초 ${n}개` : ` · 심화 ${all - n}개`;
+  }
+  return EASY && n ? ` · 기초 ${n}개` : '';
+}
+
+/** 위쪽 단어장 이름표 — 갈래와 난이도까지 붙인다 */
+function packLabel(pack, picked) {
+  // 갈래 하나만 골랐으면 숫자 대신 그 이름을 보여 준다 (동물 퀴즈 · 기초)
+  const part = (pack.groups.length > 1 && picked.length < pack.groups.length)
+    ? (picked.length === 1 ? ` · ${picked[0]}` : ` · ${picked.length}/${pack.groups.length}갈래`) : '';
+  const tier = pack.tiered ? (EASY ? ' · 기초' : ' · 심화') : (EASY ? ' · 쉽게' : '');
+  return pack.emoji + ' ' + pack.name + part + tier;
 }
 
 function buildChooser() {
@@ -1423,17 +1460,19 @@ function paintEasy() {
 }
 
 document.getElementById('easy').addEventListener('click', () => {
+  const 갈린판 = !!(PACK && PACK.tiered);
+  if (갈린판) writeSave();       // 지금 판은 지금 쪽(기초/심화)에 남겨 두고 넘어간다
   EASY = !EASY;
   try { localStorage.setItem(EASY_KEY, EASY ? '1' : '0'); } catch (_) {}
   paintEasy();
   buildChooser();
+  if (갈린판) { startPack(PACK, false, [...PICK]); return; }   // 반대쪽 판을 꺼내 온다
   // 켠 보람이 바로 있어야 한다 — 지금 판에 깔린 낱말에도 첫 글자를 열어 준다
   if (EASY && PACK) {
     giveFirst([...G.words.values()].filter(w => !w.past && !w.solved));
     render(); writeSave();      // 곧바로 써 둔다 — 여기서 단어장을 바로 고르면 미뤄 둔 저장은 늦는다
   }
-  if (PACK) document.getElementById('packname').textContent =
-    PACK.emoji + ' ' + PACK.name + (EASY ? ' · 쉽게' : '');
+  if (PACK) document.getElementById('packname').textContent = packLabel(PACK, [...PICK]);
 });
 
 // 갈래 고르다 그냥 닫으면(Esc 등) 미리 입어 본 배색을 벗는다
