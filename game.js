@@ -638,7 +638,7 @@ function renderDeco(from, to) {
       const k = key(x, y);
       if (G.cells.has(k)) continue;
       const h = 어림(x, y);
-      if (h % 9) continue;                     // 아홉 자리에 하나쯤
+      if (h % 6) continue;                     // 여섯 자리에 하나쯤 — 팍팍 붙인다
       live.add(k);
       let el = decos.get(k);
       if (!el) {
