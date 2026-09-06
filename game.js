@@ -147,7 +147,7 @@ function loadBank(pack, picked) {
     for (const w of g.words) {
       BANK.push(w);
       KIND.set(w[0], w[2] || g.name);
-      if (w[3] === '기초') BASIC.add(w[0]);
+      if (w[3] === '기초' || g.name === '기초') BASIC.add(w[0]);
       if (PICK.has(g.name)) ONTOPIC.add(w[0]);
     }
   }
@@ -1147,7 +1147,7 @@ const pickKey = id => 'infinite-crossword:pick:' + id;
 const LAST_KEY = 'infinite-crossword:last';
 const EASY_KEY = 'infinite-crossword:easy';
 
-/** 그 단어장에서 지난번에 고른 갈래 (없으면 전부) */
+/** 그 단어장에서 지난번에 고른 갈래 (없으면 단어장이 정해 둔 기본, 그것도 없으면 전부) */
 function savedPick(pack) {
   try {
     const v = JSON.parse(localStorage.getItem(pickKey(pack.id)) || 'null');
@@ -1156,7 +1156,8 @@ function savedPick(pack) {
       if (keep.length) return keep;
     }
   } catch (_) {}
-  return allKinds(pack);
+  const def = (pack.default || []).filter(n => allKinds(pack).includes(n));
+  return def.length ? def : allKinds(pack);
 }
 let saveT;
 
@@ -1238,8 +1239,9 @@ function startPack(pack, fresh, picked) {
     localStorage.setItem(LAST_KEY, pack.id);
     localStorage.setItem(pickKey(pack.id), JSON.stringify([...PICK]));
   } catch (_) {}
+  // 갈래 하나만 골랐으면 숫자 대신 그 이름을 보여 준다 (로봇 스터디 · 기초)
   const part = (pack.groups.length > 1 && PICK.size < pack.groups.length)
-    ? ` · ${PICK.size}/${pack.groups.length}갈래` : '';
+    ? (PICK.size === 1 ? ` · ${[...PICK][0]}` : ` · ${PICK.size}/${pack.groups.length}갈래`) : '';
   document.getElementById('packname').textContent =
     pack.emoji + ' ' + pack.name + part + (EASY ? ' · 쉽게' : '');
   document.title = pack.name + ' 크로스워드';
@@ -1267,7 +1269,8 @@ function progressOf(pack, picked) {
 /** 쉽게 모드일 때, 그 단어장에 기초로 표시된 말이 몇 개인지 */
 function basicOf(p) {
   if (!EASY) return '';
-  const n = p.groups.reduce((a, g) => a + g.words.filter(w => w[3] === '기초').length, 0);
+  const n = p.groups.reduce((a, g) =>
+    a + (g.name === '기초' ? g.words.length : g.words.filter(w => w[3] === '기초').length), 0);
   return n ? ` · 기초 ${n}개` : '';
 }
 
@@ -1277,7 +1280,7 @@ function buildChooser() {
     const n = packSize(p, picked);
     const done = progressOf(p, picked);
     const part = (p.groups.length > 1 && picked.length < p.groups.length)
-      ? ` · ${picked.length}/${p.groups.length}갈래` : '';
+      ? (picked.length === 1 ? ` · ${picked[0]}` : ` · ${picked.length}/${p.groups.length}갈래`) : '';
     return `<button class="pack" data-id="${p.id}">
       <span class="pe">${p.emoji}</span>
       <span class="pt"><b>${p.name}</b><i>${p.desc}</i>
