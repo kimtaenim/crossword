@@ -114,16 +114,14 @@
   .cell.past[data-age="0"] i { color: rgba(255,255,255,.65); text-shadow: none; }
   /* 그 위는 한 칸에 뚝 떨어진다. 흐린 회색이 아니라 «맑고 옅은 파랑» 이라
      채도는 살려 두고 밝기만 확 올린다. 유약도 그대로 남긴다 */
+  /* 글자는 그냥 흰색. 지나간 답이라 또렷할 필요가 없다 — 물러나 있는 편이 낫다 */
   .cell.past[data-age="1"] {
-    background: linear-gradient(180deg,#cfe3fc 0%,#aed0f7 55%,#9cc4f3 100%);
-    border-color: #8bbaef;
-    box-shadow: inset 0 1.5px 0 rgba(255,255,255,.9), inset 0 -2px 4px rgba(31,98,196,.16);
-    /* 옅은 칸에서도 글자는 흰색으로 둔다. 흰 글씨가 묻히지 않게 파란 테두리를 두른다 */
-    color: #ffffff;
-    -webkit-text-stroke: .6px rgba(28,80,160,.62);
-    text-shadow: 0 1px 2px rgba(28,80,160,.45);
+    background: linear-gradient(180deg,#dcebff 0%,#c2dafb 55%,#b1d0f8 100%);
+    border-color: #9dc8f4;
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,.95), inset 0 -2px 4px rgba(31,98,196,.14);
+    color: #ffffff; text-shadow: none;
   }
-  .cell.past[data-age="1"] i { color: rgba(255,255,255,.9); -webkit-text-stroke: .4px rgba(28,80,160,.5); text-shadow: none; }
+  .cell.past[data-age="1"] i { color: rgba(255,255,255,.75); text-shadow: none; }
   .cell.past.cur { box-shadow: var(--sheen), 0 0 0 2px rgba(29,89,179,.4); border-color: var(--cobalt); }
 
   /* 어린이 단어장은 민트로 갈아입는다 — 델프트가 코발트라면 이쪽은 청자빛이다.
@@ -155,14 +153,12 @@
   }
   body[data-theme="mint"] .cell.past[data-age="0"] i { color: rgba(255,255,255,.78); }
   body[data-theme="mint"] .cell.past[data-age="1"] {
-    background: linear-gradient(180deg,#c7fbee 0%,#9ff2df 55%,#8aecd6 100%);
-    border-color: #74e4ca;
-    box-shadow: inset 0 1.5px 0 rgba(255,255,255,.9), inset 0 -2px 4px rgba(14,170,140,.16);
-    color: #ffffff;
-    -webkit-text-stroke: .6px rgba(8,140,114,.6);
-    text-shadow: 0 1px 2px rgba(8,140,114,.42);
+    background: linear-gradient(180deg,#d3fcf1 0%,#aef4e3 55%,#99efdb 100%);
+    border-color: #82e8d1;
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,.95), inset 0 -2px 4px rgba(14,170,140,.14);
+    color: #ffffff; text-shadow: none;
   }
-  body[data-theme="mint"] .cell.past[data-age="1"] i { color: rgba(255,255,255,.9); -webkit-text-stroke: .4px rgba(8,140,114,.5); }
+  body[data-theme="mint"] .cell.past[data-age="1"] i { color: rgba(255,255,255,.75); }
   body[data-theme="mint"] dialog::backdrop { background: rgba(16,120,100,.32); }
 
   /* 빈자리 스티커 — 어린이 단어장에서만 나온다. 누를 수 없고 칸을 가리지 않는다 */
