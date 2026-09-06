@@ -105,12 +105,20 @@ function 줄기찾기(word) {
 
 for (const g of pack.groups) {
   for (const w of g.words) {
-    const 요즘수 = 센다(w[0], 최근글);
+    let 요즘수 = 센다(w[0], 최근글);
     const 전체수 = 센다(w[0], 글);
+    let 줄기로 = null;
     if (전체수 === 0) {
       const 줄기 = 줄기찾기(w[0]);
-      if (줄기) 딴꼴.push(`${w[0]} → ${줄기.part}(${줄기.n})`);
-      else 묵은.push(w[0] + (줄기 ? `(${줄기.part} ${줄기.n})` : ''));
+      if (줄기) {
+        // 낱말 그대로는 없어도 줄기가 요즘 나오면 요즘 말로 친다 — 후하게.
+        // '이상기후' 는 '기후' 로, '공약이행' 은 '공약' 으로 센다.
+        딴꼴.push(`${w[0]} → ${줄기.part}(${줄기.n})`);
+        요즘수 = 센다(줄기.part, 최근글);
+        줄기로 = 줄기.part;
+      } else {
+        묵은.push(w[0]);
+      }
     }
 
     const 표시중 = w[3] === '요즘';
@@ -118,7 +126,7 @@ for (const g of pack.groups) {
     if (요즘수 >= MIN_RECENT) {
       w[3] = '요즘';
       w[4] = 오늘;
-      (표시중 ? 갱신 : 올림).push(`${w[0]}(${요즘수})`);
+      (표시중 ? 갱신 : 올림).push(`${w[0]}(${요즘수}${줄기로 ? '·' + 줄기로 : ''})`);
       continue;
     }
     if (!표시중) continue;
