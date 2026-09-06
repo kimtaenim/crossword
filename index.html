@@ -97,17 +97,24 @@
   .cell.born, .cell.gone { opacity: 0; }
 
   /* 다 푼 줄은 지우지 않고 남겨 둔다 — 위로 올리면 언제든 다시 읽을 수 있게.
-     대신 지나온 밴드마다 코발트를 한 단계씩 묽혀 처리한 데라는 걸 보여 준다.
-     방금 넘긴 줄이 제일 진하고, 오래된 줄일수록 유약만 남은 흰빛에 가까워진다. */
-  .cell.past { box-shadow: var(--sheen), 0 1px 1px rgba(14,43,87,.06); cursor: pointer; }
-  /* 글자는 어느 단계에서나 흰색으로 둔다. 옅은 파랑에서도 읽히도록 옅은 그늘을 깐다 */
-  .cell.past { color: #ffffff; text-shadow: 0 1px 2px rgba(10,37,84,.45); }
-  .cell.past[data-age="0"] { background: linear-gradient(180deg,#4b81cd 0%,#2f64b0 100%); border-color: #2b5da6; }
-  .cell.past[data-age="1"] { background: linear-gradient(180deg,#6294d8 0%,#4577bd 100%); border-color: #4370b4; }
-  .cell.past[data-age="2"] { background: linear-gradient(180deg,#79a6e0 0%,#5b89c9 100%); border-color: #5a86c2; }
-  .cell.past[data-age="3"] { background: linear-gradient(180deg,#8eb5e6 0%,#719ad3 100%); border-color: #6f97cf; }
-  .cell.past[data-age="4"] { background: linear-gradient(180deg,#a3c3ec 0%,#84a9db 100%); border-color: #83a6d7; }
-  .cell.past i { color: rgba(255,255,255,.62); text-shadow: none; }
+     단계는 둘뿐이다. 방금 넘긴 밴드는 진하게 남고, 그 위는 한꺼번에 확 엷어진다.
+     슬금슬금 옅어지면 방금 해낸 줄이 묻혀 «여기까지 왔다» 가 안 보인다. */
+  .cell.past {
+    box-shadow: var(--sheen), 0 1px 1px rgba(14,43,87,.06); cursor: pointer;
+    transition: transform .38s cubic-bezier(.2,.85,.25,1), background .55s, color .55s, border-color .55s;
+  }
+  /* 방금 넘긴 밴드 — 다 맞힌 칸과 거의 같은 진하기로 남는다 */
+  .cell.past[data-age="0"] {
+    background: linear-gradient(180deg,#4b81cd 0%,#2f64b0 100%); border-color: #2b5da6;
+    color: #ffffff; text-shadow: 0 1px 2px rgba(10,37,84,.45);
+  }
+  .cell.past[data-age="0"] i { color: rgba(255,255,255,.62); text-shadow: none; }
+  /* 그 위는 전부 여기로 뚝 떨어진다. 흰 글자로는 안 읽히므로 글자를 짙게 둔다 */
+  .cell.past[data-age="1"] {
+    background: linear-gradient(180deg,#e4eefa 0%,#d5e4f5 100%); border-color: #cadcf1;
+    color: #5f80ab; text-shadow: none;
+  }
+  .cell.past[data-age="1"] i { color: #a8bfdb; text-shadow: none; }
   .cell.past.cur { box-shadow: var(--sheen), 0 0 0 2px rgba(29,89,179,.4); border-color: var(--cobalt); }
 
   /* 어린이 단어장은 민트로 갈아입는다 — 델프트가 코발트라면 이쪽은 청자빛이다.
@@ -128,14 +135,18 @@
   body[data-theme="mint"] #nowline { border-top-color: #aee9d8; }
   body[data-theme="mint"] #nowline::after { color: #8aceba; }
   body[data-theme="mint"] .cell i { color: #a2d6c8; }
-  body[data-theme="mint"] .cell.past i { color: rgba(255,255,255,.78); }
   /* 밝아진 만큼 흰 글자가 묽어진다. 그늘을 조금 더 깔아 읽히게 한다 */
-  body[data-theme="mint"] .cell.solved, body[data-theme="mint"] .cell.past { text-shadow: 0 1px 2px rgba(9,100,82,.45); }
-  body[data-theme="mint"] .cell.past[data-age="0"] { background: linear-gradient(180deg,#71e0c7 0%,#4bd0b3 100%); border-color: #4cc9ad; }
-  body[data-theme="mint"] .cell.past[data-age="1"] { background: linear-gradient(180deg,#83e6d0 0%,#5cd7bd 100%); border-color: #5fd2b8; }
-  body[data-theme="mint"] .cell.past[data-age="2"] { background: linear-gradient(180deg,#95ecda 0%,#6fdec7 100%); border-color: #72d9c3; }
-  body[data-theme="mint"] .cell.past[data-age="3"] { background: linear-gradient(180deg,#a6f0e2 0%,#81e5d1 100%); border-color: #84e0cd; }
-  body[data-theme="mint"] .cell.past[data-age="4"] { background: linear-gradient(180deg,#b6f4e9 0%,#93ebda 100%); border-color: #96e6d6; }
+  body[data-theme="mint"] .cell.solved { text-shadow: 0 1px 2px rgba(9,100,82,.45); }
+  body[data-theme="mint"] .cell.past[data-age="0"] {
+    background: linear-gradient(180deg,#71e0c7 0%,#4bd0b3 100%); border-color: #4cc9ad;
+    color: #ffffff; text-shadow: 0 1px 2px rgba(9,100,82,.45);
+  }
+  body[data-theme="mint"] .cell.past[data-age="0"] i { color: rgba(255,255,255,.78); }
+  body[data-theme="mint"] .cell.past[data-age="1"] {
+    background: linear-gradient(180deg,#e6faf4 0%,#d9f5ec 100%); border-color: #cdf0e4;
+    color: #62b3a0; text-shadow: none;
+  }
+  body[data-theme="mint"] .cell.past[data-age="1"] i { color: #a5dbcc; }
   body[data-theme="mint"] dialog::backdrop { background: rgba(16,120,100,.32); }
 
   /* 빈자리 스티커 — 어린이 단어장에서만 나온다. 누를 수 없고 칸을 가리지 않는다 */

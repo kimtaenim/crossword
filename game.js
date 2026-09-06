@@ -97,7 +97,8 @@ const BAND = 6;              // 세로 단어가 넘지 못하는 경계의 간�
 const TARGET_CROSS = 4;      // 단어 하나가 다른 단어와 겹쳤으면 하는 목표 횟수
 const KEEP = BAND * 40;      // 다 푼 줄을 이만큼(240줄) 남겨 두고, 그보다 오래된 것만 버린다
 const WINDOW = 14;           // 화면 위아래로 이만큼 줄만 DOM 에 둔다 (판이 끝없이 길어지므로)
-const SHADES = 5;            // 지나온 밴드를 옅어지는 파랑 몇 단계로 보여 줄지
+const SHADES = 2;            // 지나온 줄은 두 단계뿐 — 방금 넘긴 밴드와 그 위 전부.
+                             // 다섯 단계로 슬금슬금 옅어지면 방금 해낸 줄이 묻힌다
 const RECENT = 16;            // 최근 이만큼 안에서는 같은 단어를 다시 쓰지 않는다
 const key = (x, y) => x + ',' + y;
 
@@ -664,7 +665,10 @@ function renderDeco(from, to) {
   for (const [k, el] of [...decos]) if (!live.has(k)) { el.remove(); decos.delete(k); }
 }
 
-/** 지나온 줄을 몇 단계 옅은 파랑으로 보일지 (0 = 방금 지나온 밴드) */
+/*
+ * 방금 넘긴 밴드(0)만 진하게 남고, 그 위는 전부 한 단계로 확 엷어진다(1).
+ * 여기까지 왔다는 것이 한눈에 보여야 다음 밴드로 손이 간다.
+ */
 const shadeOf = y => Math.min(SHADES - 1, Math.floor((G.top - 1 - y) / BAND));
 
 function render() {
