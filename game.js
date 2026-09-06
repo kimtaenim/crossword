@@ -938,26 +938,27 @@ function move(dx, dy) {
  * 방금 있던 칸을 지나는 다른 단어가 아직 안 풀렸으면 거기가 제일 자연스럽고,
  * 없으면 화면 안에 있는 단어를 먼저 고른다. 화면 밖으로 튀면 어디로 갔는지 모른다.
  */
+/*
+ * 지금 낱말을 다 풀었을 때 옮겨 갈 자리.
+ *
+ * 기준은 «맨 위에 남은 낱말» 이다. 가까운 데로 옮겨 가게 했더니 아래로만
+ * 쭉쭉 흘러, 윗줄 여섯 줄을 못 채운 채 판만 길어졌다. 아래를 먼저 풀 수는
+ * 있어도 그다음에는 위로 돌아와 마저 채워야 밴드가 걷히고 «해냈다» 가 생긴다.
+ *
+ * 다만 지금 칸에 십자로 걸린 낱말이 «맨 위에 남은 낱말과 같은 밴드» 에 있으면
+ * 그리로 간다. 같은 밴드 안에서는 십자로 이어 가는 편이 훨씬 자연스럽다.
+ */
 function jumpNearest(quiet) {
   const c = S.cur ? G.cells.get(S.cur) : null;
-  const x0 = c ? c.x : 0, y0 = c ? c.y : G.top;
   let best = null;
-  if (c) {                                   // 십자로 걸린 단어부터
+  for (const w of G.words.values()) {              // 맨 위에 남은 낱말
+    if (w.solved || w.past) continue;
+    if (!best || w.y < best.y || (w.y === best.y && w.x < best.x)) best = w;
+  }
+  if (c && best) {
     for (const id of [c.across, c.down]) {
       const w = id !== null ? G.words.get(id) : null;
-      if (w && !w.solved) { best = w; break; }
-    }
-  }
-  if (!best) {
-    const from = scroller.scrollTop / C, to = (scroller.scrollTop + scroller.clientHeight) / C;
-    let bestD = Infinity;
-    for (const w of G.words.values()) {
-      if (w.solved || w.past) continue;
-      const end = w.y + (w.dir === 'D' ? w.len - 1 : 0);
-      const off = (end < from || w.y > to) ? 400 : 0;      // 화면 밖은 크게 미룬다
-      const dy = w.y - y0;
-      const d = off + (dy >= 0 ? dy : -dy * 1.6) * 2 + Math.abs(w.x - x0);
-      if (d < bestD) { bestD = d; best = w; }
+      if (w && !w.solved && !w.past && bandOf(w.y) === bandOf(best.y)) { best = w; break; }
     }
   }
   if (!best) return;
