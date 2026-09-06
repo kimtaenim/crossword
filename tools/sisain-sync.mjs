@@ -37,10 +37,14 @@ const arts = JSON.parse(fs.readFileSync(path.join(repo, 'data/articles.json'), '
 
 const day = d => (d || '').slice(0, 10).replace(/\./g, '-');
 const 글 = arts
-  .map(a => ({
-    d: day(a.date),
-    붙인: [a.title, a.subtitle, a.summary, a.body].filter(Boolean).join(' ').replace(/\s+/g, ''),
-  }))
+  .map(a => {
+    const 원문 = [a.title, a.subtitle, a.summary, a.body].filter(Boolean).join(' ');
+    return {
+      d: day(a.date),
+      원문,                                   // 낱말 경계를 볼 때 쓴다
+      붙인: 원문.replace(/\s+/g, ''),         // 낱말을 셀 때 쓴다 (띄어쓰기 차이를 없앤다)
+    };
+  })
   .filter(a => a.d);
 
 const 날짜 = 글.map(a => a.d).sort();
@@ -57,13 +61,57 @@ const 올림 = [];   // 표시를 새로 붙인 말
 const 갱신 = [];   // 계속 나와서 날짜만 새로 찍은 말
 const 유예 = [];   // 요즘 안 나오지만 아직 4주가 안 지난 말
 const 내림 = [];   // 4주가 지나 표시를 뗀 말
-const 묵은 = [];   // 전체 기사에 한 번도 안 나온 말
+const 묵은 = [];   // 낱말도 그 줄기도 기사에 없는 말
+const 딴꼴 = [];   // 낱말 그대로는 없는데 줄기는 자주 나오는 말 — 형태가 기사와 다르다
+
+/**
+ * 이상 검사: 0회로 나온 낱말이 정말 안 쓰이는 것인지, 꼴만 다른 것인지 가른다.
+ * '고령화사회' 는 기사에 없지만 '고령화' 는 17건에 나온다. 그건 묵은 말이 아니라
+ * 기사가 쓰지 않는 꼴로 적힌 말이다 — 낱말을 고쳐야지 빼면 안 된다.
+ * 앞뒤 토막을 두 글자까지 잘라 보며 가장 많이 나오는 것을 찾는다.
+ */
+const 줄기최소 = 5;                       // 이보다 적게 나오면 잘린 토막일 뿐이다 ('이상기' 3건)
+const 앞토막상한 = 글.length * 0.2;       // 기사 다섯 건에 한 번 넘게 나오면 뜻을 못 가리는 말
+const 뒤토막상한 = 글.length * 0.1;       // 뒤토막은 일반명사가 많아 더 엄하게 ('효과' 182건은 탈락)
+const 조사 = /[이가은는을를의에도만과와로]$/;
+
+/** 낱말 경계에서 시작한 적이 있는가. 띄어쓰기를 살린 원문으로 본다.
+    '업윤리' 는 늘 '직업윤리' 속에만 있어서 경계에서 시작하는 일이 없다 */
+const 경계에서 = part => {
+  const re = new RegExp('(^|[^가-힣])' + part);
+  return 글.some(a => re.test(a.원문));
+};
+
+function 줄기찾기(word) {
+  // 한국어 합성어는 앞토막이 뜻을 지고 뒤는 일반명사다.
+  // 고령화+사회, 난민+문제, 해수면+상승 — 그러니 앞토막을 먼저, 긴 것부터 본다.
+  const 쓸만한 = (part, 상한) => {
+    if (조사.test(part) && part.length > 2) return null;   // '공약이' — 조사가 붙은 채 잘린 토막
+    const n = 센다(part, 글);
+    if (n < 줄기최소 || n > 상한) return null;
+    if (!경계에서(part)) return null;
+    return { part, n };
+  };
+  for (let len = word.length - 1; len >= 2; len--) {
+    const hit = 쓸만한(word.slice(0, len), 앞토막상한);
+    if (hit) return hit;
+  }
+  for (let len = word.length - 1; len >= 2; len--) {
+    const hit = 쓸만한(word.slice(word.length - len), 뒤토막상한);
+    if (hit) return hit;
+  }
+  return null;
+}
 
 for (const g of pack.groups) {
   for (const w of g.words) {
     const 요즘수 = 센다(w[0], 최근글);
     const 전체수 = 센다(w[0], 글);
-    if (전체수 === 0) 묵은.push(w[0]);
+    if (전체수 === 0) {
+      const 줄기 = 줄기찾기(w[0]);
+      if (줄기) 딴꼴.push(`${w[0]} → ${줄기.part}(${줄기.n})`);
+      else 묵은.push(w[0] + (줄기 ? `(${줄기.part} ${줄기.n})` : ''));
+    }
 
     const 표시중 = w[3] === '요즘';
 
@@ -91,7 +139,8 @@ const 줄 = (제목, 목록) => {
 줄('계속 나와서 날짜를 갱신한 말', 갱신);
 줄(`아직 유효기간이 남은 말 (${STALE_DAYS}일 안)`, 유예);
 줄('유효기간이 지나 표시를 뗀 말', 내림);
-줄('기사에 한 번도 안 나온 말 — 뺄지 둘지는 사람이 정한다', 묵은);
+줄('꼴이 기사와 다른 말 — 빼지 말고 낱말을 고칠 것 (낱말 → 기사가 쓰는 토막)', 딴꼴);
+줄('낱말도 줄기도 기사에 없는 말 — 뺄지 둘지는 사람이 정한다', 묵은);
 
 /** 지금 파일 모양 그대로 쓴다 — 낱말 한 줄에 하나, 들여쓰기 2칸 */
 function serialize(p) {
