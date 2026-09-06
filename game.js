@@ -94,7 +94,8 @@ function disassemble(ch) {
 const W = 8;                 // 열 수 (4~5음절 단어가 여유 있게 들어가도록)
 const AHEAD = 26;            // 화면 아래로 미리 만들어 두는 줄 수
 const BAND = 6;              // 세로 단어가 넘지 못하는 경계의 간격 (= 걷어낼 수 있는 자리)
-const TARGET_CROSS = 4;      // 단어 하나가 다른 단어와 겹쳤으면 하는 목표 횟수
+const TARGET_CROSS = 4;
+let STRADDLE = 3;            // 세로가 다음 밴드로 걸쳐도 되는 줄 수      // 단어 하나가 다른 단어와 겹쳤으면 하는 목표 횟수
 const KEEP = BAND * 40;      // 다 푼 줄을 이만큼(240줄) 남겨 두고, 그보다 오래된 것만 버린다
 const WINDOW = 14;           // 화면 위아래로 이만큼 줄만 DOM 에 둔다 (판이 끝없이 길어지므로)
 const RECENT = 16;            // 최근 이만큼 안에서는 같은 단어를 다시 쓰지 않는다
@@ -211,14 +212,21 @@ const G = {
 function fits(word, x, y, dir, needCross) {
   const len = word.length;
   if (x < 0 || y < 0) return -1;
-  if (!isARow(y)) return -1;                 // 두 방향 모두 가로줄에서 시작
+  // 예전에는 가로는 한 줄 걸러(가로줄), 세로는 짝수 칸에만 놓았다. 격자가 반듯해
+  // 보이지만 채움이 0.4 를 못 넘고 빈 줄이 규칙적으로 생겨 판이 성글어 보였다.
+  // 이제 어느 줄, 어느 칸에나 놓는다. 크로스워드로서의 규칙(이웃 칸 금지, 앞뒤 빈칸)은
+  // 아래 검사가 그대로 지킨다.
   if (dir === 'D') {
-    if (x & 1) return -1;                    // 세로는 짝수 칸에만
     // 세로가 홀수 글자여야 할 이유는 없다. 끝 글자가 가로줄이 아닌 데 떨어지면
     // 그 칸만 안 걸릴 뿐이고, 그건 크로스워드에서 흔한 모양이다.
     // 홀수만 받던 동안은 창고의 절반(네 글자·여섯 글자)이 세로로는 아예 못 놓여
     // 판에 한 번도 안 나왔다 — 로봇 창고 202개 중 73개가 그랬다.
-    if (bandOf(y) !== bandOf(y + len - 1)) return -1;   // 밴드를 넘지 않게
+    // 밴드를 넘지 못하게 막던 규칙을 풀었다. 밴드마다 섬처럼 끊기면 경계 줄이 비어
+    // 판이 성글어 보인다. 대신 다음 밴드로는 STRADDLE 줄까지만 걸친다 — 더 깊이 걸치면
+    // 그 낱말을 풀 때까지 윗 밴드가 안 걷혀 «여섯 줄» 박자가 무너진다.
+    const endOff = (((y + len - 1 + G.bandOff) % BAND) + BAND) % BAND;
+    if (bandOf(y + len - 1) > bandOf(y) + 1) return -1;                              // 두 밴드까지만
+    if (bandOf(y + len - 1) !== bandOf(y) && endOff >= STRADDLE) return -1;          // 다음 밴드에는 살짝만
   }
   if (dir === 'A' ? x + len > W : x >= W) return -1;
   const before = dir === 'A' ? key(x - 1, y) : key(x, y - 1);
@@ -305,7 +313,7 @@ let OFFPICK = 26;    // 고르지 않은 갈래의 단어에 매기는 벌점.
  * (동물 기초 148개를 잠그니 채움이 0.32에서 0.26으로 떨어졌다).
  * 그래서 창고가 LOCKAT 을 넘을 때만 잠그고, 얇으면 예전처럼 «우선» 만 준다.
  */
-let SHUT = 130, LEAN = 34, LOCKAT = 150;
+let SHUT = 260, LEAN = 34, LOCKAT = 150;   // 격자를 촘촘히 한 뒤로 겹침 둘(200)을 넘겨야 잠긴다
 // LOCKAT 은 처음에 180 이었다. 로봇 기초를 «하나마나한 말» 없이 추리니 157개가 됐고,
 // 그 크기에서 재 보니 잠그면 채움 0.41→0.33, 안 잠그면 심화가 25% 섞인다.
 // 기초를 고른 사람에게 넷 중 하나가 심화면 기초가 아니다 — 채움을 조금 내주고 잠근다.
@@ -327,14 +335,11 @@ const wornOut = word =>
  */
 function lookahead(word, x, y, dir) {
   let n = 0;
-  const step = dir === 'A' ? 1 : 2;
-  const start = dir === 'A' ? ((x & 1) ? 1 : 0) : 0;   // 가로는 짝수 칸에 놓인 글자만
-  for (let i = start; i < word.length; i += step * (dir === 'A' ? 2 : 1)) {
+  for (let i = 0; i < word.length; i++) {
     const cx = dir === 'A' ? x + i : x, cy = dir === 'A' ? y : y + i;
     const c = G.cells.get(key(cx, cy));
     if (c && c.across !== null && c.down !== null) continue;     // 이미 겹친 자리
-    const table = dir === 'A' ? EVEN : ALL;
-    n += Math.min(table.get(word[i]) || 0, 10);
+    n += Math.min(ALL.get(word[i]) || 0, 10);
   }
   return n;
 }
@@ -355,7 +360,7 @@ function tryAt(cell, dir, lo, hi) {
     const x = dir === 'A' ? cell.x - pos : cell.x;
     const y = dir === 'A' ? cell.y : cell.y - pos;
     if (y < lo) continue;
-    if ((dir === 'D' ? y + word.length - 1 : y) > hi) continue;
+    if ((dir === 'D' ? y + word.length - 1 : y) > hi + (dir === 'D' ? STRADDLE : 0)) continue;
     const cross = fits(word, x, y, dir, true);
     if (cross < 0) continue;
     const score = cross * 100 + lookahead(word, x, y, dir) + word.length - wornOut(word) + Math.random();
@@ -420,7 +425,7 @@ function seedAcross(y, lo, hi, free) {
 function buildBand(top) {
   const bottom = top + BAND - 1;
   const aRows = [];
-  for (let y = top; y <= bottom; y += 2) aRows.push(y);
+  for (let y = top; y <= bottom; y++) aRows.push(y);
   seedAcross(aRows[0], top, bottom, true);
   for (let round = 0; round < 40; round++) {
     let placed = reinforce(top, bottom);
@@ -564,11 +569,16 @@ function clearableY() {
     limit = y + 1;
   }
   if (limit === G.top) return G.top;
+  // 세로 낱말이 걸친 줄에서는 끊지 않는다 — 단, 다 푼 낱말은 걸쳐 있어도 된다.
+  // 위쪽 칸은 지나온 줄로, 아래쪽 칸은 푼 채로 남을 뿐이다. 세로가 다음 밴드로
+  // 걸치게 한 뒤로는 이 예외가 없으면 밴드 경계가 영영 안 걷힌다.
   let best = G.top;
   for (let y = G.top + 1; y <= limit; y++) {
     let straddle = false;
     for (const w of G.words.values()) {
-      if (w.dir === 'D' && w.y < y && w.y + w.len > y) { straddle = true; break; }
+      if (w.dir !== 'D' || w.y >= y || w.y + w.len <= y) continue;
+      // 풀렸는지는 표시가 아니라 칸으로 본다 — 저장에서 막 불러온 낱말은 표시가 늦다
+      if (!wordCells(w).every(c => c && c.ch === c.ans)) { straddle = true; break; }
     }
     if (!straddle) best = y;
   }
