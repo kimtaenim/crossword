@@ -13,8 +13,9 @@ const style = head.match(/<style>[\s\S]*?<\/style>/)[0];
 const names = JSON.parse(fs.readFileSync(root + 'packs/index.json', 'utf8'));
 const packs = names.map(n => JSON.parse(fs.readFileSync(root + 'packs/' + n, 'utf8')));
 
+// src 에 붙은 ?v=… 는 캐시를 밀어내려고 단 것이라 파일 이름에서 떼고 읽는다
 const inlined = body.replace(/<script src="([^"]+)"><\/script>/g, (m, src) =>
-  `<script>\n${fs.readFileSync(root + src, 'utf8')}\n</script>`);
+  `<script>\n${fs.readFileSync(root + src.split('?')[0], 'utf8')}\n</script>`);
 
 // 아티팩트는 <!doctype>/<html>/<head>/<body> 를 스스로 씌우므로 알맹이만 낸다
 fs.writeFileSync(out,

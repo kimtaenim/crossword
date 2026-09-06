@@ -1047,7 +1047,12 @@ function alphaMode() {
 
 // 알파벳 낱말일 때는 기기 자판 대신 내장 영문 자판을 쓴다.
 // 한글 자판을 켜 둔 폰에서 영문으로 갈아 끼우게 하는 건 번거롭기만 하다.
-const useIME = () => document.body.classList.contains('nokb') && !alphaMode();
+//
+// 캡스락이 켜져 있는 동안도 기기 IME 를 비켜 간다. 윈도 한글 IME 는 캡스락을
+// 시프트처럼 써서 ㅂ 자리에 ㅃ 을 보내는데, 그건 조합이 끝난 결과로 오기 때문에
+// 우리 쪽에서 되돌릴 방법이 없다. 숨은 입력칸에서 손을 떼면 IME 가 붙을 자리가
+// 없어져 글쇠가 날것으로 오고, 그러면 자리(e.code)와 시프트로 우리가 조합한다.
+const useIME = () => document.body.classList.contains('nokb') && !alphaMode() && !CAPS;
 
 /** 지금 선택한 자리에 맞춰 입력칸을 비우고 다시 겨눈다 */
 function anchorIME(force) {
@@ -1112,15 +1117,30 @@ let shift = false;
  * e.key 를 그대로 보면 캡스락이 켜져 있을 때 q 가 'Q' 로 와서 ㅂ 자리에 ㅃ 이 박히고,
  * ㅁ(a) 처럼 된소리가 없는 자리는 아예 안 먹힌다. 캡스락은 시프트가 아니다.
  * 그래서 자판의 «자리»(e.code) 로 글쇠를 찾고, 된소리 여부는 시프트로만 정한다.
+ *
+ * 단, 한글 IME 가 잡고 있는 키는 손대지 않는다. 그때는 조합 결과가 숨은 입력칸으로
+ * 따로 들어오므로, 여기서 또 넣으면 둘이 같은 칸을 놓고 다툰다.
  */
 function jamoOf(e) {
+  if (e.isComposing || e.keyCode === 229) return '';   // IME 조합 중
+  if (!/^[A-Za-z]$/.test(e.key)) return '';            // 'Process' · 자모 · 음절은 IME 몫
   const m = /^Key([A-Z])$/.exec(e.code || '');
-  const low = m ? m[1].toLowerCase()
-            : /^[A-Za-z]$/.test(e.key) ? e.key.toLowerCase() : '';
-  if (!low) return '';
+  const low = (m ? m[1] : e.key).toLowerCase();
   // 시프트를 눌렀어도 된소리가 없는 자리(ㅁ, ㄴ …)는 홑소리 그대로
   return (e.shiftKey && QWERTY[low.toUpperCase()]) || QWERTY[low] || '';
 }
+
+/*
+ * 한글 IME 를 켜 둔 채 캡스락을 켜면, 운영체제가 캡스락을 시프트처럼 써서
+ * ㅂ 자리에 ㅃ 을 보낸다 (소꿉놀이의 «꿉» 이 «꾸ㅃ» 이 되는 그 증상).
+ * 두벌식에서 시프트 없이 된소리를 칠 방법은 없으므로, 시프트를 안 눌렀는데 온
+ * 된소리는 홑소리로 되돌린다. 반대쪽(시프트를 눌렀는데 홑소리로 오는 것)은
+ * 멀쩡한 입력과 구별할 수가 없어 건드리지 않는다.
+ */
+const SINGLE = { 'ㅃ':'ㅂ', 'ㅉ':'ㅈ', 'ㄸ':'ㄷ', 'ㄲ':'ㄱ', 'ㅆ':'ㅅ', 'ㅒ':'ㅐ', 'ㅖ':'ㅔ' };
+const capsOn = e => !!(e.getModifierState && e.getModifierState('CapsLock'));
+let CAPS = false;
+const unCaps = (j, e) => (!e.shiftKey && capsOn(e) && SINGLE[j]) || j;
 
 const ABC = [
   ['Q','W','E','R','T','Y','U','I','O','P'],
@@ -1191,7 +1211,21 @@ function paintShift() {
   });
 }
 
+/* 캡스락은 켜 두면 한글이 깨진다. 켜져 있는 동안은 대놓고 알려 주고,
+   그동안은 기기 IME 대신 우리 조합기로 받는다 */
+function paintCaps(e) {
+  const on = capsOn(e);
+  if (on === CAPS) return;
+  CAPS = on;
+  const bar = document.getElementById('caps');
+  if (bar) bar.hidden = !on;
+  if (useIME()) focusIME(); else ime.blur();
+  sizeCells(); render();
+}
+window.addEventListener('keyup', paintCaps);
+
 window.addEventListener('keydown', e => {
+  paintCaps(e);
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key;
   if (k === 'Backspace') {
@@ -1213,11 +1247,11 @@ window.addEventListener('keydown', e => {
   // 한글 IME 가 켜져 있어 자모/음절이 그대로 들어오는 경우
   if (k.length === 1) {
     const cc = k.charCodeAt(0);
-    if (cc >= 0x3131 && cc <= 0x3163) { e.preventDefault(); input(k); return; }
+    if (cc >= 0x3131 && cc <= 0x3163) { e.preventDefault(); input(unCaps(k, e)); return; }
     if (cc >= 0xac00 && cc <= 0xd7a3) {
       e.preventDefault();
       const d = disassemble(k);
-      input(d.cho); input(d.jung); if (d.jong) input(d.jong);
+      input(unCaps(d.cho, e)); input(d.jung); if (d.jong) input(d.jong);
     }
   }
 });
@@ -1601,5 +1635,6 @@ if (location.search.includes('debug'))
   window.__cw = { G, S, get W() { return W; }, key, grow, collapse, clearableY, render, wordCells,
                   input, hint, openWord, after, markBad, nextWord, crossCount, startPack, curWord, focusIME, anchorIME,
                   tune: (w, c, r, o) => { WEAR = w; WEARCAP = c; RECSHIFT = r; if (o !== undefined) OFFPICK = o; },
+                  useIME,
                   get ONTOPIC() { return ONTOPIC; }, get PACK() { return PACK; }, get BANK() { return BANK; } };
 })();
