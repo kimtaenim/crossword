@@ -99,31 +99,18 @@
   .cell.born, .cell.gone { opacity: 0; }
 
   /* 다 푼 줄은 지우지 않고 남겨 둔다 — 위로 올리면 언제든 다시 읽을 수 있게.
-     단계는 둘뿐이다. 방금 넘긴 밴드는 진하게 남고, 그 위는 한꺼번에 확 엷어진다.
-     슬금슬금 옅어지면 방금 해낸 줄이 묻혀 «여기까지 왔다» 가 안 보인다. */
+     여섯 줄을 다 채워 넘어가는 «그 순간» 옅어진다. 다음 밴드를 넘길 때까지
+     기다렸다 옅어지면, 정작 해낸 순간에는 아무 일도 안 일어난 것처럼 보인다.
+     채도는 살려 두고 밝기만 확 올린다 — 흐린 회색이 아니라 맑고 옅은 파랑.
+     글자는 그냥 흰색. 지나간 답이라 또렷할 필요 없이 물러나 있는 편이 낫다. */
   .cell.past {
-    box-shadow: var(--sheen), 0 1px 1px rgba(14,43,87,.06); cursor: pointer;
-    transition: transform .38s cubic-bezier(.2,.85,.25,1), background .55s, color .55s, border-color .55s;
-  }
-  /* 방금 넘긴 밴드 — 코발트를 제일 진하게 올려 굽고 유약을 두껍게 씌운다 */
-  .cell.past[data-age="0"] {
-    background: linear-gradient(180deg,#4a86e0 0%,#2160c4 44%,#123f8f 100%);
-    border-color: #17408f;
-    box-shadow: inset 0 1.5px 0 rgba(255,255,255,.5), inset 0 -3px 6px rgba(4,22,58,.45),
-                0 1px 2px rgba(10,37,84,.3);
-    color: #ffffff; text-shadow: 0 1px 2px rgba(6,26,60,.55);
-  }
-  .cell.past[data-age="0"] i { color: rgba(255,255,255,.65); text-shadow: none; }
-  /* 그 위는 한 칸에 뚝 떨어진다. 흐린 회색이 아니라 «맑고 옅은 파랑» 이라
-     채도는 살려 두고 밝기만 확 올린다. 유약도 그대로 남긴다 */
-  /* 글자는 그냥 흰색. 지나간 답이라 또렷할 필요가 없다 — 물러나 있는 편이 낫다 */
-  .cell.past[data-age="1"] {
     background: linear-gradient(180deg,#dcebff 0%,#c2dafb 55%,#b1d0f8 100%);
-    border-color: #9dc8f4;
+    border-color: #9dc8f4; cursor: pointer;
     box-shadow: inset 0 1.5px 0 rgba(255,255,255,.95), inset 0 -2px 4px rgba(31,98,196,.14);
     color: #ffffff; text-shadow: none;
+    transition: transform .38s cubic-bezier(.2,.85,.25,1), background .55s, color .55s, border-color .55s;
   }
-  .cell.past[data-age="1"] i { color: rgba(255,255,255,.75); text-shadow: none; }
+  .cell.past i { color: rgba(255,255,255,.75); text-shadow: none; }
   .cell.past.cur { box-shadow: var(--sheen), 0 0 0 2px rgba(29,89,179,.4); border-color: var(--cobalt); }
 
   /* 어린이 단어장은 민트로 갈아입는다 — 델프트가 코발트라면 이쪽은 청자빛이다.
@@ -146,21 +133,13 @@
   body[data-theme="mint"] .cell i { color: #a2d6c8; }
   /* 밝아진 만큼 흰 글자가 묽어진다. 그늘을 조금 더 깔아 읽히게 한다 */
   body[data-theme="mint"] .cell.solved { text-shadow: 0 1px 2px rgba(9,100,82,.45); }
-  body[data-theme="mint"] .cell.past[data-age="0"] {
-    background: linear-gradient(180deg,#4fdcbb 0%,#17c1a0 44%,#049176 100%);
-    border-color: #089a7e;
-    box-shadow: inset 0 1.5px 0 rgba(255,255,255,.55), inset 0 -3px 6px rgba(3,60,48,.42),
-                0 1px 2px rgba(6,80,64,.28);
-    color: #ffffff; text-shadow: 0 1px 2px rgba(3,60,48,.5);
-  }
-  body[data-theme="mint"] .cell.past[data-age="0"] i { color: rgba(255,255,255,.78); }
-  body[data-theme="mint"] .cell.past[data-age="1"] {
+  body[data-theme="mint"] .cell.past {
     background: linear-gradient(180deg,#d3fcf1 0%,#aef4e3 55%,#99efdb 100%);
     border-color: #82e8d1;
     box-shadow: inset 0 1.5px 0 rgba(255,255,255,.95), inset 0 -2px 4px rgba(14,170,140,.14);
     color: #ffffff; text-shadow: none;
   }
-  body[data-theme="mint"] .cell.past[data-age="1"] i { color: rgba(255,255,255,.75); }
+  body[data-theme="mint"] .cell.past i { color: rgba(255,255,255,.75); }
   body[data-theme="mint"] dialog::backdrop { background: rgba(16,120,100,.32); }
 
   /* 빈자리 스티커 — 어린이 단어장에서만 나온다. 누를 수 없고 칸을 가리지 않는다 */
