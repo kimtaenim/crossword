@@ -435,17 +435,17 @@ function buildBandBest(top, tries) {
   if (EASY) giveFirst(made);
 }
 
-/** 쉽게 모드 — 낱말마다 첫 글자를 미리 채워 둔다. 시작점이 있으면 훨씬 덜 막힌다 */
+/*
+ * 쉽게 모드에서 첫 글자를 여는 낱말은 «아무 데도 안 걸린 것» 뿐이다.
+ * 처음에는 모든 낱말의 첫 글자를 열어 봤는데, 그러면 떠올릴 일이 없어져
+ * 외우려고 푸는 판에서 남는 게 없다. 다른 낱말과 한 칸도 겹치지 않는 낱말은
+ * 힌트 말고는 실마리가 아예 없으니, 거기만 한 글자를 준다.
+ */
 function giveFirst(ws) {
   for (const w of ws) {
+    if (crossCount(w)) continue;
     const c = wordCells(w)[0];
     if (c && !c.ch) { c.ch = c.ans; c.given = true; }
-  }
-  for (const w of ws) {          // 첫 글자만으로 다 채워진 짧은 낱말은 바로 맞은 것으로
-    const cs = wordCells(w);
-    if (!w.solved && cs.every(c => c && c.ch === c.ans)) {
-      w.solved = true; cs.forEach(c => { c.solved = true; });
-    }
   }
 }
 
