@@ -16,11 +16,13 @@
 */
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 const repo = process.argv[2] || path.join(process.cwd(), '..', 'sisain-chatbot');
 const arts = JSON.parse(fs.readFileSync(path.join(repo, 'data/articles.json'), 'utf8'));
 const onto = JSON.parse(fs.readFileSync(path.join(repo, 'data/ontology.json'), 'utf8'));
-const dir = new URL('../packs/', import.meta.url).pathname;
+// 윈도우에서 URL.pathname 은 '/C:/...' 를 돌려준다. fileURLToPath 를 써야 한다.
+const dir = fileURLToPath(new URL('../packs/', import.meta.url));
 const news = JSON.parse(fs.readFileSync(dir + 'news.json', 'utf8'));
 const 있는말 = new Set(news.groups.flatMap(g => g.words.map(w => w[0])));
 
@@ -46,7 +48,11 @@ const 최근글 = 글.filter(a => a.d >= 요즘);
 const 이름 = new Set();
 for (const a of Object.values(onto.articles || {}))
   for (const e of (a.entities || []))
-    if (e.type === 'person' || e.subtype === 'media' || e.subtype === 'journalist') 이름.add(e.name);
+    if (e.type === 'person' || e.type === 'org') 이름.add(e.name);
+
+/** 고유명사인가. '하이닉스' 처럼 이름의 끝토막으로 나오는 것까지 본다 */
+const 이름목록 = [...이름];
+const 고유명사 = w => 이름.has(w) || 이름목록.some(n => n.length > w.length && n.endsWith(w));
 
 /** 뒤에 조사가 붙는 비율 — 명사인지 가리는 잣대 */
 function 조사비율(w, 글들) {
@@ -95,7 +101,9 @@ for (const a of 최근글) {
       if (w === 전) break;
     }
     if (w.length < 3 || w.length > 7) continue;
-    if (어미.test(w) || 있는말.has(w) || 이름.has(w)) continue;
+    if (어미.test(w) || 있는말.has(w) || 고유명사(w)) continue;
+    if (/들$/.test(w)) continue;              // 관계자들·피해자들·친구들 — 복수형은 용어가 아니다
+    if (/(씨|님|군|양)$/.test(w)) continue;    // 김건희씨
     seen.add(w);
   }
   for (const w of seen) df.set(w, (df.get(w) || 0) + 1);
