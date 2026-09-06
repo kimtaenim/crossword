@@ -141,6 +141,9 @@ const allKinds = pack => pack.groups.map(g => g.name);
 function loadBank(pack, picked) {
   PACK = pack;
   DECO = Array.isArray(pack.deco) ? pack.deco : [];
+  // 단어장이 배색을 고를 수 있다. 없으면 기본(델프트 블루)
+  if (pack.theme) document.body.dataset.theme = pack.theme;
+  else delete document.body.dataset.theme;
   PICK = new Set(picked && picked.length ? picked : allKinds(pack));
   ONTOPIC = new Set();
   KIND = new Map();
@@ -639,13 +642,17 @@ function renderDeco(from, to) {
       live.add(k);
       let el = decos.get(k);
       if (!el) {
+        // 그림은 «다른» 해시로 고른다. 자리를 고른 h 를 그대로 나누면
+        // 스티커가 열여덟 개라도 h%9==0 인 것들의 h%18 은 두 값뿐이라
+        // 판에 강아지와 개구리만 깔린다
+        const g = 어림(y + 7919, x + 104729);
         el = document.createElement('div');
         el.className = 'deco';
         el.innerHTML = '<b></b>';
-        el.firstChild.textContent = DECO[h % DECO.length];
+        el.firstChild.textContent = DECO[g % DECO.length];
         // 크기와 기울기를 조금씩 달리해 손으로 붙인 스티커처럼 보이게 한다
-        el.style.setProperty('--dz', (0.44 + (h >> 3) % 5 * 0.045).toFixed(3));
-        el.style.setProperty('--dr', (((h >> 7) % 25) - 12) + 'deg');
+        el.style.setProperty('--dz', (0.44 + (g >> 5) % 5 * 0.045).toFixed(3));
+        el.style.setProperty('--dr', (((g >> 11) % 25) - 12) + 'deg');
         layer.appendChild(el);
         decos.set(k, el);
       }

@@ -110,6 +110,32 @@
   .cell.past i { color: rgba(255,255,255,.62); text-shadow: none; }
   .cell.past.cur { box-shadow: var(--sheen), 0 0 0 2px rgba(29,89,179,.4); border-color: var(--cobalt); }
 
+  /* 어린이 단어장은 민트로 갈아입는다 — 델프트가 코발트라면 이쪽은 청자빛이다.
+     토큰만 바꿔 끼우므로 유약도 그늘도 그대로 따라온다 */
+  body[data-theme="mint"] {
+    --bg: #e7f5f0; --panel: #fbfefd; --line: #b3ddd1; --ink: #0d3b33; --dim: #5b877c;
+    --accent: #14907a; --cobalt: #19a88c; --deep: #0a5749; --ok: #14907a;
+    --tile-in: #ddf2eb; --tile-cur: #c2e9dc;
+    --glaze: linear-gradient(180deg, #ffffff 0%, #f1faf7 58%, #e5f4ef 100%);
+    --glaze-blue: linear-gradient(180deg, #2ec5a4 0%, #17a88b 46%, #0d7a64 100%);
+    --sheen: inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 2px rgba(20,144,122,.1);
+    --sheen-blue: inset 0 1px 0 rgba(255,255,255,.45), inset 0 -2px 5px rgba(5,60,48,.38);
+  }
+  body[data-theme="mint"] header { background: linear-gradient(180deg, #ffffff 0%, #eff9f5 100%); }
+  body[data-theme="mint"] footer { background: linear-gradient(180deg, #ffffff 0%, #f4fbf8 100%); }
+  body[data-theme="mint"] #kb { background: linear-gradient(180deg, #e2f2ec, #d8ece5); }
+  body[data-theme="mint"] .key.fn { background: linear-gradient(180deg, #edf8f4, #dff2eb); }
+  body[data-theme="mint"] #nowline { border-top-color: #86ccb8; }
+  body[data-theme="mint"] #nowline::after { color: #5a9c8b; }
+  body[data-theme="mint"] .cell i { color: #86b3a7; }
+  body[data-theme="mint"] .cell.past i { color: rgba(255,255,255,.66); }
+  body[data-theme="mint"] .cell.past[data-age="0"] { background: linear-gradient(180deg,#3fbfa1 0%,#22a184 100%); border-color: #1f9a7e; }
+  body[data-theme="mint"] .cell.past[data-age="1"] { background: linear-gradient(180deg,#59cbb0 0%,#3bb094 100%); border-color: #39a98e; }
+  body[data-theme="mint"] .cell.past[data-age="2"] { background: linear-gradient(180deg,#74d6c0 0%,#55bfa6 100%); border-color: #54b8a0; }
+  body[data-theme="mint"] .cell.past[data-age="3"] { background: linear-gradient(180deg,#8fe0ce 0%,#6ecbb5 100%); border-color: #6dc5af; }
+  body[data-theme="mint"] .cell.past[data-age="4"] { background: linear-gradient(180deg,#a9e9db 0%,#88d6c3 100%); border-color: #87d0bd; }
+  body[data-theme="mint"] dialog::backdrop { background: rgba(8,70,58,.38); }
+
   /* 빈자리 스티커 — 어린이 단어장에서만 나온다. 누를 수 없고 칸을 가리지 않는다 */
   .deco {
     position: absolute; top: 0; left: 0;
