@@ -46,10 +46,12 @@
   #packname {
     background: var(--glaze); border: 1px solid var(--line); color: var(--ink);
     box-shadow: var(--sheen); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 600;
-    font-family: inherit; cursor: pointer; white-space: nowrap; flex: none;
+    font-family: inherit; cursor: pointer; white-space: nowrap;
+    /* 갈래 이름까지 붙으면 길어져 오른쪽 숫자를 밀어낸다. 넘치면 말줄임 */
+    flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
   }
   #packname:hover { background: var(--tile-in); border-color: #a9c8ea; }
-  .stats { display: flex; gap: 11px; margin-left: auto; font-size: 11px; color: var(--dim); }
+  .stats { display: flex; gap: 11px; margin-left: auto; font-size: 11px; color: var(--dim); flex: none; white-space: nowrap; }
   .stats b { color: var(--ink); font-size: 14px; font-variant-numeric: tabular-nums; display: block; text-align: right; }
   .tools { display: flex; gap: 5px; flex: none; }
   .tools button, .cluenav button {
