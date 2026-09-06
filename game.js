@@ -121,6 +121,7 @@ let PICK = new Set();        // 그중 고른 갈래 이름들
 let ONTOPIC = new Set();     // 고른 갈래에 든 단어들 (나머지는 벌점을 받고 뒤로 밀린다)
 let KIND = new Map();        // 단어 → 갈래 이름
 let BASIC = new Set();       // "기초" 로 표시해 둔 단어 (쉽게 모드에서 먼저 깔린다)
+let FRESH = new Set();       // "요즘 말" — 요즘 뉴스에 실제로 자주 나온 말. 앞자리를 준다
 let EASY = false;            // 쉽게 — 기초 낱말 위주로 깔고, 낱말마다 첫 글자를 열어 준다
 let BANK = [];               // [[단어, 힌트], ...] — 고른 갈래의 단어만
 let INDEX = new Map();       // 음절 → [{wi, pos}]
@@ -142,12 +143,14 @@ function loadBank(pack, picked) {
   ONTOPIC = new Set();
   KIND = new Map();
   BASIC = new Set();
+  FRESH = new Set();
   BANK = [];
   for (const g of pack.groups) {
     for (const w of g.words) {
       BANK.push(w);
       KIND.set(w[0], w[2] || g.name);
       if (w[3] === '기초' || g.name === '기초') BASIC.add(w[0]);
+      if (w[3] === '요즘' || g.name === '요즘 말') FRESH.add(w[0]);
       if (PICK.has(g.name)) ONTOPIC.add(w[0]);
     }
   }
@@ -276,9 +279,11 @@ let OFFPICK = 26;    // 고르지 않은 갈래의 단어에 매기는 벌점.
 let HARD = 34;      // 쉽게 모드에서 기초가 아닌 말에 매기는 벌점.
                     // 겹침 하나 값(100)보다 한참 낮게 둬야 판이 안 성긴다 —
                     // 그래도 200줄 기준 기초 비율이 44% 에서 74% 로 올라간다
+let NEW = 22;       // 요즘 말에 주는 가산점. 벌점을 깎아 앞자리로 당긴다
 const wornOut = word =>
   Math.min(WEARCAP, WEAR * (G.used.get(word) || 0)) + (ONTOPIC.has(word) ? 0 : OFFPICK)
-  + (EASY && BASIC.size && !BASIC.has(word) ? HARD : 0);
+  + (EASY && BASIC.size && !BASIC.has(word) ? HARD : 0)
+  - (FRESH.has(word) ? NEW : 0);
 
 /**
  * 이 단어를 여기 놓으면 나중에 몇 개나 더 엮을 수 있을지.
