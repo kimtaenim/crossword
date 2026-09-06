@@ -279,7 +279,8 @@ let OFFPICK = 26;    // 고르지 않은 갈래의 단어에 매기는 벌점.
 let HARD = 34;      // 쉽게 모드에서 기초가 아닌 말에 매기는 벌점.
                     // 겹침 하나 값(100)보다 한참 낮게 둬야 판이 안 성긴다 —
                     // 그래도 200줄 기준 기초 비율이 44% 에서 74% 로 올라간다
-let NEW = 22;       // 요즘 말에 주는 가산점. 벌점을 깎아 앞자리로 당긴다
+let NEW = 11;       // 요즘 말에 주는 가산점. 벌점을 깎아 앞자리로 당긴다.
+                    // 요즘 말이 일흔다섯 개로 늘어 22 로는 판의 삼분의 이를 차지했다
 const wornOut = word =>
   Math.min(WEARCAP, WEAR * (G.used.get(word) || 0)) + (ONTOPIC.has(word) ? 0 : OFFPICK)
   + (EASY && BASIC.size && !BASIC.has(word) ? HARD : 0)
