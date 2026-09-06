@@ -183,6 +183,45 @@
   body[data-theme="coral"] .cell.past i { color: rgba(255,255,255,.8); }
   body[data-theme="coral"] dialog::backdrop { background: rgba(150,40,60,.3); }
 
+  /* 시사IN 기조색 — 시사 용어 단어장. 강조는 빨강, 푼 칸은 어두운 파랑,
+     지나온 줄은 채도를 뺀 연한 청회색. 델프트 블루 대신 신문 지면의 두 색으로 간다 */
+  body[data-theme="sisain"] {
+    --bg: #f4f6f9; --panel: #ffffff; --line: #d9e0ea; --ink: #0a1a3a; --dim: #8a94a6;
+    --accent: #dc031c; --cobalt: #1c3a6e; --deep: #0a1a3a; --ok: #dc031c;
+    --tile-in: #eef2f7; --tile-cur: #fde3e6;
+    --tile-in-top: #f7f9fc; --tile-cur-top: #fff0f1;
+    --ring: rgba(220,3,28,.28); --ring-strong: rgba(220,3,28,.42); --cast: rgba(10,26,58,.14);
+    --glaze: linear-gradient(180deg, #ffffff 0%, #f8fafc 58%, #f1f4f8 100%);
+    --glaze-blue: linear-gradient(180deg, #2b4a80 0%, #17305c 46%, #0a1a3a 100%);
+    --sheen: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 2px rgba(10,26,58,.08);
+    --sheen-blue: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -2px 5px rgba(3,10,26,.45);
+  }
+  body[data-theme="sisain"] {
+    background:
+      radial-gradient(120% 70% at 50% -10%, #ffffff 0%, rgba(255,255,255,0) 62%),
+      radial-gradient(90% 60% at 8% 108%, #e6ebf3 0%, rgba(230,235,243,0) 70%),
+      var(--bg);
+  }
+  body[data-theme="sisain"] header { background: linear-gradient(180deg, #ffffff 0%, #f6f8fb 100%); }
+  body[data-theme="sisain"] footer { background: linear-gradient(180deg, #ffffff 0%, #f9fafc 100%); }
+  body[data-theme="sisain"] #kb { background: linear-gradient(180deg, #eef2f7, #e5eaf1); }
+  body[data-theme="sisain"] .key.fn { background: linear-gradient(180deg, #f8fafc, #eef2f7); }
+  body[data-theme="sisain"] #packname { color: #dc031c; }
+  body[data-theme="sisain"] #packname:hover { border-color: #f0a3ab; }
+  body[data-theme="sisain"] #nowline { border-top-color: #f0a3ab; }
+  body[data-theme="sisain"] #nowline::after { color: #dc031c; }
+  body[data-theme="sisain"] .cell i { color: #9aa6b8; }
+  body[data-theme="sisain"] .cell.solved { color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,.45); }
+  body[data-theme="sisain"] .cell.solved i { color: #9fb3d6; }
+  body[data-theme="sisain"] .cell.past {
+    background: linear-gradient(180deg,#e9edf3 0%,#dde3ec 55%,#d3dbe6 100%);
+    border-color: #c9d2de;
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,.95), inset 0 -2px 4px rgba(10,26,58,.10);
+    color: #ffffff; text-shadow: none;
+  }
+  body[data-theme="sisain"] .cell.past i { color: rgba(255,255,255,.85); }
+  body[data-theme="sisain"] dialog::backdrop { background: rgba(10,26,58,.35); }
+
   /* 빈자리 스티커 — 어린이 단어장에서만 나온다. 누를 수 없고 칸을 가리지 않는다 */
   .deco {
     position: absolute; top: 0; left: 0;

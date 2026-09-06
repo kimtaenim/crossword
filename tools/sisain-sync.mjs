@@ -153,9 +153,10 @@ const 줄 = (제목, 목록) => {
 /** 지금 파일 모양 그대로 쓴다 — 낱말 한 줄에 하나, 들여쓰기 2칸 */
 function serialize(p) {
   const q = s => JSON.stringify(s);
-  const head = ['id', 'name', 'emoji', 'desc']
-    .filter(k => p[k] !== undefined)
-    .map(k => `  ${q(k)}: ${q(p[k])},`).join('\n');
+  // groups 만 빼고 위쪽 키는 전부 그대로 옮긴다 — theme·deco 같은 것을 --write 가 지워 버리면 안 된다
+  const head = Object.keys(p)
+    .filter(k => k !== 'groups')
+    .map(k => `  ${q(k)}: ${JSON.stringify(p[k])},`).join('\n');
   const groups = p.groups.map(g => {
     const words = g.words
       .map(w => '        [' + w.map(q).join(', ') + ']')

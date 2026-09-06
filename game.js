@@ -1622,11 +1622,16 @@ async function boot() {
   window.PACKS = await loadPacks();
   if (!window.PACKS.length) throw new Error('단어장이 비어 있습니다');
 
+  // ?pack=news 처럼 주소로 단어장을 집어 주면 고르는 창 없이 바로 그 단어장으로 간다.
+  // 남의 페이지에 iframe 으로 얹을 때 쓴다 — 시사IN 위젯은 시사 용어만 보여 준다
+  let fromUrl = null;
+  try { fromUrl = window.PACKS.find(p => p.id === new URLSearchParams(location.search).get('pack')); } catch (_) {}
+
   let first = null;
   try { first = window.PACKS.find(p => p.id === localStorage.getItem(LAST_KEY)); } catch (_) {}
-  const firstPack = first || window.PACKS[0];
+  const firstPack = fromUrl || first || window.PACKS[0];
   startPack(firstPack, false, savedPick(firstPack));
-  if (!first) openChooser();     // 처음 왔으면 단어장부터 고르게 한다
+  if (!first && !fromUrl) openChooser();     // 처음 왔으면 단어장부터 고르게 한다
 }
 
 boot().catch(showLoadError);
