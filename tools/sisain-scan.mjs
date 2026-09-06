@@ -32,8 +32,12 @@ const 붙는말 = ['으로써', '으로서', '에서는', '이라는', '에게�
 const 어미 = /(다|요|음|임|함|움|했|한다|된다|하는|하고|해서|하며|이다|같은|같이|적인|적으로|하지|않은|않는|있는|없는|되는|위한|통해|대한|따라|이런|그런|우리|여러|모든|어떤|이번|지난|올해|내년|작년|인지|만들|어딘|무엇|얼마|는지|느냐|하기|나기|되기|가기|오기|보기|까지|부터|사용하|살아남)$/;
 
 const day = d => (d || '').slice(0, 10).replace(/\./g, '-');
-const 글 = arts.map(a => ({ d: day(a.date), t: [a.title, a.subtitle, a.summary, a.body].filter(Boolean).join(' ') }))
-               .filter(a => a.d);
+const 글 = arts.map(a => {
+  const t = [a.title, a.subtitle, a.summary, a.body].filter(Boolean).join(' ');
+  // 우리말 합성어는 붙여 쓰기도 하고 띄어 쓰기도 한다. 단어장의 "표현의자유" 를
+  // 기사에서 찾으려면 띄어쓰기를 지우고 맞춰 봐야 한다 (안 그러면 멀쩡한 말이 묵은 말이 된다)
+  return { d: day(a.date), t, 붙인: t.replace(/\s+/g, '') };
+}).filter(a => a.d);
 const 날짜 = 글.map(a => a.d).sort();
 const 요즘 = 날짜[Math.floor(날짜.length * 0.75)];
 const 최근글 = 글.filter(a => a.d >= 요즘);
@@ -63,7 +67,7 @@ function 조사비율(w, 글들) {
   return { all, 비율: josa / Math.max(1, all), 종류: 종류.size };
 }
 
-const 센다 = (w, 글들) => 글들.reduce((n, a) => n + (a.t.includes(w) ? 1 : 0), 0);
+const 센다 = (w, 글들) => 글들.reduce((n, a) => n + (a.붙인.includes(w) ? 1 : 0), 0);
 
 console.log(`기사 ${arts.length}건 (${날짜[0]} ~ ${날짜[날짜.length - 1]}), 요즘 = ${요즘} 이후 ${최근글.length}건\n`);
 
