@@ -431,7 +431,7 @@
   </div>
   <div id="kb"></div>
   <!-- 기기 자판을 불러오기 위한, 보이지 않는 입력칸 -->
-  <input id="ime" autocomplete="off" autocorrect="off" autocapitalize="none"
+  <input id="ime" autocomplete="off" autocorrect="off" autocapitalize="off"
          spellcheck="false" aria-label="글자 입력">
 </footer>
 
@@ -1874,9 +1874,6 @@ window.addEventListener('keydown', e => {
   if (/^[A-Za-z0-9]$/.test(k) && alphaMode()) {
     e.preventDefault(); putChar(k); return;
   }
-  // 폰에서 기기 자판이 숨은 입력칸을 잡고 있으면 글자는 전부 그쪽 몫이다.
-  // 여기서 가로채어 preventDefault 하면 자판은 글쇠가 안 먹은 줄 알고 ⇧ 를 풀지 않는다.
-  if (MOBILE && useIME() && document.activeElement === ime) return;
   if (CAPS) {
     // IME 가 잡고 있어도(key 'Process') 자리는 온다. 캡스락 동안은 그것만 믿는다
     const m = /^Key([A-Z])$/.exec(e.code || '');
