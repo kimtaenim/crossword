@@ -710,11 +710,24 @@ function loadBank(pack, picked) {
   // 단어장이 "kin": false 면 끈다 — 고래와 범고래, 사자와 바다사자는 아예 다른 동물이다
   KIN = new Map();
   const names = pack.kin === false ? [] : BANK.map(([w]) => w);
-  for (const a of names) for (const b of names) {
-    if (a === b || !b.includes(a)) continue;
+  const link = (a, b) => {
     if (!KIN.has(a)) KIN.set(a, []);
     if (!KIN.has(b)) KIN.set(b, []);
     KIN.get(a).push(b); KIN.get(b).push(a);
+  };
+  // 두 글자 덩어리(로봇·수술)를 둘 이상 나눠 가진 낱말도 친척이다 — 로봇수술과 수술로봇,
+  // 청소로봇과 로봇청소기는 서로 품지 않지만 같은 재료로 만든 말이다
+  // 짧은 쪽이 통째로(네 글자 이상) 긴 쪽에 있는 덩어리로만 이루어져야 한다 — 「리로봇」
+  // 세 글자만 겹치는 요리로봇·갠트리로봇, 「사우루스」 만 같은 공룡들은 걸리지 않게
+  const bigrams = w => { const s = new Set(); for (let i = 0; i + 2 <= w.length; i++) s.add(w.slice(i, i + 2)); return s; };
+  const BG = new Map(names.map(w => [w, bigrams(w)]));
+  for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) {
+    const a = names[i], b = names[j];
+    if (a.includes(b) || b.includes(a)) { link(a, b); continue; }
+    const [small, big] = a.length <= b.length ? [a, b] : [b, a];
+    const bb = BG.get(big), covered = new Set();
+    for (let k = 0; k + 2 <= small.length; k++) if (bb.has(small.slice(k, k + 2))) { covered.add(k); covered.add(k + 1); }
+    if (covered.size >= 4 && covered.size === small.length) link(a, b);
   }
 }
 
