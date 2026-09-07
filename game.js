@@ -551,6 +551,10 @@ const freeLetter = () => EASY || !!(PACK && PACK.giveFirst);
  * 외우려고 푸는 판에서 남는 게 없다. 다른 낱말과 한 칸도 겹치지 않는 낱말은
  * 힌트 말고는 실마리가 아예 없으니, 거기만 한 글자를 준다.
  */
+/* 풀린 칸과 미리 채워 준 칸(쉽게·어린이·동물의 첫 글자)은 «잠긴 칸» 이다 —
+   입력·이동·지우기가 모두 건너뛴다. 미리 채운 글자는 이미 맞는 글자라 거기서 받을 게 없다 */
+const locked = c => !!(c.solved || c.given);
+
 function giveFirst(ws) {
   for (const w of ws) {
     if (crossCount(w)) continue;
@@ -899,7 +903,7 @@ document.getElementById('list').addEventListener('click', e => {
   if (!w) return;
   S.dir = w.dir;
   const cs = wordCells(w);
-  S.cur = key((cs.find(c => !c.solved) || cs[0]).x, (cs.find(c => !c.solved) || cs[0]).y);
+  S.cur = key((cs.find(c => !locked(c)) || cs[0]).x, (cs.find(c => !locked(c)) || cs[0]).y);
   S.comp = compOf(G.cells.get(S.cur).ch);
   scrollTo(G.cells.get(S.cur));
   render();
@@ -949,7 +953,7 @@ function advance() {
   const cs = wordCells(w);
   const i = cs.findIndex(c => key(c.x, c.y) === S.cur);
   for (let j = i + 1; j < cs.length; j++) {
-    if (!cs[j].solved) { S.cur = key(cs[j].x, cs[j].y); S.comp = compOf(cs[j].ch); return; }
+    if (!locked(cs[j])) { S.cur = key(cs[j].x, cs[j].y); S.comp = compOf(cs[j].ch); return; }
   }
   const next = cs[i + 1];
   if (next) { S.cur = key(next.x, next.y); S.comp = compOf(next.ch); }
@@ -971,7 +975,7 @@ function input(j) {
   let c = G.cells.get(S.cur);
   if (!c) return;
   S.typing = true;
-  if (c.solved) { advance(); c = G.cells.get(S.cur); if (!c || c.solved) { render(); return; } }
+  if (locked(c)) { advance(); c = G.cells.get(S.cur); if (!c || locked(c)) { render(); return; } }
   const r = feed(S.comp, j);
   if (r.done !== undefined) {
     c.ch = r.done;
@@ -994,7 +998,7 @@ function putChar(ch) {
   let c = G.cells.get(S.cur);
   if (!c) return;
   S.typing = true;
-  if (c.solved) { advance(); c = G.cells.get(S.cur); if (!c || c.solved) { render(); return; } }
+  if (locked(c)) { advance(); c = G.cells.get(S.cur); if (!c || locked(c)) { render(); return; } }
   c.ch = ch.toUpperCase();
   S.comp = { cho: '', jung: '', jong: '' };
   checkWords(c);
@@ -1006,14 +1010,14 @@ function backspace() {
   if (!S.cur) return;
   const c = G.cells.get(S.cur);
   if (!c) return;
-  if (!c.solved) {
+  if (!locked(c)) {
     const u = unfeed(S.comp);
     if (u && (u.cho || u.jung)) { S.comp = u; c.ch = assemble(u); render(); return; }
     if (c.ch) { c.ch = ''; S.comp = { cho: '', jung: '', jong: '' }; render(); return; }
   }
   if (retreat()) {
     const p = G.cells.get(S.cur);
-    if (p && !p.solved) { p.ch = ''; S.comp = { cho: '', jung: '', jong: '' }; }
+    if (p && !locked(p)) { p.ch = ''; S.comp = { cho: '', jung: '', jong: '' }; }
   }
   render();
 }
@@ -1023,7 +1027,7 @@ function hint() {
   if (!S.cur) return;
   const w = curWord();
   const c = G.cells.get(S.cur);
-  const target = (c && !c.solved) ? c : (w ? wordCells(w).find(x => !x.solved) : null);
+  const target = (c && !locked(c)) ? c : (w ? wordCells(w).find(x => !locked(x)) : null);
   if (!target) return;
   target.ch = target.ans;
   G.hints++;
@@ -1096,7 +1100,7 @@ function jumpNearest(quiet) {
   }
   if (!best) return;
   S.dir = best.dir;
-  const t = wordCells(best).find(x => !x.solved) || wordCells(best)[0];
+  const t = wordCells(best).find(x => !locked(x)) || wordCells(best)[0];
   S.cur = key(t.x, t.y);
   S.comp = compOf(t.ch);
   if (!quiet) scrollTo(t);        // 줄을 넘긴 직후에는 따라 내려가는 스크롤 하나만 쓴다
@@ -1112,7 +1116,7 @@ function nextWord(step) {
   i = (i + step + ws.length) % ws.length;
   const w = ws[i];
   S.dir = w.dir;
-  const c = wordCells(w).find(x => !x.solved) || wordCells(w)[0];
+  const c = wordCells(w).find(x => !locked(x)) || wordCells(w)[0];
   S.cur = key(c.x, c.y);
   S.comp = compOf(c.ch);
   scrollTo(c);
@@ -1204,7 +1208,7 @@ function anchorIME(force) {
   if (w) {
     const cs = wordCells(w);
     const i = Math.max(0, cs.findIndex(c => key(c.x, c.y) === S.cur));
-    for (let j = i; j < cs.length; j++) if (!cs[j].solved) imeCells.push(cs[j]);
+    for (let j = i; j < cs.length; j++) if (!locked(cs[j])) imeCells.push(cs[j]);
   }
   /*
    * 값을 지우지 않는다. 폰 자판(특히 아이폰 한글)은 치는 도중에 값이 프로그램으로 바뀌면
@@ -1529,6 +1533,7 @@ function writeSave() {
       top: G.top, numBase: G.numBase,
       words: [...G.words.values()].map(w => [w.word, w.x, w.y, w.dir]),
       entries: [...G.cells.values()].filter(c => c.ch).map(c => [c.x, c.y, c.ch]),
+      given: [...G.cells.values()].filter(c => c.given).map(c => [c.x, c.y]),
       cur: S.cur, dir: S.dir, scroll: Math.round(seenScroll()),
     }));
   } catch (_) {}
@@ -1620,6 +1625,10 @@ function load() {
   for (const [x, y, ch] of (data.entries || [])) {
     const c = G.cells.get(key(x, y));
     if (c) c.ch = ch;
+  }
+  for (const [x, y] of (data.given || [])) {
+    const c = G.cells.get(key(x, y));
+    if (c && c.ch === c.ans) c.given = true;
   }
   for (const w of G.words.values()) {
     const cs = wordCells(w);
