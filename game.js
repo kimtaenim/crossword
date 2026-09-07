@@ -584,17 +584,45 @@ function checkWords(cell) {
  * 밴드가 안 걷히는데 어디가 틀렸는지 모르면 손쓸 데가 없다.
  * 어느 칸이 틀렸는지까지는 알려 주지 않는다 — 그건 답을 알려 주는 것이나 같다.
  */
+/*
+ * 치는 중인 칸의 글자가 «아직 정답이 될 수 있는가». 「을」 을 치는 길에 「으」 가
+ * 있고, 「놀이」 의 「이」 를 치는 길에 「ㅇ」 이 있다. 그런 동안은 틀렸다고 하지
+ * 않는다. 반대로 「이」 를 넣었는데 답이 「을」 이면 더 칠 게 없으니 바로 틀린 것이다.
+ * 받침이 다음 칸 초성으로 넘어가는 경우(각 + ㅏ → 가 가)도 아직 될 수 있는 것으로 본다.
+ */
+function stillPossible(c, next) {
+  const t = disassemble(c.ch), a = disassemble(c.ans);
+  if (t.cho !== a.cho) return false;
+  if (t.jung && t.jung !== a.jung && VOWEL_PAIR[t.jung + a.jung.slice(-1)] !== a.jung) {
+    // 홑모음이 겹모음의 앞부분이면(ㅗ → ㅘ) 아직 될 수 있다
+    const first = Object.keys(VOWEL_PAIR).find(k => VOWEL_PAIR[k] === a.jung);
+    if (!first || first[0] !== t.jung) return false;
+  }
+  if (!t.jong) return true;
+  if (t.jong === a.jong) return true;
+  const sp = JONG_SPLIT[a.jong];
+  if (sp && sp[0] === t.jong) return true;                     // ㄹ → ㄺ
+  if (!a.jong && next && disassemble(next.ans).cho === t.jong) return true;   // 받침이 다음 칸으로 넘어갈 것
+  const mine = JONG_SPLIT[t.jong];
+  if (mine && mine[0] === a.jong && next && disassemble(next.ans).cho === mine[1]) return true;  // 닭 → 달 + ㄱ
+  return false;
+}
+
 function markBad() {
-  // 치는 중인 칸(ㅇ, 으 처럼 아직 덜 된 글자)이 든 낱말은 판정을 미룬다 —
-  // «놀이» 의 ㅇ 을 친 순간 「틀림」이 떴다 사라지는 것이 거슬린다
+  // 치는 중인 칸이 아직 정답으로 갈 수 있으면(으 → 을, ㅇ → 이) 그 낱말의 판정은 미룬다.
+  // 더는 정답이 될 수 없는 글자를 넣으면(이 ≠ 을) 그 자리에서 바로 틀린 것으로 칠한다
   const at = S.typing && S.cur ? G.cells.get(S.cur) : null;
-  const hold = at && at.ch && !at.solved ? at : null;
-  const jamo = ch => { const cc = ch.charCodeAt(0); return cc >= 0x3131 && cc <= 0x3163; };
+  let hold = null;
+  if (at && at.ch && !at.solved) {
+    const w = curWord();
+    const cs = w ? wordCells(w) : [];
+    const i = cs.indexOf(at);
+    if (stillPossible(at, i >= 0 ? cs[i + 1] : null)) hold = at;
+  }
   for (const w of G.words.values()) {
     if (w.past) continue;
     const cs = wordCells(w);
-    w.bad = !w.solved && cs.every(c => c.ch) && cs.some(c => c.ch !== c.ans) &&
-      !cs.includes(hold) && !cs.some(c => jamo(c.ch));
+    w.bad = !w.solved && cs.every(c => c.ch) && cs.some(c => c.ch !== c.ans) && !cs.includes(hold);
   }
 }
 
