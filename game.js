@@ -228,6 +228,12 @@ function loadBank(pack, picked) {
     for (let k = 0; k + 2 <= small.length; k++) if (bb.has(small.slice(k, k + 2))) { covered.add(k); covered.add(k + 1); }
     if (covered.size >= 4 && covered.size === small.length) link(a, b);
   }
+  // 글자는 안 겹치지만 뜻이 같은 말(기계학습·머신러닝, 코봇·협동로봇)은 단어장이 짝을 적어 둔다
+  const have = new Set(names);
+  for (const group of (Array.isArray(pack.synonyms) ? pack.synonyms : [])) {
+    const ws = group.filter(w => have.has(w));
+    for (let i = 0; i < ws.length; i++) for (let j = i + 1; j < ws.length; j++) link(ws[i], ws[j]);
+  }
 }
 
 /** 최근 창 안에 그 말이나 그 말의 친척(품거나 품긴 말)이 있으면 참 */
