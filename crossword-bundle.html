@@ -1684,7 +1684,7 @@ function trace(kind, e) {
     ` caps=${e.getModifierState && e.getModifierState('CapsLock') ? 1 : 0}`);
   if (e && 'inputType' in e) bits.push(`type=${e.inputType} data=${JSON.stringify(e.data)}`);
   if (e && 'data' in e && !('inputType' in e) && !('key' in e)) bits.push(`data=${JSON.stringify(e.data)}`);
-  bits.push(`len=${imeLen()} base=${imeBase} 꼬리=${JSON.stringify(tail)} 조합=${composing ? 1 : 0} 캡스=${CAPS ? 1 : 0}`);
+  bits.push(`len=${imeLen()} base=${imeBase} 꼬리=${JSON.stringify(tail)} 조합=${composing ? 1 : 0} 캡스=${CAPS ? 1 : 0} ⇧상태=${softShift} 칸=${JSON.stringify((S.cur && G.cells.get(S.cur) || {}).ch || '')}`);
   const line = document.createElement('div');
   line.textContent = bits.join('  ');
   traceBox.appendChild(line);
@@ -1769,12 +1769,15 @@ const unCaps = (j, e) => (!e.shiftKey && capsOn(e) && SINGLE[j]) || j;
  * 않은 채 오는 된소리는 홑소리로 되돌린다. 사람이 ⇧ 를 다시 누르면 처음부터 센다.
  */
 let softShift = 0;   // 0 없음 · 1 ⇧ 방금 눌림(다음 글쇠 하나) · 2 이미 한 번 썼는데 안 풀림
+// 화면 자판의 글쇠는 code 가 비거나 Unidentified 로 온다. 붙박이 자판(KeyT 처럼 자리가 있는 것)은 건드리지 않는다
+const softKey = e => MOBILE || !e.code || e.code === 'Unidentified';
 function unSoftShift(j, e) {
-  if (!MOBILE) return j;
+  if (!softKey(e)) return j;
   if (!e.shiftKey) { softShift = 0; return j; }
-  if (softShift === 1) { softShift = 2; return j; }
-  if (softShift === 2 && SINGLE[j]) return SINGLE[j];
-  return j;
+  // ⇧ 글쇠 자체가 keydown 으로 안 올 때도 있다(자판이 이미 ⇧ 켜진 채였을 때).
+  // 그래서 «shift 가 켜진 첫 글쇠» 는 무조건 된소리로 받고, 그다음부터 되돌린다
+  if (softShift !== 2) { softShift = 2; return j; }
+  return SINGLE[j] || j;
 }
 
 const ABC = [
@@ -1876,7 +1879,7 @@ window.addEventListener('keydown', e => {
   paintCaps(e);
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key;
-  if (k === 'Shift') { if (MOBILE) softShift = 1; return; }
+  if (k === 'Shift') { softShift = 1; return; }   // 화면 자판의 ⇧ 도 이렇게 온다 — 다음 글쇠 하나부터 다시 센다
   if (k === 'Backspace') {
     if (useIME() && document.activeElement === ime && imeLen() > imeBase) return;  // 입력칸이 알아서 지운다
     e.preventDefault(); backspace(); return;
