@@ -8,6 +8,8 @@ global.window = { PACKS: names.map(n => JSON.parse(fs.readFileSync(dir + n, 'utf
 const MAXLEN = 46;              // 힌트 줄이 두 줄을 넘지 않는 길이
 let bad = 0, n = 0;
 const seen = new Map();
+// 일부러 정답의 한 조각을 힌트에 두는 것 — 상표 이름이 곧 실마리인 경우
+const ALLOW = { '레고마인드스톰': ['레고'] };
 
 for (const pack of window.PACKS) {
   for (const g of pack.groups) {
@@ -21,6 +23,7 @@ for (const pack of window.PACKS) {
       // 정답의 두 음절 이상이 붙어서 들어 있나
       for (let i = 0; i + 2 <= word.length; i++) {
         const bit = word.slice(i, i + 2);
+        if ((ALLOW[word] || []).includes(bit)) continue;
         if (clue.includes(bit)) { say(`정답의 "${bit}" 가 그대로 노출됨`); break; }
       }
       if (clue.length > MAXLEN) say(`힌트가 김 (${clue.length}자, ${MAXLEN}자 넘음)`);
