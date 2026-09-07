@@ -1,7 +1,9 @@
 /* 한 파일짜리 배포본을 만든다 — 아티팩트처럼 외부 파일을 못 가져오는 데 쓴다.
    node tools/bundle.mjs [나갈파일]                                        */
 import fs from 'fs';
-const root = new URL('../', import.meta.url).pathname;
+import { fileURLToPath } from 'url';
+// pathname 을 그대로 쓰면 윈도에서 «/C:/...» 가 되어 C:\C:\... 를 찾는다
+const root = fileURLToPath(new URL('../', import.meta.url));
 const out = process.argv[2] || root + 'crossword-bundle.html';
 
 const html = fs.readFileSync(root + 'index.html', 'utf8');

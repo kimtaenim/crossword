@@ -1471,7 +1471,7 @@ function writeSave() {
       top: G.top, numBase: G.numBase,
       words: [...G.words.values()].map(w => [w.word, w.x, w.y, w.dir]),
       entries: [...G.cells.values()].filter(c => c.ch).map(c => [c.x, c.y, c.ch]),
-      cur: S.cur, dir: S.dir, scroll: Math.round(scroller.scrollTop),
+      cur: S.cur, dir: S.dir, scroll: Math.round(seenScroll()),
     }));
   } catch (_) {}
 }
@@ -1490,6 +1490,37 @@ addEventListener('freeze', writeSave);      // 크롬이 탭을 얼릴 때
 
 let pendingScroll = 0;
 let settling = 0;        // 이 시각까지는 화면 크기가 바뀌어도 스크롤을 건드리지 않는다
+
+/* ───────── 가려졌다 돌아올 때 ─────────
+ * 남의 페이지에 iframe 으로 얹히면, 다른 탭으로 갔다 오는 동안 그 iframe 이
+ * display:none 이 된다. 그때 브라우저가 안쪽 스크롤을 0 으로 되돌린다 —
+ * 사람이 맨 위로 올린 것도 아닌데. 이 경우엔 다시 열리는 것이 아니라 그대로
+ * 살아 있으므로 startPack 도 settleTo 도 돌지 않는다. 여기서 따로 지켜야 한다.
+ *
+ * 가려지면 높이가 0 이 되는 것으로 그때를 안다. 가려진 사이의 0 은 자리로 치지 않고,
+ * 다시 보일 때 보던 자리로 돌려놓는다. 저장에도 «보이는 채로 있던 마지막 자리» 를 쓴다 —
+ * 안 그러면 가려진 채 저장돼 다음에 새로 들어와도 맨 위다.
+ */
+let lastScroll = 0;
+const seenScroll = () => (scroller.clientHeight ? scroller.scrollTop : lastScroll);
+
+scroller.addEventListener('scroll', () => {
+  if (scroller.clientHeight) lastScroll = scroller.scrollTop;
+}, { passive: true });
+
+if (window.ResizeObserver) {
+  let 가려짐 = false;
+  new ResizeObserver(() => {
+    if (!scroller.clientHeight) { 가려짐 = true; return; }
+    if (!가려짐) return;
+    가려짐 = false;
+    if (lastScroll && Math.abs(scroller.scrollTop - lastScroll) > 2) {
+      scroller.scrollTop = lastScroll;
+      settling = Date.now() + 600;              // 막 돌아온 참이니 고른 칸 쪽으로 끌지 않는다
+      render();
+    }
+  }).observe(scroller);
+}
 
 /*
  * 갈래(기초/심화)로 갈라 두었던 단어장을 «쉽게» 스위치 쪽으로 옮기면 저장 열쇠가
@@ -1580,6 +1611,7 @@ function startPack(pack, fresh, picked) {
   }
   ensureAhead();
   render();
+  lastScroll = pendingScroll;
   if (pendingScroll) { settleTo(pendingScroll); settling = Date.now() + 1200; render(); }
 }
 
