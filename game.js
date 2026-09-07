@@ -559,7 +559,8 @@ function giveFirst(ws) {
   for (const w of ws) {
     if (crossCount(w)) continue;
     const c = wordCells(w)[0];
-    if (c && !c.ch) { c.ch = c.ans; c.given = true; }
+    // 비었으면 열어 주고, 이미 맞는 글자가 들어 있으면(예전 판, 또는 사람이 친 것) 잠근다
+    if (c && (!c.ch || c.ch === c.ans)) { c.ch = c.ans; c.given = true; }
   }
 }
 
@@ -941,10 +942,19 @@ function tap(k) {
     S.cur = k;
     if ((S.dir === 'A' ? c.across : c.down) === null) S.dir = S.dir === 'A' ? 'D' : 'A';
   }
-  S.comp = compOf(c.ch);
+  // 미리 채워 준 칸을 짚으면 그 낱말의 다음 빈 칸으로 — 거기서 받을 글자가 없다
+  if (c.given && !c.solved) {
+    const w = curWord();
+    const cs = w ? wordCells(w) : [];
+    const i = cs.indexOf(c);
+    const n = cs.slice(i + 1).find(x => !locked(x));
+    if (n) S.cur = key(n.x, n.y);
+  }
+  const at = G.cells.get(S.cur);
+  S.comp = compOf(at.ch);
   render();
   focusIME();
-  scrollTo(c);
+  scrollTo(at);
 }
 
 function advance() {
@@ -1671,7 +1681,7 @@ function startPack(pack, fresh, picked) {
   pendingScroll = 0;
   migrate(pack);
   if (!load()) grow(AHEAD);
-  else if (!EASY && PACK.giveFirst) giveFirst([...G.words.values()].filter(w => !w.past && !w.solved));   // 예전 판에도 준다
+  else if (freeLetter()) giveFirst([...G.words.values()].filter(w => !w.past && !w.solved));   // 예전 판에도 주고, 표시가 없던 예전 저장도 다시 잠근다
   if (pendingScroll) {                       // 보던 자리까지는 판이 깔려 있어야 그리로 갈 수 있다
     const need = Math.ceil((pendingScroll + scroller.clientHeight) / C) + AHEAD;
     if (G.maxY < need) grow(need);
