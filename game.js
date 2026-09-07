@@ -98,7 +98,21 @@ const TARGET_CROSS = 4;
 let STRADDLE = 3;            // 세로가 다음 밴드로 걸쳐도 되는 줄 수      // 단어 하나가 다른 단어와 겹쳤으면 하는 목표 횟수
 const KEEP = BAND * 40;      // 다 푼 줄을 이만큼(240줄) 남겨 두고, 그보다 오래된 것만 버린다
 const WINDOW = 14;           // 화면 위아래로 이만큼 줄만 DOM 에 둔다 (판이 끝없이 길어지므로)
-const RECENT = 16;            // 최근 이만큼 안에서는 같은 단어를 다시 쓰지 않는다
+/*
+ * 최근에 쓴 낱말은 이만큼 지나기 전엔 다시 안 쓴다.
+ * 처음엔 16개였다. 그러면 한 밴드에 여덟 개쯤 깔리는 지금 격자에서 일곱 줄 뒤에
+ * 같은 말이 돌아온다 — 재사용 벌점(최대 120)이 말려도 잘 물리는 말은 겹침 하나(100)로
+ * 그걸 이긴다. 창을 «지금 쓰는 창고의 3분의 1» 로 두면 서른 줄, 밴드 다섯 개 안에는
+ * 절대 안 돌아오고 채움은 0.47→0.44 로 거의 그대로다 (로봇 기초 314개 기준 재 봄).
+ * 창고는 층을 잠갔으면 그 층만 센다 — 나머지는 어차피 안 나온다.
+ */
+let POOLFRAC = 3;
+function recentCap() {
+  const pool = (EASY && BASIC.size && HARD >= SHUT) ? BASIC.size
+             : (!EASY && TIERED && DEEP >= SHUT) ? BANK.length - BASIC.size
+             : BANK.length;
+  return Math.max(4, Math.floor(pool / POOLFRAC));
+}
 const key = (x, y) => x + ',' + y;
 
 /*
@@ -266,7 +280,7 @@ function place(wi, x, y, dir) {
   stradAdd(w, 1);
   G.used.set(word, (G.used.get(word) || 0) + 1);
   G.recent.push(word);
-  if (G.recent.length > Math.max(4, Math.min(RECENT, BANK.length >> RECSHIFT))) G.recent.shift();
+  while (G.recent.length > recentCap()) G.recent.shift();
   return w;
 }
 
@@ -295,7 +309,7 @@ function crossCount(w) {
 }
 
 /** 이미 여러 번 쓴 단어는 뒤로 미룬다 (겹침 하나 값은 못 넘게 벌점을 묶어 둔다) */
-let WEAR = 24, WEARCAP = 120, RECSHIFT = 3;  // 같은 단어를 돌려 쓰지 않게 하는 벌점.
+let WEAR = 24, WEARCAP = 120;                // 같은 단어를 돌려 쓰지 않게 하는 벌점.
                      // 오래 «겹침 하나 값(100) 은 못 넘게» 24 로 묶어 두었는데, 그러면
                      // 열 번 쓴 말도 벌점이 24 뿐이라 잘 물리는 말만 계속 나왔다.
                      // 창고를 891→1288개로 불린 뒤에는 뚜껑을 120 까지 올려도 판이
@@ -1065,7 +1079,9 @@ function ensureAhead() {
  */
 const ime = document.getElementById('ime');
 let imeCells = [];        // 지금 입력이 차례로 들어갈 칸들
+let imeBase = 0;          // 입력칸 값 가운데 여기부터를 칸에 비춘다 (앞은 이미 넘긴 글자)
 let composing = false;
+const imeLen = () => [...ime.value].length;
 let pendingAfter = false;
 
 /** 지금 고른 낱말이 알파벳 약어인가 */
@@ -1092,21 +1108,33 @@ function anchorIME(force) {
     const i = Math.max(0, cs.findIndex(c => key(c.x, c.y) === S.cur));
     for (let j = i; j < cs.length; j++) if (!cs[j].solved) imeCells.push(cs[j]);
   }
-  if (!composing || force) ime.value = '';
+  /*
+   * 값을 지우지 않는다. 폰 자판(특히 아이폰 한글)은 치는 도중에 값이 프로그램으로 바뀌면
+   * 조합과 ⇧ 상태를 잃어, 한 번 누른 ⇧ 가 풀리지 않고 다음 글자까지 된소리로 만든다.
+   * 대신 «어디서부터 비출지» 만 옮긴다. 조합 중이면 조합 중인 한 글자는 남겨 둔다.
+   */
+  if (!composing || force) imeBase = imeLen() - (composing ? 1 : 0);
+  if (imeBase < 0) imeBase = 0;
 }
 
 function focusIME() {
   if (!useIME()) return;
+  // 값 청소는 자판이 안 떠 있을 때, 아니면 사람이 칸을 짚는 순간에 어쩌다 한 번만 —
+  // 치는 도중에 지우면 자판 상태가 흔들린다
+  if (!composing && (document.activeElement !== ime || imeLen() > 200)) { ime.value = ''; imeBase = 0; }
   anchorIME();
   if (document.activeElement !== ime) ime.focus({ preventScroll: true });
 }
 
 /** 입력칸의 글자를 칸에 그대로 비춘다 */
 function imeSync() {
+  // 캡스락이 켜진 동안 IME 가 보내는 것은 버린다. 운영체제가 ㅂ 을 ㅃ 으로 바꿔 조합해
+  // 놓은 뒤라 되돌릴 수가 없다 — 그 글쇠는 keydown 에서 자리(e.code)로 우리가 받는다
+  if (CAPS) { imeBase = imeLen(); return; }
   // 줄이 걷혀 칸이 사라졌으면 다시 겨눈다
   if (imeCells.some(c => G.cells.get(key(c.x, c.y)) !== c)) { anchorIME(true); return; }
-  if (!imeCells.length) { ime.value = ''; return; }
-  const chars = [...ime.value].slice(0, imeCells.length);
+  if (!imeCells.length) { imeBase = imeLen(); return; }
+  const chars = [...ime.value].slice(imeBase, imeBase + imeCells.length);
   imeCells.forEach((c, i) => { c.ch = chars[i] || ''; });
   const at = imeCells[Math.min(chars.length, imeCells.length - 1)];
   if (at) S.cur = key(at.x, at.y);
@@ -1119,10 +1147,10 @@ function imeSync() {
 ime.addEventListener('compositionstart', () => { composing = true; });
 ime.addEventListener('compositionend', () => {
   composing = false;
-  // 조합이 끝난 뒤에 값을 손대야 안전하다
+  // 조합이 끝난 뒤에 손대야 안전하다. 값은 안 지운다 — 다음 조합이 벌써 시작됐을 수 있다
   setTimeout(() => {
     if (pendingAfter) { pendingAfter = false; after(); }
-    anchorIME(true);
+    else anchorIME();
   }, 0);
 });
 ime.addEventListener('input', imeSync);
@@ -1167,7 +1195,8 @@ function jamoOf(e) {
  * 멀쩡한 입력과 구별할 수가 없어 건드리지 않는다.
  */
 const SINGLE = { 'ㅃ':'ㅂ', 'ㅉ':'ㅈ', 'ㄸ':'ㄷ', 'ㄲ':'ㄱ', 'ㅆ':'ㅅ', 'ㅒ':'ㅐ', 'ㅖ':'ㅔ' };
-const capsOn = e => !!(e.getModifierState && e.getModifierState('CapsLock'));
+let PHYSICAL = false;       // 붙박이 자판을 한 번이라도 봤는가 (e.code 가 KeyQ 처럼 오면 붙박이다)
+const capsOn = e => PHYSICAL && !!(e.getModifierState && e.getModifierState('CapsLock'));
 let CAPS = false;
 const unCaps = (j, e) => (!e.shiftKey && capsOn(e) && SINGLE[j]) || j;
 
@@ -1248,17 +1277,29 @@ function paintCaps(e) {
   CAPS = on;
   const bar = document.getElementById('caps');
   if (bar) bar.hidden = !on;
-  if (useIME()) focusIME(); else ime.blur();
+  if (on) { ime.blur(); ime.value = ''; imeBase = 0; }   // 조합 중이던 것까지 버린다 (붙박이 자판뿐)
+  else focusIME();
   sizeCells(); render();
 }
 window.addEventListener('keyup', paintCaps);
+window.addEventListener('pointerdown', paintCaps, true);   // 칸을 누르는 순간 이미 안다
+
+/* 캡스락이 켜진 동안 마지막 글쇠가 어느 길로 들어왔는지 띠에 적어 둔다 —
+   기기마다 달라서, 안 될 때 이걸 보고 어디가 새는지 잡는다 */
+function noteKey(e, path) {
+  const bar = document.getElementById('caps');
+  if (!bar || !CAPS) return;
+  const n = bar.querySelector('small') || bar.appendChild(document.createElement('small'));
+  n.textContent = ` · ${e.key} / ${e.code || '-'} / ${e.keyCode} → ${path}`;
+}
 
 window.addEventListener('keydown', e => {
+  if (/^Key[A-Z]$/.test(e.code || '')) PHYSICAL = true;   // 화면 자판은 code 를 비워 보낸다
   paintCaps(e);
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key;
   if (k === 'Backspace') {
-    if (useIME() && document.activeElement === ime && ime.value) return;  // 입력칸이 알아서 지운다
+    if (useIME() && document.activeElement === ime && imeLen() > imeBase) return;  // 입력칸이 알아서 지운다
     e.preventDefault(); backspace(); return;
   }
   if (k === 'Tab') { e.preventDefault(); nextWord(e.shiftKey ? -1 : 1); return; }
@@ -1271,12 +1312,21 @@ window.addEventListener('keydown', e => {
   if (/^[A-Za-z]$/.test(k) && alphaMode()) {
     e.preventDefault(); putChar(k); return;
   }
+  if (CAPS) {
+    // IME 가 잡고 있어도(key 'Process') 자리는 온다. 캡스락 동안은 그것만 믿는다
+    const m = /^Key([A-Z])$/.exec(e.code || '');
+    if (m) {
+      const low = m[1].toLowerCase();
+      const j = (e.shiftKey && QWERTY[low.toUpperCase()]) || QWERTY[low] || '';
+      if (j) { e.preventDefault(); anchorIME(true); input(j); noteKey(e, '자리로 조합'); return; }
+    }
+  }
   const jamo = jamoOf(e);
-  if (jamo) { e.preventDefault(); ime.value = ''; anchorIME(true); input(jamo); return; }
+  if (jamo) { e.preventDefault(); anchorIME(true); input(jamo); noteKey(e, '조합기'); return; }
   // 한글 IME 가 켜져 있어 자모/음절이 그대로 들어오는 경우
   if (k.length === 1) {
     const cc = k.charCodeAt(0);
-    if (cc >= 0x3131 && cc <= 0x3163) { e.preventDefault(); input(unCaps(k, e)); return; }
+    if (cc >= 0x3131 && cc <= 0x3163) { e.preventDefault(); input(unCaps(k, e)); noteKey(e, '자모 그대로'); return; }
     if (cc >= 0xac00 && cc <= 0xd7a3) {
       e.preventDefault();
       const d = disassemble(k);
@@ -1693,9 +1743,10 @@ boot().catch(showLoadError);
 if (location.search.includes('debug'))
   window.__cw = { G, S, get W() { return W; }, key, grow, collapse, clearableY, render, wordCells,
                   input, hint, openWord, after, markBad, nextWord, crossCount, startPack, curWord, focusIME, anchorIME,
-                  tune: (w, c, r, o) => { WEAR = w; WEARCAP = c; RECSHIFT = r; if (o !== undefined) OFFPICK = o; },
+                  tune: (w, c, r, o) => { WEAR = w; WEARCAP = c; if (r !== undefined) POOLFRAC = r; if (o !== undefined) OFFPICK = o; },
+                  recentCap,
                   tune2: (h, d) => { if (h !== undefined) HARD = h; if (d !== undefined) DEEP = d; },
                   get 층벌점() { return { HARD, DEEP, 기초: BASIC.size, 창고: BANK.length }; },
-                  useIME,
+                  useIME, get imeBase() { return imeBase; },
                   get ONTOPIC() { return ONTOPIC; }, get PACK() { return PACK; }, get BANK() { return BANK; } };
 })();
