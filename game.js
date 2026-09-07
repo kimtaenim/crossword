@@ -559,7 +559,7 @@ const wordCells = w => Array.from({ length: w.len }, (_, i) =>
   G.cells.get(key(w.dir === 'A' ? w.x + i : w.x, w.dir === 'A' ? w.y : w.y + i)));
 
 /* ───────── 상태·판정 ───────── */
-const S = { cur: null, dir: 'A', comp: { cho: '', jung: '', jong: '' } };
+const S = { cur: null, dir: 'A', comp: { cho: '', jung: '', jong: '' }, typing: false };   // typing: 지금 칸에 글자를 치는 중
 
 function checkWords(cell) {
   let gained = 0;
@@ -585,10 +585,16 @@ function checkWords(cell) {
  * 어느 칸이 틀렸는지까지는 알려 주지 않는다 — 그건 답을 알려 주는 것이나 같다.
  */
 function markBad() {
+  // 치는 중인 칸(ㅇ, 으 처럼 아직 덜 된 글자)이 든 낱말은 판정을 미룬다 —
+  // «놀이» 의 ㅇ 을 친 순간 「틀림」이 떴다 사라지는 것이 거슬린다
+  const at = S.typing && S.cur ? G.cells.get(S.cur) : null;
+  const hold = at && at.ch && !at.solved ? at : null;
+  const jamo = ch => { const cc = ch.charCodeAt(0); return cc >= 0x3131 && cc <= 0x3163; };
   for (const w of G.words.values()) {
     if (w.past) continue;
     const cs = wordCells(w);
-    w.bad = !w.solved && cs.every(c => c.ch) && cs.some(c => c.ch !== c.ans);
+    w.bad = !w.solved && cs.every(c => c.ch) && cs.some(c => c.ch !== c.ans) &&
+      !cs.includes(hold) && !cs.some(c => jamo(c.ch));
   }
 }
 
@@ -865,6 +871,7 @@ function scrollTo(c) {
 function tap(k) {
   const c = G.cells.get(k);
   if (!c) return;
+  S.typing = false;
   resetShift();
   if (S.cur === k) {
     const other = S.dir === 'A' ? 'D' : 'A';
@@ -906,6 +913,7 @@ function input(j) {
   if (!S.cur) return;
   let c = G.cells.get(S.cur);
   if (!c) return;
+  S.typing = true;
   if (c.solved) { advance(); c = G.cells.get(S.cur); if (!c || c.solved) { render(); return; } }
   const r = feed(S.comp, j);
   if (r.done !== undefined) {
@@ -928,6 +936,7 @@ function putChar(ch) {
   if (!S.cur) return;
   let c = G.cells.get(S.cur);
   if (!c) return;
+  S.typing = true;
   if (c.solved) { advance(); c = G.cells.get(S.cur); if (!c || c.solved) { render(); return; } }
   c.ch = ch.toUpperCase();
   S.comp = { cho: '', jung: '', jong: '' };
@@ -987,6 +996,7 @@ function openWord() {
 
 function move(dx, dy) {
   if (!S.cur) return;
+  S.typing = false;
   let [x, y] = S.cur.split(',').map(Number);
   for (let i = 0; i < 30; i++) {
     x += dx; y += dy;
@@ -1015,6 +1025,7 @@ function move(dx, dy) {
  */
 function jumpNearest(quiet) {
   const c = S.cur ? G.cells.get(S.cur) : null;
+  S.typing = false;
   let best = null;
   for (const w of G.words.values()) {              // 맨 위에 남은 낱말
     if (w.solved || w.past) continue;
@@ -1035,6 +1046,7 @@ function jumpNearest(quiet) {
 }
 
 function nextWord(step) {
+  S.typing = false;
   resetShift();
   const ws = [...G.words.values()].filter(w => !w.solved).sort((a, b) => a.num - b.num || (a.dir < b.dir ? -1 : 1));
   if (!ws.length) return;
@@ -1165,6 +1177,7 @@ function imeSync() {
   if (!imeCells.length) { imeBase = imeLen(); return; }
   const chars = [...ime.value].slice(imeBase, imeBase + imeCells.length);
   imeCells.forEach((c, i) => { c.ch = chars[i] || ''; });
+  S.typing = true;
   const at = imeCells[Math.min(chars.length, imeCells.length - 1)];
   if (at) S.cur = key(at.x, at.y);
   S.comp = disassemble(at ? at.ch : '');
