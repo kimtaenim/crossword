@@ -23,6 +23,9 @@
     --sheen-blue: inset 0 1px 0 rgba(255,255,255,.42), inset 0 -2px 5px rgba(6,26,60,.4);
     --lemon: #d9a400; --lemon-bg: #fdf3c2; --lemon-ink: #6b5000;
     --glaze-lemon: linear-gradient(180deg, #fefadf 0%, #fdf3c2 55%, #f7e9a6 100%);
+    /* 다 채웠는데 틀린 낱말의 칸 — 기본은 레몬, 단어장 배색이 제 강조색으로 바꿀 수 있다 */
+    --wrong: var(--lemon); --wrong-ink: var(--lemon-ink); --glaze-wrong: var(--glaze-lemon);
+    --wrong-cast: rgba(122,92,0,.16);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   /* 브라우저 기본 초점 테두리는 주황빛이라 배색을 깬다 */
@@ -95,8 +98,8 @@
   }
   /* 다 채웠는데 틀린 단어 — 어느 칸이 틀렸는지는 알려 주지 않는다 */
   .cell.wrong {
-    border-color: var(--lemon); background: var(--glaze-lemon); color: var(--lemon-ink);
-    box-shadow: var(--sheen), 0 1px 2px rgba(122,92,0,.16);
+    border-color: var(--wrong); background: var(--glaze-wrong); color: var(--wrong-ink);
+    box-shadow: var(--sheen), 0 1px 2px var(--wrong-cast);
   }
   .cell.solved i { color: #9dc0ea; text-shadow: none; }
   .cell.born, .cell.gone { opacity: 0; }
@@ -196,7 +199,11 @@
     --glaze-blue: linear-gradient(180deg, #2b4a80 0%, #17305c 46%, #0a1a3a 100%);
     --sheen: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 2px rgba(10,26,58,.08);
     --sheen-blue: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -2px 5px rgba(3,10,26,.45);
+    /* 틀린 칸은 노란색 대신 시사IN 의 붉은 강조색으로. 고른 칸의 옅은 분홍보다 한참 짙다 */
+    --wrong: #dc031c; --wrong-ink: #9e0014; --wrong-cast: rgba(220,3,28,.22);
+    --glaze-wrong: linear-gradient(180deg, #ffe3e6 0%, #fbc7cd 55%, #f5a9b2 100%);
   }
+  body[data-theme="sisain"] .cell.wrong { border-width: 2px; }
   body[data-theme="sisain"] {
     background:
       radial-gradient(120% 70% at 50% -10%, #ffffff 0%, rgba(255,255,255,0) 62%),
@@ -498,6 +505,6 @@
   <button class="close" onclick="this.closest('dialog').close()">시작하기</button>
 </dialog>
 
-<script src="game.js?v=20260908h"></script>
+<script src="game.js?v=20260908i"></script>
 </body>
 </html>
