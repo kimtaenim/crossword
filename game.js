@@ -79,6 +79,17 @@ function unfeed(s) {
 }
 
 /** 완성된 음절을 조합 상태로 되돌린다 (칸을 이어서 고칠 때) */
+/*
+ * 칸에 «들어갈 때» 의 조합 상태. 완성된 글자(가, 을)는 조합으로 되살리지 않는다 —
+ * 되살리면 새 자음이 받침으로 붙거나(가 + ㄴ → 간) 옛 글자를 밀어내고 다음 칸으로
+ * 가 버려, 오자를 고칠 길이 없다. 홑자모(ㅇ, ㅡ)만 이어서 치게 둔다.
+ * 새 글자를 치면 덮어쓰고, ⌫ 는 한 번에 그 칸을 비운다.
+ */
+function compOf(ch) {
+  const cc = ch ? ch.charCodeAt(0) : 0;
+  return (cc >= 0x3131 && cc <= 0x3163) ? disassemble(ch) : { cho: '', jung: '', jong: '' };
+}
+
 function disassemble(ch) {
   if (!ch) return { cho: '', jung: '', jong: '' };
   const code = ch.charCodeAt(0) - 0xac00;
@@ -870,7 +881,7 @@ document.getElementById('list').addEventListener('click', e => {
   S.dir = w.dir;
   const cs = wordCells(w);
   S.cur = key((cs.find(c => !c.solved) || cs[0]).x, (cs.find(c => !c.solved) || cs[0]).y);
-  S.comp = disassemble(G.cells.get(S.cur).ch);
+  S.comp = compOf(G.cells.get(S.cur).ch);
   scrollTo(G.cells.get(S.cur));
   render();
 });
@@ -907,7 +918,7 @@ function tap(k) {
     S.cur = k;
     if ((S.dir === 'A' ? c.across : c.down) === null) S.dir = S.dir === 'A' ? 'D' : 'A';
   }
-  S.comp = disassemble(c.ch);
+  S.comp = compOf(c.ch);
   render();
   focusIME();
   scrollTo(c);
@@ -919,10 +930,10 @@ function advance() {
   const cs = wordCells(w);
   const i = cs.findIndex(c => key(c.x, c.y) === S.cur);
   for (let j = i + 1; j < cs.length; j++) {
-    if (!cs[j].solved) { S.cur = key(cs[j].x, cs[j].y); S.comp = disassemble(cs[j].ch); return; }
+    if (!cs[j].solved) { S.cur = key(cs[j].x, cs[j].y); S.comp = compOf(cs[j].ch); return; }
   }
   const next = cs[i + 1];
-  if (next) { S.cur = key(next.x, next.y); S.comp = disassemble(next.ch); }
+  if (next) { S.cur = key(next.x, next.y); S.comp = compOf(next.ch); }
 }
 
 function retreat() {
@@ -932,7 +943,7 @@ function retreat() {
   const i = cs.findIndex(c => key(c.x, c.y) === S.cur);
   if (i <= 0) return false;
   S.cur = key(cs[i - 1].x, cs[i - 1].y);
-  S.comp = disassemble(cs[i - 1].ch);
+  S.comp = compOf(cs[i - 1].ch);
   return true;
 }
 
@@ -949,7 +960,7 @@ function input(j) {
     advance();
     const n = G.cells.get(S.cur);
     if (n && !n.solved) { S.comp = r.cur; n.ch = assemble(r.cur); checkWords(n); }
-    else S.comp = disassemble(n ? n.ch : '');
+    else S.comp = compOf(n ? n.ch : '');
   } else {
     S.comp = r.cur;
     c.ch = assemble(r.cur);
@@ -999,7 +1010,7 @@ function hint() {
   G.hints++;
   G.score = Math.max(0, G.score - (EASY ? 4 : 8));
   S.cur = key(target.x, target.y);
-  S.comp = disassemble(target.ch);
+  S.comp = compOf(target.ch);
   checkWords(target);
   advance();
   after();
@@ -1029,7 +1040,7 @@ function move(dx, dy) {
     x += dx; y += dy;
     if (x < 0 || x >= W || y < 0) return;
     const c = G.cells.get(key(x, y));
-    if (c) { S.cur = key(x, y); S.comp = disassemble(c.ch); scrollTo(c); render(); focusIME(); return; }
+    if (c) { S.cur = key(x, y); S.comp = compOf(c.ch); scrollTo(c); render(); focusIME(); return; }
     if (y > G.maxY) return;
   }
 }
@@ -1068,7 +1079,7 @@ function jumpNearest(quiet) {
   S.dir = best.dir;
   const t = wordCells(best).find(x => !x.solved) || wordCells(best)[0];
   S.cur = key(t.x, t.y);
-  S.comp = disassemble(t.ch);
+  S.comp = compOf(t.ch);
   if (!quiet) scrollTo(t);        // 줄을 넘긴 직후에는 따라 내려가는 스크롤 하나만 쓴다
 }
 
@@ -1084,7 +1095,7 @@ function nextWord(step) {
   S.dir = w.dir;
   const c = wordCells(w).find(x => !x.solved) || wordCells(w)[0];
   S.cur = key(c.x, c.y);
-  S.comp = disassemble(c.ch);
+  S.comp = compOf(c.ch);
   scrollTo(c);
   render();
   focusIME();
