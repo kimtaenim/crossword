@@ -1308,7 +1308,6 @@ function renderClue() {
   bar.innerHTML =
     '<div class="meta">' +
       `<span class="tag ${w.dir === 'A' ? 'a' : 'd'}">${w.num} ${w.dir === 'A' ? '가로' : '세로'}</span>` +
-      (w.bad ? '<span class="tag bad">틀림</span>' : '') +
       `<span class="len">${kind ? kind + ' · ' : ''}${w.len}${isAlpha(w.word[0]) ? '자 (영문)' : hasAlpha(w.word) ? '글자 (영문·숫자 섞임)' : '글자'}</span>` +
     '</div>' +
     `<p class="txt">${w.clue}</p>`;
