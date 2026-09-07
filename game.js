@@ -141,6 +141,7 @@ let EASY = false;            // 쉽게 — 기초 낱말 위주로 깔고, 낱�
 let TIERED = false;          // 이 단어장은 «쉽게» 가 난이도를 가른다 — 켜면 기초, 끄면 심화
 let BANK = [];               // [[단어, 힌트], ...] — 고른 갈래의 단어만
 let INDEX = new Map();       // 음절 → [{wi, pos}]
+let KIN = new Map();         // 단어 → 그 말을 품거나 그 말에 품긴 단어들 (관절로봇 ↔ 다관절로봇)
 let EVEN = new Map();        // 음절 → 그 음절을 짝수 번째에 가진 단어 수 (세로로 엮을 여지)
 let ALL = new Map();         // 음절 → 그 음절을 가진 단어 수 (가로로 엮을 여지)
 
@@ -193,6 +194,22 @@ function loadBank(pack, picked) {
       if (!(pos & 1)) EVEN.set(c, (EVEN.get(c) || 0) + 1);
     });
   });
+  // 한쪽이 다른 쪽을 통째로 품는 낱말끼리는 (관절로봇·다관절로봇) 한 판에 같이 깔지 않는다
+  KIN = new Map();
+  const names = BANK.map(([w]) => w);
+  for (const a of names) for (const b of names) {
+    if (a === b || !b.includes(a)) continue;
+    if (!KIN.has(a)) KIN.set(a, []);
+    if (!KIN.has(b)) KIN.set(b, []);
+    KIN.get(a).push(b); KIN.get(b).push(a);
+  }
+}
+
+/** 최근 창 안에 그 말이나 그 말의 친척(품거나 품긴 말)이 있으면 참 */
+function recentish(word) {
+  if (G.recent.includes(word)) return true;
+  const kin = KIN.get(word);
+  return !!kin && kin.some(k => G.recent.includes(k));
 }
 
 const pick = a => a[(Math.random() * a.length) | 0];
@@ -370,7 +387,7 @@ function tryAt(cell, dir, lo, hi) {
   let best = null, bestScore = -1;
   for (const { wi, pos } of cands) {
     const [word] = BANK[wi];
-    if (G.recent.includes(word)) continue;
+    if (recentish(word)) continue;
     const x = dir === 'A' ? cell.x - pos : cell.x;
     const y = dir === 'A' ? cell.y : cell.y - pos;
     if (y < lo) continue;
@@ -419,7 +436,7 @@ function seedAcross(y, lo, hi, free) {
   for (let t = 0; t < 120; t++) {
     const wi = (Math.random() * BANK.length) | 0;
     const [word] = BANK[wi];
-    if (word.length > W || G.recent.includes(word)) continue;
+    if (word.length > W || recentish(word)) continue;
     const x = (Math.random() * (W - word.length + 1)) | 0;
     if (fits(word, x, y, 'A', false) < 0) continue;
     const score = lookahead(word, x, y, 'A') + word.length - wornOut(word) + Math.random();
@@ -1749,7 +1766,7 @@ async function boot() {
 boot().catch(showLoadError);
 
 if (location.search.includes('debug'))
-  window.__cw = { G, S, get W() { return W; }, key, grow, collapse, clearableY, render, wordCells,
+  window.__cw = { G, S, recentish, get KIN() { return KIN; }, get W() { return W; }, key, grow, collapse, clearableY, render, wordCells,
                   input, hint, openWord, after, markBad, nextWord, crossCount, startPack, curWord, focusIME, anchorIME,
                   tune: (w, c, r, o) => { WEAR = w; WEARCAP = c; if (r !== undefined) POOLFRAC = r; if (o !== undefined) OFFPICK = o; },
                   recentCap,
