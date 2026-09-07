@@ -1485,6 +1485,8 @@ function save() {
    폰은 여기서 못 쓰면 그대로 프로세스가 죽어 마지막 몇 글자가 날아간다. */
 addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') writeSave(); });
 addEventListener('pagehide', writeSave);
+addEventListener('beforeunload', writeSave);
+addEventListener('freeze', writeSave);      // 크롬이 탭을 얼릴 때
 
 let pendingScroll = 0;
 let settling = 0;        // 이 시각까지는 화면 크기가 바뀌어도 스크롤을 건드리지 않는다
@@ -1578,7 +1580,33 @@ function startPack(pack, fresh, picked) {
   }
   ensureAhead();
   render();
-  if (pendingScroll) { scroller.scrollTop = pendingScroll; settling = Date.now() + 900; render(); }
+  if (pendingScroll) { settleTo(pendingScroll); settling = Date.now() + 1200; render(); }
+}
+
+/*
+ * 보던 자리로 돌아간다. 한 번 scrollTop 을 넣는 것으로는 모자란다 — 폰은 들어온 직후
+ * 주소창이 접히고 자판이 내려가며 화면 높이가 몇 번 바뀌고, 글꼴이 늦게 와 판 높이도
+ * 바뀐다. 그때마다 자리가 딸려 간다. 그래서 잠시 동안 몇 번 다시 겨누되, 사람이
+ * 손을 대면(터치·휠·키) 바로 그만둔다. 마지막엔 풀던 칸이 보이는지 확인한다.
+ */
+let touched = false;
+for (const ev of ['pointerdown', 'wheel', 'keydown', 'touchstart']) addEventListener(ev, () => { touched = true; }, { capture: true, passive: true });
+function settleTo(top) {
+  touched = false;
+  const aim = () => {
+    if (touched) return;
+    if (Math.abs(scroller.scrollTop - top) > 2) scroller.scrollTop = top;
+  };
+  aim();
+  for (const ms of [50, 200, 500, 900]) setTimeout(aim, ms);
+  setTimeout(() => {                          // 그래도 풀던 칸이 안 보이면 그 칸으로
+    if (touched) return;
+    const c = S.cur && G.cells.get(S.cur);
+    if (!c) return;
+    const t = c.y * C, h = scroller.clientHeight, vt = scroller.scrollTop;
+    if (t < vt || t + C > vt + h) scroller.scrollTop = Math.max(0, t - Math.floor(h / 3));
+  }, 1000);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(aim, 0));
 }
 
 const packSize = (pack, picked) =>
