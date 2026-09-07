@@ -17,7 +17,7 @@ const isVowel = j => JUNG.includes(j);
  * 한글 음절과 알파벳 한 글자는 절대 같을 수 없어 알파벳은 알파벳끼리만 교차한다.
  * 입력도 갈라야 한다 — 알파벳 낱말을 고르면 자판이 영문으로 바뀐다.
  */
-const isAlpha = ch => ch >= 'A' && ch <= 'Z';
+const isAlpha = ch => (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9');   // 영문 자판으로 치는 글자
 
 /** 조합 상태 → 화면에 보일 글자 */
 function assemble(s) {
@@ -787,7 +787,7 @@ function renderClue() {
     '<div class="meta">' +
       `<span class="tag ${w.dir === 'A' ? 'a' : 'd'}">${w.num} ${w.dir === 'A' ? '가로' : '세로'}</span>` +
       (w.bad ? '<span class="tag bad">틀림</span>' : '') +
-      `<span class="len">${kind ? kind + ' · ' : ''}${w.len}${isAlpha(w.word[0]) ? '자 (영문)' : '글자'}</span>` +
+      `<span class="len">${kind ? kind + ' · ' : ''}${w.len}${isAlpha(w.word[0]) ? '자 (영문)' : hasAlpha(w.word) ? '글자 (영문·숫자 섞임)' : '글자'}</span>` +
     '</div>' +
     `<p class="txt">${w.clue}</p>`;
 }
@@ -1085,10 +1085,17 @@ const imeLen = () => [...ime.value].length;
 let pendingAfter = false;
 
 /** 지금 고른 낱말이 알파벳 약어인가 */
+/*
+ * 영문 자판을 쓸지는 낱말이 아니라 «지금 칸» 으로 정한다. 주4일제·챗GPT·안전PLC 처럼
+ * 한글과 영문·숫자가 섞인 낱말은 칸마다 자판이 갈린다. 칸을 옮기면 자판도 따라 바뀐다.
+ */
 function alphaMode() {
+  const c = S.cur && G.cells.get(S.cur);
+  if (c) return isAlpha(c.ans);
   const w = curWord();
   return !!w && isAlpha(w.word[0]);
 }
+const hasAlpha = word => [...word].some(isAlpha);
 
 // 알파벳 낱말일 때는 기기 자판 대신 내장 영문 자판을 쓴다.
 // 한글 자판을 켜 둔 폰에서 영문으로 갈아 끼우게 하는 건 번거롭기만 하다.
@@ -1201,6 +1208,7 @@ let CAPS = false;
 const unCaps = (j, e) => (!e.shiftKey && capsOn(e) && SINGLE[j]) || j;
 
 const ABC = [
+  ['1','2','3','4','5','6','7','8','9','0'],
   ['Q','W','E','R','T','Y','U','I','O','P'],
   ['A','S','D','F','G','H','J','K','L'],
   ['Z','X','C','V','B','N','M','⌫'],
@@ -1309,7 +1317,7 @@ window.addEventListener('keydown', e => {
   if (k === 'ArrowRight') { e.preventDefault(); move(1, 0); return; }
   if (k === 'ArrowUp')    { e.preventDefault(); move(0, -1); return; }
   if (k === 'ArrowDown')  { e.preventDefault(); move(0, 1); return; }
-  if (/^[A-Za-z]$/.test(k) && alphaMode()) {
+  if (/^[A-Za-z0-9]$/.test(k) && alphaMode()) {
     e.preventDefault(); putChar(k); return;
   }
   if (CAPS) {

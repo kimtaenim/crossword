@@ -14,10 +14,8 @@ for (const pack of window.PACKS) {
     for (const [word, clue] of g.words) {
       n++;
       const say = m => { console.log(`  [${pack.id}/${g.name}] ${word}: ${m}\n     ${clue}`); bad++; };
-      // 자판으로 칠 수 없는 낱말 — 한글과 영문이 섞였거나 숫자가 들어 있다.
-      // 자판은 낱말 첫 글자를 보고 한글/영문 하나로 정하므로, 섞인 낱말은 절반을 칠 수 없다
-      if (/[0-9]/.test(word)) say('숫자는 칠 수 없음');
-      else if (/[가-힣]/.test(word) && /[A-Za-z]/.test(word)) say('한글과 영문이 섞여 있어 칠 수 없음');
+      // 칠 수 있는 글자는 한글 음절, 대문자 영문, 숫자뿐이다 (자판은 칸마다 갈린다)
+      if (/[^가-힣A-Z0-9]/.test(word)) say('칠 수 없는 글자가 있음 (한글·대문자·숫자만)');
       // 정답이 그대로 들어 있나
       if (clue.includes(word)) say('힌트에 정답이 그대로 들어 있음');
       // 정답의 두 음절 이상이 붙어서 들어 있나
