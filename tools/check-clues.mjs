@@ -1,7 +1,9 @@
 /* 힌트 점검 — 정답이 새거나, 너무 길거나, 겹치는 힌트를 잡아낸다.
    node tools/check-clues.mjs */
 import fs from 'fs';
-const dir = new URL('../packs/', import.meta.url).pathname;
+import { fileURLToPath } from 'url';
+// pathname 을 그대로 쓰면 윈도에서 «/C:/...» 가 되어 못 찾는다
+const dir = fileURLToPath(new URL('../packs/', import.meta.url));
 const names = JSON.parse(fs.readFileSync(dir + 'index.json', 'utf8'));
 global.window = { PACKS: names.map(n => JSON.parse(fs.readFileSync(dir + n, 'utf8'))) };
 
