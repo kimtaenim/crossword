@@ -195,8 +195,9 @@ function loadBank(pack, picked) {
     });
   });
   // 한쪽이 다른 쪽을 통째로 품는 낱말끼리는 (관절로봇·다관절로봇) 한 판에 같이 깔지 않는다
+  // 단어장이 "kin": false 면 끈다 — 고래와 범고래, 사자와 바다사자는 아예 다른 동물이다
   KIN = new Map();
-  const names = BANK.map(([w]) => w);
+  const names = pack.kin === false ? [] : BANK.map(([w]) => w);
   for (const a of names) for (const b of names) {
     if (a === b || !b.includes(a)) continue;
     if (!KIN.has(a)) KIN.set(a, []);
