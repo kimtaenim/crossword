@@ -11,7 +11,7 @@ const MAXLEN = 46;              // 힌트 줄이 두 줄을 넘지 않는 길이
 let bad = 0, n = 0;
 const seen = new Map();
 // 일부러 정답의 한 조각을 힌트에 두는 것 — 상표 이름이 곧 실마리인 경우
-const ALLOW = { '레고마인드스톰': ['레고'] };
+const ALLOW = { '레고마인드스톰': ['레고'], '소프트웨어': ['웨어'], '하드웨어': ['웨어'] };   // 서로 반대말로 짚어 준다
 
 for (const pack of window.PACKS) {
   for (const g of pack.groups) {
