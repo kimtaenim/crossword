@@ -648,6 +648,17 @@ node tools/sisain-scan.mjs ../sisain-chatbot
 정답의 두 음절이 붙어서 새는지(`서보모터` 힌트에 "모터"), 두 줄을 넘길 만큼 긴지,
 다른 힌트와 똑같은지를 잡아낸다. 다시 쓸 때마다 서너 건씩 걸렸다.
 
+## 주소로 판을 정하기
+
+`?pack=robot` 은 고르는 창 없이 그 단어장으로 바로 간다(시사IN 위젯이 쓰던 것).
+여기에 둘을 더했다.
+
+- `?easy=1` / `?easy=0` — 쉽게 스위치를 주소로 켜고 끈다.
+- `?solo` — 단어장 이름 단추와 고르는 창을 잠가, 그 한 판만 남긴다.
+
+셋을 합친 `?pack=robot&easy=1&solo` 가 «로봇 쉽게» 만 따로 떼어 낸 판이고,
+`robot/` 폴더의 짧은 주소가 거기로 넘긴다: https://kimtaenim.github.io/crossword/robot/
+
 ## 단어장 추가하기
 
 단어장은 `packs/` 아래 JSON 파일 하나씩이다. 파일을 만들고 `packs/index.json` 에

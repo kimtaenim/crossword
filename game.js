@@ -1707,6 +1707,7 @@ document.getElementById('easy').addEventListener('click', () => {
 document.getElementById('chooser').addEventListener('close', () => paintTheme(PACK));
 
 function openChooser() {
+  if (document.body.classList.contains('solo')) return;   // 한 판만 남긴 링크에서는 못 바꾼다
   buildChooser();
   paintEasy();
   document.getElementById('pane2').hidden = true;
@@ -1818,8 +1819,15 @@ async function boot() {
 
   // ?pack=news 처럼 주소로 단어장을 집어 주면 고르는 창 없이 바로 그 단어장으로 간다.
   // 남의 페이지에 iframe 으로 얹을 때 쓴다 — 시사IN 위젯은 시사 용어만 보여 준다
-  let fromUrl = null;
-  try { fromUrl = window.PACKS.find(p => p.id === new URLSearchParams(location.search).get('pack')); } catch (_) {}
+  let fromUrl = null, q = null;
+  try { q = new URLSearchParams(location.search); fromUrl = window.PACKS.find(p => p.id === q.get('pack')); } catch (_) {}
+  // ?easy=1 / ?easy=0 은 쉽게 스위치를 주소로 정한다. ?solo 는 단어장 고르기와 스위치를 감춰
+  // 그 한 판만 남긴다 — «로봇 쉽게» 만 따로 떼어 아이에게 건네는 링크가 이것이다
+  if (q && (q.get('easy') === '1' || q.get('easy') === '0')) {
+    EASY = q.get('easy') === '1';
+    try { localStorage.setItem(EASY_KEY, EASY ? '1' : '0'); } catch (_) {}
+  }
+  if (q && q.has('solo') && fromUrl) document.body.classList.add('solo');
 
   let first = null;
   try { first = window.PACKS.find(p => p.id === localStorage.getItem(LAST_KEY)); } catch (_) {}
