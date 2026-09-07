@@ -508,8 +508,12 @@ function buildBandBest(top, tries) {
   for (const [word, x, y, dir] of best.snap) made.push(place(at.get(word), x, y, dir));
   if (G.maxY < top) G.maxY = top;
   G.filledTo = Math.max(G.filledTo, top + BAND - 1);
-  if (EASY) giveFirst(made);
+  if (freeLetter()) giveFirst(made);
 }
+
+// 어린이·동물 단어장("giveFirst": true)은 어렵게에서도 안 걸린 낱말에 한 글자를 준다 —
+// 아이들은 실마리가 하나도 없는 낱말 앞에서 그냥 멈춘다
+const freeLetter = () => EASY || !!(PACK && PACK.giveFirst);
 
 /*
  * 쉽게 모드에서 첫 글자를 여는 낱말은 «아무 데도 안 걸린 것» 뿐이다.
@@ -1169,6 +1173,38 @@ function imeSync() {
   else after();
 }
 
+/* ?trace 를 붙여 열면 자판에서 오는 사건을 화면 위에 적는다 — 폰에서 무엇이 새는지 볼 때 */
+const TRACE = location.search.includes('trace');
+let traceBox = null;
+function trace(kind, e) {
+  if (!TRACE) return;
+  if (!traceBox) {
+    traceBox = document.createElement('pre');
+    traceBox.id = 'trace';
+    traceBox.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99;margin:0;padding:4px 6px;max-height:38vh;overflow:auto;' +
+      'font:11px/1.35 ui-monospace,monospace;background:rgba(20,24,32,.92);color:#d8f0c8;white-space:pre-wrap;pointer-events:none';
+    document.body.appendChild(traceBox);
+  }
+  const tail = [...ime.value].slice(-6).join('');
+  const bits = [kind];
+  if (e && 'key' in e) bits.push(`key=${e.key} code=${e.code || '-'} kc=${e.keyCode} comp=${e.isComposing ? 1 : 0} shift=${e.shiftKey ? 1 : 0}` +
+    ` caps=${e.getModifierState && e.getModifierState('CapsLock') ? 1 : 0}`);
+  if (e && 'inputType' in e) bits.push(`type=${e.inputType} data=${JSON.stringify(e.data)}`);
+  if (e && 'data' in e && !('inputType' in e) && !('key' in e)) bits.push(`data=${JSON.stringify(e.data)}`);
+  bits.push(`len=${imeLen()} base=${imeBase} 꼬리=${JSON.stringify(tail)} 조합=${composing ? 1 : 0} 캡스=${CAPS ? 1 : 0}`);
+  const line = document.createElement('div');
+  line.textContent = bits.join('  ');
+  traceBox.appendChild(line);
+  while (traceBox.childElementCount > 14) traceBox.firstChild.remove();
+  traceBox.scrollTop = 1e9;
+}
+if (TRACE) {
+  for (const k of ['keydown', 'keyup']) window.addEventListener(k, e => trace(k, e), true);
+  for (const k of ['compositionstart', 'compositionupdate', 'compositionend', 'beforeinput', 'input', 'focus', 'blur'])
+    ime.addEventListener(k, e => trace(k, e));
+  window.addEventListener('pointerdown', () => trace('pointerdown'), true);
+}
+
 ime.addEventListener('compositionstart', () => { composing = true; });
 ime.addEventListener('compositionend', () => {
   composing = false;
@@ -1221,7 +1257,14 @@ function jamoOf(e) {
  */
 const SINGLE = { 'ㅃ':'ㅂ', 'ㅉ':'ㅈ', 'ㄸ':'ㄷ', 'ㄲ':'ㄱ', 'ㅆ':'ㅅ', 'ㅒ':'ㅐ', 'ㅖ':'ㅔ' };
 let PHYSICAL = false;       // 붙박이 자판을 한 번이라도 봤는가 (e.code 가 KeyQ 처럼 오면 붙박이다)
-const capsOn = e => PHYSICAL && !!(e.getModifierState && e.getModifierState('CapsLock'));
+/*
+ * 폰에서는 캡스락 처리를 아예 안 한다. 아이폰 사파리는 화면 자판의 글쇠에도 e.code 를
+ * KeyQ 처럼 채워 보내서 «붙박이 자판» 으로 오인되고, ⇧ 를 CapsLock 상태로 보고하기도
+ * 한다. 그러면 ⇧ 를 누르는 순간 캡스락으로 알고 숨은 입력칸을 놓아 자판이 흔들린다.
+ */
+const MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+  (navigator.maxTouchPoints > 1 && matchMedia('(pointer: coarse)').matches);
+const capsOn = e => !MOBILE && PHYSICAL && !!(e.getModifierState && e.getModifierState('CapsLock'));
 let CAPS = false;
 const unCaps = (j, e) => (!e.shiftKey && capsOn(e) && SINGLE[j]) || j;
 
@@ -1338,6 +1381,9 @@ window.addEventListener('keydown', e => {
   if (/^[A-Za-z0-9]$/.test(k) && alphaMode()) {
     e.preventDefault(); putChar(k); return;
   }
+  // 폰에서 기기 자판이 숨은 입력칸을 잡고 있으면 글자는 전부 그쪽 몫이다.
+  // 여기서 가로채어 preventDefault 하면 자판은 글쇠가 안 먹은 줄 알고 ⇧ 를 풀지 않는다.
+  if (MOBILE && useIME() && document.activeElement === ime) return;
   if (CAPS) {
     // IME 가 잡고 있어도(key 'Process') 자리는 온다. 캡스락 동안은 그것만 믿는다
     const m = /^Key([A-Z])$/.exec(e.code || '');
@@ -1496,6 +1542,7 @@ function startPack(pack, fresh, picked) {
   pendingScroll = 0;
   migrate(pack);
   if (!load()) grow(AHEAD);
+  else if (!EASY && PACK.giveFirst) giveFirst([...G.words.values()].filter(w => !w.past && !w.solved));   // 예전 판에도 준다
   if (pendingScroll) {                       // 보던 자리까지는 판이 깔려 있어야 그리로 갈 수 있다
     const need = Math.ceil((pendingScroll + scroller.clientHeight) / C) + AHEAD;
     if (G.maxY < need) grow(need);
@@ -1767,7 +1814,7 @@ async function boot() {
 boot().catch(showLoadError);
 
 if (location.search.includes('debug'))
-  window.__cw = { G, S, recentish, get KIN() { return KIN; }, get W() { return W; }, key, grow, collapse, clearableY, render, wordCells,
+  window.__cw = { G, S, recentish, get MOBILE() { return MOBILE; }, get KIN() { return KIN; }, get W() { return W; }, key, grow, collapse, clearableY, render, wordCells,
                   input, hint, openWord, after, markBad, nextWord, crossCount, startPack, curWord, focusIME, anchorIME,
                   tune: (w, c, r, o) => { WEAR = w; WEARCAP = c; if (r !== undefined) POOLFRAC = r; if (o !== undefined) OFFPICK = o; },
                   recentCap,
