@@ -315,6 +315,11 @@
     transition: opacity .25s, transform .25s; text-shadow: 0 2px 18px rgba(255,255,255,.9);
   }
   #flash.on { opacity: 1; transform: translate(-50%, -14px); }
+  #flash.big { font-size: 40px; letter-spacing: -.5px; }
+  #flash.huge { font-size: 48px; }
+  /* 줄을 걷어낼 때 뿌리는 색종이·꽃잎 — 판 위에 겹쳐 그리고, 다 떨어지면 지운다 */
+  #party { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 60; }
+  #party[hidden] { display: none; }
 
   dialog {
     border: 1px solid var(--line); background: var(--panel); color: var(--ink);
@@ -444,6 +449,7 @@
 </footer>
 
 <div id="flash"></div>
+<canvas id="party" hidden></canvas>
 
 <dialog id="chooser">
   <div id="pane1">
@@ -1420,6 +1426,69 @@ function flash(v) {
   flashT = setTimeout(() => el.classList.remove('on'), 700);
 }
 
+/*
+ * 줄을 걷어내면 호들갑을 떤다. 한 줄이면 색종이 한 줌, 네 줄이면 네 줌, 여섯 줄부터는
+ * 색종이가 쏟아지고 꽃잎까지 떨어진다. 캔버스 하나에 그리고 다 떨어지면 지운다.
+ * 움직임을 줄여 달라고 한 기기(prefers-reduced-motion)에서는 글자만 띄운다.
+ */
+let partyT = 0, party = null;
+function celebrate(rows) {
+  const el = document.getElementById('flash');
+  el.classList.remove('big', 'huge');
+  if (rows >= 6) { el.classList.add('huge'); flash('대단해요! ' + rows + '줄!!'); }
+  else if (rows >= 4) { el.classList.add('big'); flash(rows + '줄 한꺼번에!'); }
+  else flash(rows + '줄 넘김!');
+  if (rows >= 4) { clearTimeout(flashT); flashT = setTimeout(() => el.classList.remove('on'), rows >= 6 ? 1600 : 1100); }
+  if (matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cv = document.getElementById('party');
+  if (!cv) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W2 = window.innerWidth, H2 = window.innerHeight;
+  cv.width = W2 * dpr; cv.height = H2 * dpr; cv.hidden = false;
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const css = getComputedStyle(document.body);
+  const tone = ['--accent', '--cobalt', '--deep', '--lemon'].map(v => css.getPropertyValue(v).trim()).filter(Boolean);
+  const palette = tone.concat(['#ff6b8a', '#ffd166', '#06d6a0', '#4cc9f0', '#f4a261', '#ffffff']);
+  const ps = party ? party.ps : [];
+  const n = Math.min(420, 28 * rows);                 // 한 줄 28장, 네 줄 112장, 여섯 줄 168장
+  for (let i = 0; i < n; i++) {
+    const big = rows >= 6;
+    ps.push({ kind: 'c', x: Math.random() * W2, y: -10 - Math.random() * H2 * (big ? .5 : .25),
+      vx: (Math.random() - .5) * (big ? 5 : 3), vy: 2 + Math.random() * (big ? 5 : 3.5),
+      w: 6 + Math.random() * 6, h: 3 + Math.random() * 5, a: Math.random() * Math.PI, va: (Math.random() - .5) * .3,
+      color: palette[(Math.random() * palette.length) | 0], life: 1 });
+  }
+  if (rows >= 6) {                                     // 꽃잎: 크고 느리고 하늘하늘
+    const m = Math.min(90, 12 * (rows - 4));
+    for (let i = 0; i < m; i++) ps.push({ kind: 'p', x: Math.random() * W2, y: -20 - Math.random() * H2 * .6,
+      vx: (Math.random() - .5) * 1.2, vy: 1 + Math.random() * 1.6, sway: Math.random() * Math.PI * 2, sw: .02 + Math.random() * .03,
+      r: 7 + Math.random() * 7, a: Math.random() * Math.PI, va: (Math.random() - .5) * .08,
+      color: ['#ffb7c5', '#ffc8d6', '#ffe1e8', '#fff0f3', '#ffd6a5'][(Math.random() * 5) | 0], life: 1 });
+  }
+  const until = performance.now() + (rows >= 6 ? 3600 : rows >= 4 ? 2600 : 1800);
+  if (party) { party.until = Math.max(party.until, until); return; }
+  party = { ps, until };
+  const tick = now => {
+    ctx.clearRect(0, 0, W2, H2);
+    const fade = Math.max(0, Math.min(1, (party.until - now) / 500));   // 끝나기 반 초 전부터 옅어진다
+    let alive = 0;
+    for (const q of party.ps) {
+      if (q.y > H2 + 30) continue;
+      alive++;
+      q.x += q.vx; q.y += q.vy; q.a += q.va;
+      if (q.kind === 'c') { q.vy += .06; q.vx *= .99; }
+      else { q.sway += q.sw; q.x += Math.sin(q.sway) * 1.4; }
+      ctx.save(); ctx.globalAlpha = fade; ctx.translate(q.x, q.y); ctx.rotate(q.a); ctx.fillStyle = q.color;
+      if (q.kind === 'c') ctx.fillRect(-q.w / 2, -q.h / 2, q.w, q.h);
+      else { ctx.beginPath(); ctx.ellipse(0, 0, q.r, q.r * .55, 0, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore();
+    }
+    if (alive && now < party.until) partyT = requestAnimationFrame(tick);
+    else { ctx.clearRect(0, 0, W2, H2); cv.hidden = true; party = null; }
+  };
+  partyT = requestAnimationFrame(tick);
+}
+
 function scrollTo(c) {
   const top = c.y * C, bot = top + C;
   const h = scroller.clientHeight;
@@ -1646,7 +1715,7 @@ function after() {
   ensureAhead();
   markBad();
   if (cleared) {
-    flash(cleared + '줄 넘김!');
+    celebrate(cleared);
     board.classList.add('lift');
     setTimeout(() => board.classList.remove('lift'), 400);
   }
@@ -2489,7 +2558,7 @@ async function boot() {
 boot().catch(showLoadError);
 
 if (location.search.includes('debug'))
-  window.__cw = { G, S, recentish, get MOBILE() { return MOBILE; }, get softShift() { return softShift; }, get ime() { return ime; }, get KIN() { return KIN; }, get W() { return W; }, key, grow, collapse, clearableY, render, wordCells,
+  window.__cw = { G, S, recentish, celebrate, get party() { return party; }, get MOBILE() { return MOBILE; }, get softShift() { return softShift; }, get ime() { return ime; }, get KIN() { return KIN; }, get W() { return W; }, key, grow, collapse, clearableY, render, wordCells,
                   input, hint, openWord, after, markBad, nextWord, crossCount, startPack, curWord, focusIME, anchorIME,
                   tune: (w, c, r, o) => { WEAR = w; WEARCAP = c; if (r !== undefined) POOLFRAC = r; if (o !== undefined) OFFPICK = o; },
                   recentCap,

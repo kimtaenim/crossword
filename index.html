@@ -322,6 +322,11 @@
     transition: opacity .25s, transform .25s; text-shadow: 0 2px 18px rgba(255,255,255,.9);
   }
   #flash.on { opacity: 1; transform: translate(-50%, -14px); }
+  #flash.big { font-size: 40px; letter-spacing: -.5px; }
+  #flash.huge { font-size: 48px; }
+  /* 줄을 걷어낼 때 뿌리는 색종이·꽃잎 — 판 위에 겹쳐 그리고, 다 떨어지면 지운다 */
+  #party { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 60; }
+  #party[hidden] { display: none; }
 
   dialog {
     border: 1px solid var(--line); background: var(--panel); color: var(--ink);
@@ -451,6 +456,7 @@
 </footer>
 
 <div id="flash"></div>
+<canvas id="party" hidden></canvas>
 
 <dialog id="chooser">
   <div id="pane1">
@@ -505,6 +511,6 @@
   <button class="close" onclick="this.closest('dialog').close()">시작하기</button>
 </dialog>
 
-<script src="game.js?v=20260910i"></script>
+<script src="game.js?v=20260910j"></script>
 </body>
 </html>
