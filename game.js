@@ -144,7 +144,8 @@ const bandOf = y => Math.floor((y + G.bandOff) / BAND);
 let PACK = null;             // 지금 고른 단어장
 let PICK = new Set();        // 그중 고른 갈래 이름들
 let ONTOPIC = new Set();     // 고른 갈래에 든 단어들 (나머지는 벌점을 받고 뒤로 밀린다)
-let FOCUS = '';              // ?focus=산업별 도입 — 소분류 하나를 앞세운다 (자료 익히기용 판)
+let FOCUS = '';              // 앞세우는 소분류. 단어장의 "easyFocus" (기초 판에서) 또는 ?focus=
+let URLFOCUS = '';           // 주소로 준 것이 있으면 그것이 우선
 let KIND = new Map();        // 단어 → 갈래 이름
 let BASIC = new Set();       // "기초" 로 표시해 둔 단어 (쉽게 모드에서 먼저 깔린다)
 let FRESH = new Set();       // "요즘 말" — 요즘 뉴스에 실제로 자주 나온 말. 앞자리를 준다
@@ -174,6 +175,7 @@ function paintTheme(pack) {
  */
 function loadBank(pack, picked) {
   PACK = pack;
+  FOCUS = URLFOCUS || (EASY && pack.easyFocus) || '';   // 로봇 기초는 산업별 도입 자료를 앞세운다
   DECO = Array.isArray(pack.deco) ? pack.deco : [];
   paintTheme(pack);
   TIERED = pack.tiered === true;
@@ -1583,7 +1585,7 @@ const kindSig = (pack, picked) => allKinds(pack).map(n => picked.includes(n) ? '
 // 난이도를 가른 단어장은 기초 쪽과 심화 쪽이 사실상 다른 판이라 진행도 따로 둔다.
 // 기초 쪽은 열쇠를 그대로 둔다 — 갈라지기 전 «로봇 기초» 진행이 그대로 이어지도록
 const tierSig = pack => (pack.tiered && !EASY) ? ':심화' : '';
-const boardKey = (pack, picked) => 'infinite-crossword:' + pack.id + ':' + kindSig(pack, picked) + tierSig(pack) + (FOCUS ? ':' + FOCUS : '');
+const boardKey = (pack, picked) => 'infinite-crossword:' + pack.id + ':' + kindSig(pack, picked) + tierSig(pack);
 const saveKey = () => boardKey(PACK, [...PICK]);
 const pickKey = id => 'infinite-crossword:pick:' + id;
 const LAST_KEY = 'infinite-crossword:last';
@@ -2046,7 +2048,7 @@ async function boot() {
     try { localStorage.setItem(EASY_KEY, EASY ? '1' : '0'); } catch (_) {}
   }
   if (q && q.has('solo') && fromUrl) document.body.classList.add('solo');
-  if (q && q.get('focus')) FOCUS = q.get('focus');
+  if (q && q.get('focus')) URLFOCUS = q.get('focus');
 
   let first = null;
   try { first = window.PACKS.find(p => p.id === localStorage.getItem(LAST_KEY)); } catch (_) {}
