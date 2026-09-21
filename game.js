@@ -144,6 +144,7 @@ const bandOf = y => Math.floor((y + G.bandOff) / BAND);
 let PACK = null;             // 지금 고른 단어장
 let PICK = new Set();        // 그중 고른 갈래 이름들
 let ONTOPIC = new Set();     // 고른 갈래에 든 단어들 (나머지는 벌점을 받고 뒤로 밀린다)
+let FOCUS = '';              // ?focus=산업별 도입 — 소분류 하나를 앞세운다 (자료 익히기용 판)
 let KIND = new Map();        // 단어 → 갈래 이름
 let BASIC = new Set();       // "기초" 로 표시해 둔 단어 (쉽게 모드에서 먼저 깔린다)
 let FRESH = new Set();       // "요즘 말" — 요즘 뉴스에 실제로 자주 나온 말. 앞자리를 준다
@@ -189,7 +190,7 @@ function loadBank(pack, picked) {
       KIND.set(w[0], w[2] || g.name);
       if (w[3] === '기초' || g.name === '기초') BASIC.add(w[0]);
       if (w[3] === '요즘' || g.name === '요즘 말') FRESH.add(w[0]);
-      if (PICK.has(g.name)) ONTOPIC.add(w[0]);
+      if (FOCUS ? (w[2] || g.name) === FOCUS : PICK.has(g.name)) ONTOPIC.add(w[0]);
     }
   }
   HARD = BASIC.size >= LOCKAT ? SHUT : LEAN;
@@ -237,8 +238,11 @@ function loadBank(pack, picked) {
 }
 
 /** 최근 창 안에 그 말이나 그 말의 친척(품거나 품긴 말)이 있으면 참 */
+let FOCUSGAP = 24;   // ?focus 로 앞세운 말은 이만큼만 지나면 다시 나온다 — 익히는 판은 되풀이가 미덕이다
 function recentish(word) {
-  if (G.recent.includes(word)) return true;
+  if (FOCUS && ONTOPIC.has(word)) {
+    if (G.recent.slice(-FOCUSGAP).includes(word)) return true;
+  } else if (G.recent.includes(word)) return true;
   const kin = KIN.get(word);
   return !!kin && kin.some(k => G.recent.includes(k));
 }
@@ -363,6 +367,8 @@ let WEAR = 24, WEARCAP = 120;                // 같은 단어를 돌려 쓰지 �
                      // 창고를 891→1288개로 불린 뒤에는 뚜껑을 120 까지 올려도 판이
                      // 안 성긴다. 300줄에 나오는 서로 다른 말 135→258개(시사),
                      // 최다 반복 10.5→3.0회. 다섯 번을 넘겨 나오는 말이 거의 없다
+let OFFFOCUS = 70;   // ?focus 로 앞세운 소분류 밖의 단어에 매기는 벌점. 최근 창이 같은 말을 막으므로
+                     // 아무리 세게 밀어도 앞세운 말은 창 크기만큼만 나오고 나머지는 다른 말이 채운다.
 let OFFPICK = 26;    // 고르지 않은 갈래의 단어에 매기는 벌점.
                      // 겹침 하나 값이 100 이므로 이 값이 100 을 넘으면 사실상 하드 필터가 되는데,
                      // 그러면 고른 갈래 비율은 100% 가 되지만 채움이 0.30, 겹침이 0.78 로 무너진다.
@@ -384,7 +390,7 @@ let DEEP = 20;      // «쉽게» 를 껐을 때 기초 말에 매기는 벌점.
 let NEW = 11;       // 요즘 말에 주는 가산점. 벌점을 깎아 앞자리로 당긴다.
                     // 요즘 말이 일흔다섯 개로 늘어 22 로는 판의 삼분의 이를 차지했다
 const wornOut = word =>
-  Math.min(WEARCAP, WEAR * (G.used.get(word) || 0)) + (ONTOPIC.has(word) ? 0 : OFFPICK)
+  Math.min(WEARCAP, WEAR * (G.used.get(word) || 0)) + (ONTOPIC.has(word) ? 0 : (FOCUS ? OFFFOCUS : OFFPICK))
   + (EASY && BASIC.size && !BASIC.has(word) ? HARD : 0)
   + (!EASY && TIERED && BASIC.has(word) ? DEEP : 0)
   - (FRESH.has(word) ? NEW : 0);
@@ -1577,7 +1583,7 @@ const kindSig = (pack, picked) => allKinds(pack).map(n => picked.includes(n) ? '
 // 난이도를 가른 단어장은 기초 쪽과 심화 쪽이 사실상 다른 판이라 진행도 따로 둔다.
 // 기초 쪽은 열쇠를 그대로 둔다 — 갈라지기 전 «로봇 기초» 진행이 그대로 이어지도록
 const tierSig = pack => (pack.tiered && !EASY) ? ':심화' : '';
-const boardKey = (pack, picked) => 'infinite-crossword:' + pack.id + ':' + kindSig(pack, picked) + tierSig(pack);
+const boardKey = (pack, picked) => 'infinite-crossword:' + pack.id + ':' + kindSig(pack, picked) + tierSig(pack) + (FOCUS ? ':' + FOCUS : '');
 const saveKey = () => boardKey(PACK, [...PICK]);
 const pickKey = id => 'infinite-crossword:pick:' + id;
 const LAST_KEY = 'infinite-crossword:last';
@@ -1811,7 +1817,7 @@ function packLabel(pack, picked) {
   const part = (pack.groups.length > 1 && picked.length < pack.groups.length)
     ? (picked.length === 1 ? ` · ${picked[0]}` : ` · ${picked.length}/${pack.groups.length}갈래`) : '';
   const tier = pack.tiered ? (EASY ? ' · 기초' : ' · 심화') : (EASY ? ' · 쉽게' : '');
-  return pack.emoji + ' ' + pack.name + part + tier;
+  return pack.emoji + ' ' + pack.name + part + tier + (FOCUS ? ' · ' + FOCUS : '');
 }
 
 function buildChooser() {
@@ -2040,6 +2046,7 @@ async function boot() {
     try { localStorage.setItem(EASY_KEY, EASY ? '1' : '0'); } catch (_) {}
   }
   if (q && q.has('solo') && fromUrl) document.body.classList.add('solo');
+  if (q && q.get('focus')) FOCUS = q.get('focus');
 
   let first = null;
   try { first = window.PACKS.find(p => p.id === localStorage.getItem(LAST_KEY)); } catch (_) {}
@@ -2051,10 +2058,10 @@ async function boot() {
 boot().catch(showLoadError);
 
 if (location.search.includes('debug'))
-  window.__cw = { G, S, recentish, celebrate, get party() { return party; }, get MOBILE() { return MOBILE; }, get softShift() { return softShift; }, get ime() { return ime; }, get KIN() { return KIN; }, get W() { return W; }, key, grow, collapse, clearableY, render, wordCells,
+  window.__cw = { G, S, recentish, get FOCUS() { return FOCUS; }, celebrate, get party() { return party; }, get MOBILE() { return MOBILE; }, get softShift() { return softShift; }, get ime() { return ime; }, get KIN() { return KIN; }, get W() { return W; }, key, grow, collapse, clearableY, render, wordCells,
                   input, hint, openWord, after, markBad, nextWord, crossCount, startPack, curWord, focusIME, anchorIME,
                   tune: (w, c, r, o) => { WEAR = w; WEARCAP = c; if (r !== undefined) POOLFRAC = r; if (o !== undefined) OFFPICK = o; },
-                  recentCap,
+                  recentCap, tune3: (f, g) => { OFFFOCUS = f; if (g !== undefined) FOCUSGAP = g; },
                   tune2: (h, d) => { if (h !== undefined) HARD = h; if (d !== undefined) DEEP = d; },
                   get 층벌점() { return { HARD, DEEP, 기초: BASIC.size, 창고: BANK.length }; },
                   useIME, get imeBase() { return imeBase; },
