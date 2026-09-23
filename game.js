@@ -509,7 +509,7 @@ function buildBand(top) {
 }
 
 /** 밴드에 놓인 단어를 모두 되돌린다 (밴드끼리는 서로 물려 있지 않으므로 안전하다) */
-function undoFrom(mark, recentMark) {
+function undoFrom(mark, recentSnap) {
   for (const [id, w] of [...G.words]) {
     if (id < mark) continue;
     for (const c of wordCells(w)) {
@@ -522,12 +522,14 @@ function undoFrom(mark, recentMark) {
     G.words.delete(id);
   }
   G.nextId = mark;
-  G.recent.length = recentMark;
+  // 길이만 되돌리면 안 된다 — 창이 꽉 찬 채로 place() 가 앞을 밀어냈으면 되돌린 시도의 말이
+  // 창에 남고 진짜 오래된 말이 사라져, 친척 낱말이 열여덟 줄 뒤에 다시 나왔다. 통째로 되살린다
+  G.recent.splice(0, G.recent.length, ...recentSnap);
 }
 
 /** 같은 밴드를 여러 번 짜 보고 제일 촘촘하게 물린 것을 남긴다 */
 function buildBandBest(top, tries) {
-  const mark = G.nextId, recentMark = G.recent.length;
+  const mark = G.nextId, recentSnap = G.recent.slice();
   let best = null;
   for (let t = 0; t < tries; t++) {
     buildBand(top);
@@ -537,7 +539,7 @@ function buildBandBest(top, tries) {
     const score = cross * 3 + cells + onTopic * 3;   // 촘촘하고, 고른 갈래가 많이 든 밴드로
     const snap = [...G.words.values()].filter(w => w.id >= mark).map(w => [w.word, w.x, w.y, w.dir]);
     if (!best || score > best.score) best = { score, snap };
-    undoFrom(mark, recentMark);
+    undoFrom(mark, recentSnap);
     if (best.score >= 9 * 3 + 40) break;      // 충분히 잘 나왔으면 그만
   }
   if (!best) return;
