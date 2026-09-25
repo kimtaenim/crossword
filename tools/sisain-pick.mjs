@@ -135,7 +135,31 @@ for (const [w, n] of 최근수) {
 }
 rows.sort((a, b) => b.점수 - a.점수);
 
+/* 같은 이야기를 두 이름으로 부르는 것들 — 초과이윤·초과이익처럼.
+   둘 다 넣으면 단어장에 같은 말이 두 번 든다. 앞이나 뒤 두 글자가 같고
+   나온 기사가 절반 넘게 겹치면 한 쌍으로 묶어 보여 준다. 고르는 것은 사람 몫이다. */
+const 겹침 = [];
+for (let i = 0; i < rows.length; i++) {
+  for (let j = i + 1; j < rows.length; j++) {
+    const a = rows[i], b = rows[j];
+    const 붙은데 = a.w.slice(0, 2) === b.w.slice(0, 2) || a.w.slice(-2) === b.w.slice(-2);
+    if (!붙은데) continue;
+    const A = new Set(담긴글.get(a.w)), B = 담긴글.get(b.w);
+    const 겹친수 = B.filter(x => A.has(x)).length;
+    if (겹친수 / Math.min(A.size, B.length) >= 0.5) 겹침.push([a.w, b.w, 겹친수]);
+  }
+}
+
+// --words 면 낱말만 한 줄에 하나씩 — sisain-sieve 로 넘겨 거르기 좋게
+if (process.argv.includes('--words')) {
+  for (const r of rows.slice(0, N)) console.log(r.w);
+  process.exit(0);
+}
 console.log(`기사 ${글.length}건 · 요즘 = ${기준} 이후 ${최근글.length}건 · 후보 ${rows.length}종\n`);
+if (겹침.length) {
+  console.log('■ 같은 이야기를 두 이름으로 — 하나만 고를 것');
+  console.log('  ' + 겹침.map(([a, b, n]) => a + ' <-> ' + b + '(' + n + '건 겹침)').join('  ') + '\n');
+}
 console.log('낱말        요즘/예전  날짜  급등  취재비중  주제쏠림   점수');
 for (const r of rows.slice(0, N)) {
   console.log(`${r.w.padEnd(10)} ${String(r.n).padStart(3)}/${String(r.예전).padEnd(4)} ${String(r.날짜수).padStart(3)} ${r.급등.toFixed(1).padStart(5)} ${(r.취재비 * 100).toFixed(0).padStart(6)}% ${(r.주제쏠림 * 100).toFixed(0).padStart(7)}% ${r.점수.toFixed(1).padStart(6)}`);
