@@ -31,6 +31,13 @@ import { fileURLToPath } from 'url';
 const repo = process.argv[2] && !process.argv[2].startsWith('--')
   ? process.argv[2] : path.join(process.cwd(), '..', 'sisain-chatbot');
 const N = Number((process.argv.find(a => a.startsWith('--n=')) || '--n=40').slice(4));
+// --많이 면 문을 넓게 연다: 요즘 2건부터 받고, 날짜·주제 쏠림은 안 본다.
+// 시사어인지 아닌지는 뒤에서 sisain-sieve 가 하나하나 본다 —
+// 통계는 «낱말인가» 까지만 가리고, «시사어인가» 는 거기서 가린다.
+const 많이 = process.argv.includes('--많이');
+const 최소건수 = 많이 ? 2 : 3;
+const 최소날짜 = 많이 ? 2 : 3;
+const 취재하한 = 많이 ? 0.5 : 0.6;
 
 const arts = JSON.parse(fs.readFileSync(path.join(repo, 'data/articles.json'), 'utf8'));
 const onto = JSON.parse(fs.readFileSync(path.join(repo, 'data/ontology.json'), 'utf8')).articles || {};
@@ -121,9 +128,11 @@ const 쏠림 = (목록) => {                       // 최빈 둘이 차지하는
 
 const rows = [];
 for (const [w, n] of 최근수) {
-  if (n < 3) continue;
+  if (n < 최소건수) continue;
   if (고유명사(w)) continue;
-  const j = 조사(w, 최근글);
+  // 조사가 붙는지는 요즘 기사만 보면 증거가 모자란다 — 두어 번 나온 말은 조사 종류가
+  // 서너 가지까지 안 나온다. 멀쩡한 명사가 그래서 떨어졌다. 전체 기사에서 센다.
+  const j = 조사(w, 글);
   if (j.비율 < 0.25 || j.종류 < 3) continue;          // 명사가 아니다
   if (꼬리.test(w)) continue;                         // 뜻이 부분의 합이다
   if (자리서류.test(w)) continue;                     // 자리 이름이거나 서류 이름이다
@@ -133,9 +142,9 @@ for (const [w, n] of 최근수) {
   const 급등 = (n / 최근글.length) / ((예전 + 3) / 예전글.length);
   const 글들 = 담긴글.get(w);
   const 날짜수 = new Set(글들.map(a => a.d)).size;
-  if (날짜수 < 3) continue;                           // 한 기획에만 몰려 나온 말
+  if (날짜수 < 최소날짜) continue;                           // 한 기획에만 몰려 나온 말
   const 취재비 = 글들.filter(a => a.취재).length / 글들.length;
-  if (취재비 < 0.6) continue;                         // 칼럼·서평에 퍼진 말
+  if (취재비 < 취재하한) continue;                         // 칼럼·서평에 퍼진 말
   const 주제쏠림 = 쏠림(글들.flatMap(a => a.주제));
   if (n / 글.length > 0.1) continue;                  // 너무 흔한 일반어
   rows.push({ w, n, 예전, 날짜수, 급등, 취재비, 주제쏠림, 점수: 급등 * 취재비 * 주제쏠림 });
