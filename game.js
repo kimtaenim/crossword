@@ -931,6 +931,18 @@ function renderList() {
   box.innerHTML =
     `<h3>가로</h3><ul>${ws.filter(w => w.dir === 'A').map(row).join('')}</ul>` +
     `<h3>세로</h3><ul>${ws.filter(w => w.dir === 'D').map(row).join('')}</ul>`;
+
+  // 칸을 누르면 그 낱말의 열쇠를 목록에서 찾아 보여 준다.
+  // 목록이 길어 지금 푸는 것이 화면 밖에 있으면, 옆에 열쇠를 띄워 놓고도 눈으로 찾아야 했다.
+  // 목록 칸 안에서만 움직인다 — scrollIntoView 를 그냥 부르면 판까지 같이 끌려간다.
+  const 지금 = box.querySelector('li.on');
+  if (지금) {
+    const 위 = 지금.offsetTop - box.offsetTop;
+    const 아래 = 위 + 지금.offsetHeight;
+    if (위 < box.scrollTop || 아래 > box.scrollTop + box.clientHeight) {
+      box.scrollTop = 위 - box.clientHeight / 3;
+    }
+  }
 }
 
 document.getElementById('list').addEventListener('click', e => {
