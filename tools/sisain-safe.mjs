@@ -127,7 +127,7 @@ const 성한가 = (w, clue) => {
 };
 
 /* 판정은 힌트를 쓴 모델(sonnet)과 다른, 더 센 모델이 한다. 쓴 쪽이 제 글을 제가 보면 같은 데서 눈이 먼다 */
-const 판정모델 = process.env.SAFE_MODEL || 'claude-opus-5';
+const 판정모델 = process.env.SAFE_MODEL || 'claude-opus-5-5';
 const 모델 = process.env.WRITE_MODEL || 'claude-haiku-4-5-20251001';   // 다시 쓰기는 싼 모델. 고친 것도 opus 판정을 다시 받는다
 const 도장 = 도장읽기();
 const 찍기 = (w, c) => { 도장[도장키(w, c)] = { 날: new Date().toISOString().slice(0, 10), 모델: 판정모델, 규칙판: 판 }; };
@@ -208,8 +208,8 @@ for (let i = 0; i < 할것.length; i += 묶음) {
   process.stderr.write(`  검사 ${Math.min(i + 묶음, 할것.length)}/${할것.length} — 걸린 것 ${걸린것.length} · 고친 것 ${고친것.length} · 못 고친 것 ${못고친것.length}\r`);
 }
 
-// 판정(opus 5: 입력 $5·출력 $25 /백만 토큰)이 대부분이라 그 값으로 어림한다
-const 값 = Math.round((입력 / 1e6 * 5 + 출력 / 1e6 * 25) * 1400);
+// 판정(opus 5.5: 입력 $4·출력 $20 /백만 토큰)이 대부분이라 그 값으로 어림한다
+const 값 = Math.round((입력 / 1e6 * 4 + 출력 / 1e6 * 20) * 1400);
 console.error(`\n\n걸린 것 ${걸린것.length} · 고친 것 ${고친것.length} · 못 고쳐 뺄 것 ${못고친것.length} · 너무 어려워 뺄 것 ${어려운것.length}`);
 if (어려운것.length) console.log('■ 너무 어려워 뺄 말\n  ' + 어려운것.join(' '));
 if (일반어.length) console.log('■ 시사 용어가 아니라 뺄 말\n  ' + 일반어.join(' '));
