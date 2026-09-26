@@ -24,6 +24,17 @@ import { createRequire } from 'module';
 const repo = process.argv[2] && !process.argv[2].startsWith('--')
   ? process.argv[2] : path.join(process.cwd(), '..', 'sisain-chatbot');
 const WRITE = process.argv.includes('--쓰기');
+
+/* 2026-09: 이 도구는 기본으로 돌지 않는다.
+   그 낱말이 «한 번 스친» 기사 두 건을 골라 곁가지를 붙이다 보니, 뉴스판 847개 가운데 백여 개가
+   «양극화 — 경찰 개혁 논의에서 나온, …» «일자리 — …돌려차기 사건으로 모두 잃은, …» 꼴이 됐다.
+   곁가지는 낱말을 떠올리게 하기는커녕 헷갈리게 했고, 피해자가 있는 사건을 퍼즐 재료로 썼다.
+   전수로 뜻만 남기도록 다시 썼다(packs/손댄힌트.txt). 다시 돌리려면 --그래도 를 붙이고,
+   나온 것은 check-clues 가 곁가지 꼴로 잡으니 사람이 하나씩 보고 살펴본말에 적어야 나간다. */
+if (!process.argv.includes('--그래도')) {
+  console.error('sisain-anchor 는 쉬고 있다 — 까닭은 파일 머리 주석. 꼭 돌리려면 --그래도');
+  process.exit(0);
+}
 const 인자 = k => (process.argv.find(a => a.startsWith('--' + k + '=')) || '').split('=')[1];
 const 맛보기 = Number(인자('맛보기') || 0);
 

@@ -71,6 +71,12 @@ for (const pack of window.PACKS) {
         if (v.볼것 && !살펴본말.has(word)) {
           say(`다투는 사안이 들어 있음(${v.말.join(', ')}) — 기사를 보고 판단한 뒤 packs/살펴본말.txt 에 적을 것`);
         }
+        // «[어디서 나왔나], [무엇인가]» 꼴. 기사 한 건에 스친 맥락이 힌트를 망친 일이 백여 건 있었다
+        // (양극화 — 경찰 개혁 논의에서 나온, …). 사람이 보고 살펴본말에 적은 것만 나간다.
+        const k = 안전.곁가지 ? 안전.곁가지(clue) : { 붙음: false };
+        if (k.붙음 && !살펴본말.has(word)) {
+          say(`뉴스 곁가지가 붙어 있음(«${k.어디}») — 뜻만 남기거나, 꼭 필요하면 보고 packs/살펴본말.txt 에 적을 것`);
+        }
       }
       if (clue.length > MAXLEN) say(`힌트가 김 (${clue.length}자, ${MAXLEN}자 넘음)`);
       if (clue.length < 6) say('힌트가 너무 짧음');
