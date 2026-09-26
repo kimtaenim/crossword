@@ -99,7 +99,7 @@ const 할것 = 맛보기 ? 모든낱말.slice(0, 맛보기) : 모든낱말;
    힌트는 잘 써야 하니 좋은 모델(Sonnet)이 쓰고, 푸는 것은 약한 모델(Haiku)이 한다.
    약한 모델이 보기에서 골라낼 수 있으면 실력 없는 사람도 풀 수 있다는 뜻이다 —
    좋은 모델이 푸는 시험은 «어려운 힌트도 통과» 시켜 버려서 쉬운지를 가리지 못한다. */
-const 쓰는모델 = 'claude-sonnet-5';
+const 쓰는모델 = process.env.WRITE_MODEL || 'claude-haiku-4-5-20251001';   // 쓰기는 싼 모델, 판정은 sisain-safe 의 opus
 const 푸는모델 = 'claude-haiku-4-5-20251001';
 let 입력 = 0, 출력 = 0;
 

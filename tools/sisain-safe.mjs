@@ -128,7 +128,7 @@ const 성한가 = (w, clue) => {
 
 /* 판정은 힌트를 쓴 모델(sonnet)과 다른, 더 센 모델이 한다. 쓴 쪽이 제 글을 제가 보면 같은 데서 눈이 먼다 */
 const 판정모델 = process.env.SAFE_MODEL || 'claude-opus-5';
-const 모델 = 'claude-sonnet-5';   // 다시 쓰기
+const 모델 = process.env.WRITE_MODEL || 'claude-haiku-4-5-20251001';   // 다시 쓰기는 싼 모델. 고친 것도 opus 판정을 다시 받는다
 const 도장 = 도장읽기();
 const 찍기 = (w, c) => { 도장[도장키(w, c)] = { 날: new Date().toISOString().slice(0, 10), 모델: 판정모델, 규칙판: 판 }; };
 const 묶음 = 30;
