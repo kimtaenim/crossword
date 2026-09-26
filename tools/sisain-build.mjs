@@ -58,14 +58,15 @@ const 날짜 = 글.map(a => a.d).sort();
 const 요즘부터 = 날짜[Math.floor(날짜.length * 0.75)];
 
 const 센다 = w => {
-  let 전체 = 0, 요즘 = 0, 처음 = '9999-99-99';
+  let 전체 = 0, 요즘 = 0, 처음 = '9999-99-99', 마지막 = '0000-00-00';
   for (const a of 글) {
     if (!a.붙인.includes(w)) continue;
     전체++;
     if (a.d >= 요즘부터) 요즘++;
     if (a.d < 처음) 처음 = a.d;
+    if (a.d > 마지막) 마지막 = a.d;
   }
-  return { 전체, 요즘, 처음 };
+  return { 전체, 요즘, 처음, 마지막 };
 };
 
 /* 캐낸 것만으로 지으면 단어장이 되레 줄어든다. 캐기는 기사에 걸린 말만 집어 오는데,
@@ -113,6 +114,16 @@ for (let i = 0; i < rows.length; i++) {
   const key = rows[i].clue.replace(/\s+/g, '');
   if (본힌트.has(key)) { 버린겹침.push(rows[i].w); rows.splice(i, 1); i--; continue; }
   본힌트.add(key);
+}
+
+/* 단어장은 천 개를 유지한다. 넘치면 기사에 마지막으로 나온 지 가장 오래된 말부터 밀려난다 —
+   새로 나오는 말이 묵은 말을 밀어내는 방식이다. 같은 날이면 덜 나온 말이 먼저 밀린다. */
+const 한도 = Number(process.env.WORD_LIMIT || 1000);
+if (rows.length > 한도) {
+  const 남길 = new Set([...rows].sort((a, b) => b.마지막.localeCompare(a.마지막) || b.전체 - a.전체).slice(0, 한도).map(r => r.w));
+  const 밀린 = rows.filter(r => !남길.has(r.w));
+  console.log(`천 개를 넘어 밀려난 말 ${밀린.length}개 (가장 오래 안 나온 것부터): ${밀린.slice(0, 20).map(r => r.w).join(' ')}`);
+  for (let i = rows.length - 1; i >= 0; i--) if (!남길.has(rows[i].w)) rows.splice(i, 1);
 }
 
 const 셈 = (n) => rows.filter(r => r.순위 === n).length;
