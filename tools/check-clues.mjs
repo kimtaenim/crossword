@@ -1,5 +1,6 @@
 /* 힌트 점검 — 정답이 새거나, 너무 길거나, 겹치는 힌트를 잡아낸다.
    node tools/check-clues.mjs */
+import { 안전모듈 } from './lib-safety.mjs';
 import fs from 'fs';
 import { createRequire } from 'module';
 
@@ -18,9 +19,8 @@ try {
 
 let 안전 = null, 품질 = null;
 try { 품질 = createRequire(import.meta.url)(챗봇 + '/lib/quality.js'); } catch (_) {}
-try { 안전 = createRequire(import.meta.url)(챗봇 + '/lib/safety.js'); }
-catch (_) { console.log(`※ 안전 목록을 못 읽었습니다(${챗봇}/lib/safety.js). CHATBOT= 으로 경로를 주세요.
-`); }
+// 안전 모듈을 못 읽으면 여기서 실패한다. 전에는 경고만 찍고 넘어가 내보내기 전 검사가 빈 채로 돌았다.
+안전 = 안전모듈(챗봇);
 import { fileURLToPath } from 'url';
 // pathname 을 그대로 쓰면 윈도에서 «/C:/...» 가 되어 못 찾는다
 const dir = fileURLToPath(new URL('../packs/', import.meta.url));

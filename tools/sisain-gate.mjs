@@ -20,6 +20,7 @@
 
    푸는 쪽은 Sonnet 을 쓴다. 힌트를 쓴 Haiku 와 다른 눈이라야 검사가 된다.
 */
+import { 안전모듈, 재료기사 } from './lib-safety.mjs';
 import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
@@ -73,7 +74,8 @@ async function 불러본다(body, 횟수 = 6) {
 }
 const 글자 = j => (j.content || []).map(c => c.text || '').join('');
 
-const arts = JSON.parse(fs.readFileSync(path.join(repo, 'data/articles.json'), 'utf8'));
+const 안전 = 안전모듈(repo);
+const arts = 재료기사(안전, JSON.parse(fs.readFileSync(path.join(repo, 'data/articles.json'), 'utf8')));
 const 원문 = arts.map(a => ({
   d: (a.date || '').slice(0, 10).replace(/\./g, '-'),
   t: [a.title, a.subtitle, a.summary, a.body].filter(Boolean).join(' '),
@@ -177,7 +179,7 @@ async function 다시쓰기(목록) {
 한 줄에 하나씩 "낱말|다시 쓴 열쇠" 꼴로만 적는다.
 
 ${목록.map(x => `[${x.w[0]}] 지금 열쇠: ${x.w[1]}${대목(x.w[0]).map(e => `\n   ${e}`).join('')}`).join('\n\n')}`;
-  const j = await 불러본다({ model: 쓰는모델, max_tokens: 3000, messages: [{ role: 'user', content: 물음 }] });
+  const j = await 불러본다({ model: 쓰는모델, max_tokens: 3000, messages: [{ role: 'user', content: 물음 + '\n\n' + 안전.규칙글() }] });
   입력 += j.usage?.input_tokens || 0; 출력 += j.usage?.output_tokens || 0;
   const 답 = new Map();
   for (const line of 글자(j).split(/\r?\n/)) {

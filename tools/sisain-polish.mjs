@@ -14,11 +14,13 @@
 
    --쓰기 가 없으면 미리보기만 한다.
 */
+import { 안전모듈, 재료기사 } from './lib-safety.mjs';
 import fs from 'fs';
 import path from 'path';
 
 const repo = process.argv[2] && !process.argv[2].startsWith('--')
   ? process.argv[2] : path.join(process.cwd(), '..', 'sisain-chatbot');
+const 안전 = 안전모듈(repo);
 const WRITE = process.argv.includes('--쓰기');
 const 인자 = k => (process.argv.find(a => a.startsWith('--' + k + '=')) || '').split('=')[1];
 
@@ -102,7 +104,7 @@ for (let i = 0; i < 대상.length; i += 묶음크기) {
   const j = await 불러본다({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 3000,
-      messages: [{ role: 'user', content: 물음(덩이) }],
+      messages: [{ role: 'user', content: 물음(덩이) + '\n\n' + 안전.규칙글() }],
     });
   for (const line of (j.content || []).map(c => c.text || '').join('').split(/\r?\n/)) {
     const m = line.match(/^\s*([가-힣0-9]{2,10})\s*\|\s*(아는말|낯선말)\s*\|\s*(.+?)\s*$/);

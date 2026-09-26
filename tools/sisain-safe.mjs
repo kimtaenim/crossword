@@ -19,6 +19,7 @@
    기계가 보기 전에 낱말 목록으로 먼저 턴다(아래 거친말). 목록에 없는 것도 모델이 잡는다.
    사람이 손댄 힌트도 검사한다 — 안전은 예외를 두지 않는다.
 */
+import { 안전모듈, 재료기사 } from './lib-safety.mjs';
 import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
@@ -68,7 +69,10 @@ async function 불러본다(body, 횟수 = 6) {
 }
 const 글자 = j => (j.content || []).map(c => c.text || '').join('');
 
-const arts = JSON.parse(fs.readFileSync(path.join(repo, 'data/articles.json'), 'utf8'));
+/* 공용 안전 모듈(챗봇 레포 lib/safety.js). 못 읽으면 여기서 멈춘다 — 안전 검사를 건너뛰고 돌지 않는다 */
+const 안전 = 안전모듈(repo);
+// 다시 쓸 때 붙여 주는 기사 대목도 범죄·참사가 중심인 기사에서는 가져오지 않는다
+const arts = 재료기사(안전, JSON.parse(fs.readFileSync(path.join(repo, 'data/articles.json'), 'utf8')));
 const 원문 = arts.map(a => [a.title, a.subtitle, a.summary, a.body].filter(Boolean).join(' '));
 const packPath = 'packs/news.json';
 const pack = JSON.parse(fs.readFileSync(packPath, 'utf8'));
@@ -140,17 +144,12 @@ const 다시쓰라 = (목록) => `시사 주간지 크로스워드의 열쇠를 
 
 ${목록.map(x => `[${x.w[0]}] 지금 열쇠: ${x.w[1]}\n   문제: ${x.까닭}${대목(x.w[0]).map(e => `\n   기사: ${e}`).join('')}`).join('\n\n')}`;
 
-/* 공용 안전 모듈(챗봇 레포 lib/safety.js). 있으면 기계 목록과 곁가지 꼴도 그걸로 본다 */
-const 안전 = (() => {
-  try { return createRequire(import.meta.url)(repo + '/lib/safety.js'); }
-  catch (_) { return null; }
-})();
 
 const 성한가 = (w, clue) => {
   if (!clue || clue.length > 60 || clue.length < 6) return false;
   if (거친말.test(clue) || clue.includes(w)) return false;
-  if (안전 && !안전.검사(clue).안전) return false;
-  if (안전 && 안전.곁가지(clue).붙음) return false;   // 고쳐 쓴 것에 곁가지를 되붙였으면 버린다
+  if (!안전.검사(clue).안전) return false;
+  if (안전.곁가지(clue).붙음) return false;   // 고쳐 쓴 것에 곁가지를 되붙였으면 버린다
   if (품질 && 품질.누설(w, clue, { 봐주기: 품질.봐주는길이.크로스워드 }).샘) return false;
   if (!품질) for (let i = 0; i + 3 <= w.length; i++) if (clue.includes(w.slice(i, i + 3))) return false;
   return true;
@@ -165,20 +164,29 @@ console.error(`힌트 ${할것.length}개를 전수로 본다\n`);
 
 for (let i = 0; i < 할것.length; i += 묶음) {
   const 덩이 = 할것.slice(i, i + 묶음);
-  const j = await 불러본다({ model: 모델, max_tokens: 3000, messages: [{ role: 'user', content: 물음(덩이) }] });
-  입력 += j.usage?.input_tokens || 0; 출력 += j.usage?.output_tokens || 0;
+  // 두 번 따로 묻는다 — 일반 잣대와 «피해자의 눈». 한 물음에 섞으면 피해자 잣대가 묻힌다
+  // (돌려차기 힌트는 사실이고 비하도 없어서 일반 잣대를 그대로 지나갔다).
+  const [j, jv] = await Promise.all([
+    불러본다({ model: 모델, max_tokens: 3000, messages: [{ role: 'user', content: 물음(덩이) + '\n\n' + 안전.규칙글() }] }),
+    불러본다({ model: 모델, max_tokens: 3000, messages: [{ role: 'user', content: 안전.피해자물음(덩이.map(w => ({ 이름: w[0], 글: w[1] }))) }] }),
+  ]);
+  입력 += (j.usage?.input_tokens || 0) + (jv.usage?.input_tokens || 0);
+  출력 += (j.usage?.output_tokens || 0) + (jv.usage?.output_tokens || 0);
 
   const 판정 = new Map();
   for (const line of 글자(j).split(/\r?\n/)) {
     const m = line.match(/^\s*([가-힣0-9]{2,12})\s*\|\s*(괜찮음|고칠것)\s*\|?\s*(.*)$/);
     if (m) 판정.set(m[1], { 답: m[2], 까닭: m[3] || '' });
   }
+  for (const [이름, v] of 안전.판정읽기(글자(jv))) {
+    if (v.답 === '고칠것') 판정.set(이름, { 답: '고칠것', 까닭: `피해자의 눈: ${v.까닭 || '괴로운 글'}` });
+  }
 
   const 고칠것 = [];
   for (const w of 덩이) {
     const v = 판정.get(w[0]);
     // 기계로 먼저 턴다 — 거친 말, 특정 사건 이름(공용 목록), 뉴스 곁가지 꼴
-    const 목록에걸림 = 거친말.test(w[1]) || (안전 && (!안전.검사(w[1]).안전 || 안전.곁가지(w[1]).붙음));
+    const 목록에걸림 = 거친말.test(w[1]) || !안전.검사(w[1]).안전 || 안전.곁가지(w[1]).붙음;
     if (목록에걸림 || v?.답 === '고칠것') {
       const 까닭 = 목록에걸림 ? '거친 말 목록에 걸림' : v.까닭;
       걸린것.push([w[0], w[1], 까닭]);
@@ -187,16 +195,24 @@ for (let i = 0; i < 할것.length; i += 묶음) {
   }
 
   if (고칠것.length) {
-    const k = await 불러본다({ model: 모델, max_tokens: 3000, messages: [{ role: 'user', content: 다시쓰라(고칠것) }] });
+    const k = await 불러본다({ model: 모델, max_tokens: 3000, messages: [{ role: 'user', content: 다시쓰라(고칠것) + '\n\n' + 안전.규칙글() }] });
     입력 += k.usage?.input_tokens || 0; 출력 += k.usage?.output_tokens || 0;
     const 새것 = new Map();
     for (const line of 글자(k).split(/\r?\n/)) {
       const m = line.match(/^\s*([가-힣0-9]{2,12})\s*\|\s*(.+?)\s*$/);
       if (m) 새것.set(m[1], m[2]);
     }
+    // 고쳐 쓴 것도 피해자의 눈으로 한 번 더 본다. 걸리면 못 고친 것으로 쳐서 낱말째 뺀다
+    const 후보 = 고칠것.map(x => ({ 이름: x.w[0], 글: 새것.get(x.w[0]) || '' })).filter(x => x.글);
+    const 다시걸림 = new Set();
+    if (후보.length) {
+      const kv = await 불러본다({ model: 모델, max_tokens: 3000, messages: [{ role: 'user', content: 안전.피해자물음(후보) }] });
+      입력 += kv.usage?.input_tokens || 0; 출력 += kv.usage?.output_tokens || 0;
+      for (const [이름, v] of 안전.판정읽기(글자(kv))) if (v.답 === '고칠것') 다시걸림.add(이름);
+    }
     for (const x of 고칠것) {
       const n = 새것.get(x.w[0]);
-      if (n && 성한가(x.w[0], n)) { 고친것.push([x.w[0], x.w[1], n]); x.w[1] = n; }
+      if (n && 성한가(x.w[0], n) && !다시걸림.has(x.w[0])) { 고친것.push([x.w[0], x.w[1], n]); x.w[1] = n; }
       else 못고친것.push([x.w[0], x.w[1], x.까닭]);
     }
   }
