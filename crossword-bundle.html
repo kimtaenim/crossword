@@ -653,7 +653,6 @@ let PICK = new Set();        // 그중 고른 갈래 이름들
 let ONTOPIC = new Set();     // 고른 갈래에 든 단어들 (나머지는 벌점을 받고 뒤로 밀린다)
 let FOCUS = '';              // 앞세우는 소분류. 단어장의 "easyFocus" (기초 판에서) 또는 ?focus=
 let URLFOCUS = '';           // 주소로 준 것이 있으면 그것이 우선
-let KIND = new Map();        // 단어 → 갈래 이름
 let BASIC = new Set();       // "기초" 로 표시해 둔 단어 (쉽게 모드에서 먼저 깔린다)
 let FRESH = new Set();       // "요즘 말" — 요즘 뉴스에 실제로 자주 나온 말. 앞자리를 준다
 let DECO = [];               // 빈자리에 붙일 꾸밈 이모지 (어린이 단어장만 준다)
@@ -689,14 +688,12 @@ function loadBank(pack, picked) {
   PICK = new Set(picked && picked.length ? picked : allKinds(pack));
   // 층이 두꺼우면 잠그고, 얇으면 우선순위만 준다 (아래 BASIC 을 채운 뒤 정한다)
   ONTOPIC = new Set();
-  KIND = new Map();
   BASIC = new Set();
   FRESH = new Set();
   BANK = [];
   for (const g of pack.groups) {
     for (const w of g.words) {
       BANK.push(w);
-      KIND.set(w[0], w[2] || g.name);
       if (w[3] === '기초' || g.name === '기초') BASIC.add(w[0]);
       if (w[3] === '요즘' || g.name === '요즘 말') FRESH.add(w[0]);
       if (FOCUS ? (w[2] || g.name) === FOCUS : PICK.has(g.name)) ONTOPIC.add(w[0]);
@@ -1411,11 +1408,13 @@ function renderClue() {
   const w = curWord();
   const bar = document.getElementById('clue');
   if (!w) { bar.innerHTML = '<span class="ph">칸을 눌러 시작하세요</span>'; return; }
-  const kind = KIND.get(w.word) || '';
+  // 갈래(경제와 금융·국제와 안보…)는 힌트 줄에 안 적는다.
+  // 낱말이 천 개를 넘으면서 갈래가 어긋난 것이 눈에 띄기 시작했고,
+  // 어차피 푸는 데 쓰이지도 않는다. 갈래는 단어장을 고를 때만 쓴다.
   bar.innerHTML =
     '<div class="meta">' +
       `<span class="tag ${w.dir === 'A' ? 'a' : 'd'}">${w.num} ${w.dir === 'A' ? '가로' : '세로'}</span>` +
-      `<span class="len">${kind ? kind + ' · ' : ''}${w.len}${isAlpha(w.word[0]) ? '자 (영문)' : hasAlpha(w.word) ? '글자 (영문·숫자 섞임)' : '글자'}</span>` +
+      `<span class="len">${w.len}${isAlpha(w.word[0]) ? '자 (영문)' : hasAlpha(w.word) ? '글자 (영문·숫자 섞임)' : '글자'}</span>` +
     '</div>' +
     `<p class="txt">${w.clue}</p>`;
 }
