@@ -104,12 +104,16 @@ for (let i = 0; i < 낱말.length; i += 묶음크기) {
 }
 
 /** 여기서 한 번 거른다 — 정답이 새거나 너무 길면 버린다. 사람이 다시 볼 것까지 줄인다 */
+// 거친 말·비하 표현이 힌트에 들어가면 안 된다. 기계가 «빨갱이» 를 쓴 적이 있다 —
+// 기사에 그런 말이 인용돼 있으면 그대로 따라 쓴다. 사람이 볼 때까지 남아 있으면 안 되는 종류다.
+const 거친말 = /빨갱이|종북|좌빨|수꼴|토착왜구|매국노|틀딱|급식충|맘충|김치녀|짱깨|쪽바리|병신|미친놈|벙어리|절름발이|장애자|불구자|창녀/;
 const 통과 = [], 버림 = [];
 for (const [w, clue, k] of 결과) {
   if (clue.length > 46) { 버림.push([w, clue, '너무 김']); continue; }
   if (clue.length < 6) { 버림.push([w, clue, '너무 짧음']); continue; }
   let 샘 = false;
   for (let i = 0; i + 3 <= w.length; i++) if (clue.includes(w.slice(i, i + 3))) 샘 = true;
+  if (거친말.test(clue)) { 버림.push([w, clue, '거친 말']); continue; }
   if (샘 || clue.includes(w)) { 버림.push([w, clue, '정답이 샘']); continue; }
   통과.push([w, clue, k]);
 }

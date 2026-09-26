@@ -105,8 +105,12 @@ for (let i = 0; i < 대상.length; i += 묶음크기) {
 
 // «고칠 데 없음» 같은 대답을 힌트 자리에 그대로 써 넣은 적이 있다. 그런 말은 힌트가 아니다
 const 대답찌꺼기 = /^(고칠 데 없음|고친 힌트 없음|고칠 힌트 없음|없음|그대로|동일|변경 없음)$/;
+// 거친 말·비하 표현이 힌트에 들어가면 안 된다. 기계가 «빨갱이» 를 쓴 적이 있다 —
+// 기사에 그런 말이 인용돼 있으면 그대로 따라 쓴다. 사람이 볼 때까지 남아 있으면 안 되는 종류다.
+const 거친말 = /빨갱이|종북|좌빨|수꼴|토착왜구|매국노|틀딱|급식충|맘충|김치녀|짱깨|쪽바리|병신|미친놈|벙어리|절름발이|장애자|불구자|창녀/;
 const 성한가 = (w, clue) => {
   if (!clue || clue.length > 46 || clue.length < 6) return false;
+  if (거친말.test(clue)) return false;
   if (대답찌꺼기.test(clue.trim())) return false;
   if (clue.includes(w)) return false;
   for (let i = 0; i + 3 <= w.length; i++) if (clue.includes(w.slice(i, i + 3))) return false;
