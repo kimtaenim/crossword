@@ -13,7 +13,13 @@ const title = head.match(/<title>([\s\S]*?)<\/title>/)[1];
 const style = head.match(/<style>[\s\S]*?<\/style>/)[0];
 
 const names = JSON.parse(fs.readFileSync(root + 'packs/index.json', 'utf8'));
-const packs = names.map(n => JSON.parse(fs.readFileSync(root + 'packs/' + n, 'utf8')));
+const 날것 = names.map(n => JSON.parse(fs.readFileSync(root + 'packs/' + n, 'utf8')));
+// 시사 단어장은 안전 도장이 찍힌 힌트만 싣는다 (game.js 의 도장거르기와 같은 잣대)
+import { 도장키, 도장읽기 } from './lib-stamp.mjs';
+const 도장 = 도장읽기();
+const packs = 날것.map(p => p.id !== 'news' ? p : { ...p, groups: p.groups
+  .map(g => ({ ...g, words: g.words.filter(w => 도장[도장키(w[0], w[1])]) }))
+  .filter(g => g.words.length) }).filter(p => p.groups.length);
 
 // src 에 붙은 ?v=… 는 캐시를 밀어내려고 단 것이라 파일 이름에서 떼고 읽는다
 const inlined = body.replace(/<script src="([^"]+)"><\/script>/g, (m, src) =>
