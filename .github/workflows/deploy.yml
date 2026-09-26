@@ -1,0 +1,52 @@
+# 크로스워드 배포. 힌트 검사(check-clues)를 지나야만 GitHub Pages 에 올라간다.
+# 전에는 main 에 올리면 검사와 상관없이 곧바로 배포됐다 — 안전 검사가 «누가 돌리면» 도는 것이었다.
+#
+# check-clues 가 보는 것: 정답 누설, 금지 목록(비하·조롱·이념 딱지·사건·참혹), 뉴스 곁가지,
+# 다투는 사안, 그리고 시사 힌트마다 모델 안전 검사 도장(packs/안전도장.json)이 있는지.
+# 도장은 키가 있는 곳(챗봇 레포 .env.local)에서 node tools/sisain-safe.mjs 를 돌리면 찍힌다.
+# 여기에는 API 키를 두지 않는다.
+#
+# 이 워크플로가 배포를 막으려면 저장소 Settings → Pages → Source 를 «GitHub Actions» 로 둬야 한다.
+name: 검사 후 배포
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 힌트 검사 (안전 목록 · 누설 · 모델 검사 도장)
+        run: node tools/check-clues.mjs
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: check
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4

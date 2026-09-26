@@ -1,13 +1,15 @@
 /* 힌트 점검 — 정답이 새거나, 너무 길거나, 겹치는 힌트를 잡아낸다.
    node tools/check-clues.mjs */
-import { 안전모듈 } from './lib-safety.mjs';
+import { 안전모듈, 품질모듈 } from './lib-safety.mjs';
+import { 도장키, 도장읽기 } from './lib-stamp.mjs';
 import fs from 'fs';
 import { createRequire } from 'module';
 
 /* 4겹: 내보내기 직전. 안전 검사에 걸리면 여기서 실패한다 —
    묶음(bundle)도 배포도 이 검사를 지나야 한다. 사람이 «검사를 돌리는» 데 기대지 않는다.
    목록은 시사IN 챗봇 레포의 lib/safety.js 하나를 크로스워드와 퀴즈가 같이 쓴다. */
-const 챗봇 = process.env.CHATBOT || '../sisain-chatbot';
+// 챗봇 레포가 곁에 없으면(GitHub 배포 검사) tools/공용/ 의 사본을 읽는다
+const 챗봇 = process.env.CHATBOT || (fs.existsSync('../sisain-chatbot/lib/safety.js') ? '../sisain-chatbot' : '');
 /* 다투는 사안이 든 힌트 가운데 사람이 보고 «이건 괜찮다» 고 적어 둔 것 */
 let 살펴본말 = new Set();
 try {
@@ -18,7 +20,7 @@ try {
 } catch (_) {}
 
 let 안전 = null, 품질 = null;
-try { 품질 = createRequire(import.meta.url)(챗봇 + '/lib/quality.js'); } catch (_) {}
+품질 = 품질모듈(챗봇);
 // 안전 모듈을 못 읽으면 여기서 실패한다. 전에는 경고만 찍고 넘어가 내보내기 전 검사가 빈 채로 돌았다.
 안전 = 안전모듈(챗봇);
 import { fileURLToPath } from 'url';
@@ -38,6 +40,12 @@ const seen = new Map();
 // «금융 투자» 를 못 쓰고 «주식이나 펀드로 번 돈» 이라고 하면 오히려 어려워진다.
 const ALLOW = { '레고마인드스톰': ['레고'], '소프트웨어': ['웨어'], '하드웨어': ['웨어'],
                 '롯데글로벌로지스': ['롯데'], '금융투자소득세': ['금융투', '융투자'] };
+
+/* 모델 검사 도장. 시사 단어장(news)의 힌트는 sisain-safe 의 두 물음(일반 잣대·피해자의 눈)을
+   지나 도장이 찍힌 것만 나간다. 힌트 글이 바뀌면 도장도 사라진다 — 손으로 고친 것도 다시 거쳐야 한다. */
+const 도장 = 도장읽기();
+const 도장받을판 = new Set(['news']);
+let 도장없음 = 0;
 
 for (const pack of window.PACKS) {
   for (const g of pack.groups) {
@@ -78,6 +86,7 @@ for (const pack of window.PACKS) {
           say(`뉴스 곁가지가 붙어 있음(«${k.어디}») — 뜻만 남기거나, 꼭 필요하면 보고 packs/살펴본말.txt 에 적을 것`);
         }
       }
+      if (도장받을판.has(pack.id) && !도장[도장키(word, clue)]) { 도장없음++; bad++; }
       if (clue.length > MAXLEN) say(`힌트가 김 (${clue.length}자, ${MAXLEN}자 넘음)`);
       if (clue.length < 6) say('힌트가 너무 짧음');
       if (seen.has(clue)) say(`"${seen.get(clue)}" 와 힌트가 똑같음`);
@@ -85,5 +94,6 @@ for (const pack of window.PACKS) {
     }
   }
 }
+if (도장없음) console.log(`  모델 안전 검사(sisain-safe)를 아직 안 거친 시사 힌트 ${도장없음}개 — node tools/sisain-safe.mjs 를 돌려 도장을 받을 것`);
 console.log(bad ? `\n힌트 ${n}개 중 문제 ${bad}건` : `힌트 ${n}개 — 문제 없음`);
 process.exit(bad ? 1 : 0);

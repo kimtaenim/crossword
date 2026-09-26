@@ -20,7 +20,8 @@
    사람이 손댄 힌트도 검사한다 — 안전은 예외를 두지 않는다.
 */
 import { 힌트규칙 } from './lib-hint.mjs';
-import { 안전모듈, 재료기사 } from './lib-safety.mjs';
+import { 안전모듈, 품질모듈, 재료기사 } from './lib-safety.mjs';
+import { 도장키, 도장읽기, 도장쓰기 } from './lib-stamp.mjs';
 import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
@@ -32,20 +33,19 @@ const 인자 = k => (process.argv.find(a => a.startsWith('--' + k + '=')) || '')
 const 맛보기 = Number(인자('맛보기') || 0);
 
 const env = {};
-for (const line of fs.readFileSync(path.join(repo, '.env.local'), 'utf8').split(/\r?\n/)) {
-  const eq = line.indexOf('=');
-  if (eq > 0) env[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
-}
+try {
+  for (const line of fs.readFileSync(path.join(repo, '.env.local'), 'utf8').split(/\r?\n/)) {
+    const eq = line.indexOf('=');
+    if (eq > 0) env[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+  }
+} catch (_) {}
 const KEY = process.env.ANTHROPIC_API_KEY || env.ANTHROPIC_API_KEY;
 if (!KEY) { console.error('ANTHROPIC_API_KEY 가 없습니다'); process.exit(1); }
 
 /* 누설·길이 검사는 시사IN 챗봇 레포의 lib/quality.js 하나를 크로스워드와 퀴즈가 같이 쓴다.
    («재판소원» 힌트에 정답이 들어 있던 것과, 퀴즈에서 «쿠팡Inc» 를 «쿠팡…» 으로 물은 것이
    같은 흠이다. 규칙을 양쪽에 따로 적어 두면 한쪽만 고치고 다른 쪽은 잊는다.) */
-const 품질 = (() => {
-  try { return createRequire(import.meta.url)(repo + '/lib/quality.js'); }
-  catch (_) { return null; }
-})();
+const 품질 = 품질모듈(repo);
 
 async function 불러본다(body, 횟수 = 6) {
   const 쉬는시간 = [2000, 5000, 10000, 20000, 40000, 60000];
@@ -156,7 +156,11 @@ const 성한가 = (w, clue) => {
   return true;
 };
 
-const 모델 = 'claude-sonnet-5';
+/* 판정은 힌트를 쓴 모델(sonnet)과 다른, 더 센 모델이 한다. 쓴 쪽이 제 글을 제가 보면 같은 데서 눈이 먼다 */
+const 판정모델 = process.env.SAFE_MODEL || 'claude-opus-5';
+const 모델 = 'claude-sonnet-5';   // 다시 쓰기
+const 도장 = 도장읽기();
+const 찍기 = (w, c) => { 도장[도장키(w, c)] = { 날: new Date().toISOString().slice(0, 10), 모델: 판정모델 }; };
 const 묶음 = 30;
 let 입력 = 0, 출력 = 0;
 const 걸린것 = [], 고친것 = [], 못고친것 = [];
@@ -168,17 +172,15 @@ for (let i = 0; i < 할것.length; i += 묶음) {
   // 두 번 따로 묻는다 — 일반 잣대와 «피해자의 눈». 한 물음에 섞으면 피해자 잣대가 묻힌다
   // (돌려차기 힌트는 사실이고 비하도 없어서 일반 잣대를 그대로 지나갔다).
   const [j, jv] = await Promise.all([
-    불러본다({ model: 모델, max_tokens: 3000, messages: [{ role: 'user', content: 물음(덩이) + '\n\n' + 안전.규칙글() }] }),
-    불러본다({ model: 모델, max_tokens: 3000, messages: [{ role: 'user', content: 안전.피해자물음(덩이.map(w => ({ 이름: w[0], 글: w[1] }))) }] }),
+    불러본다({ model: 판정모델, max_tokens: 3000, messages: [{ role: 'user', content: 물음(덩이) + '\n\n' + 안전.규칙글() }] }),
+    불러본다({ model: 판정모델, max_tokens: 3000, messages: [{ role: 'user', content: 안전.피해자물음(덩이.map(w => ({ 이름: w[0], 글: w[1] }))) }] }),
   ]);
   입력 += (j.usage?.input_tokens || 0) + (jv.usage?.input_tokens || 0);
   출력 += (j.usage?.output_tokens || 0) + (jv.usage?.output_tokens || 0);
 
   const 판정 = new Map();
-  for (const line of 글자(j).split(/\r?\n/)) {
-    const m = line.match(/^\s*([가-힣0-9]{2,12})\s*\|\s*(괜찮음|고칠것)\s*\|?\s*(.*)$/);
-    if (m) 판정.set(m[1], { 답: m[2], 까닭: m[3] || '' });
-  }
+  // 공용 판정읽기를 쓴다. 전에는 한글·숫자 열두 자까지만 읽어서, 영문이 섞이거나 긴 낱말은 판정이 빠졌다
+  for (const [이름, v] of 안전.판정읽기(글자(j))) 판정.set(이름.replace(/^\[|\]$/g, ''), v);
   for (const [이름, v] of 안전.판정읽기(글자(jv))) {
     if (v.답 === '고칠것') 판정.set(이름, { 답: '고칠것', 까닭: `피해자의 눈: ${v.까닭 || '괴로운 글'}` });
   }
@@ -192,6 +194,8 @@ for (let i = 0; i < 할것.length; i += 묶음) {
       const 까닭 = 목록에걸림 ? '거친 말 목록에 걸림' : v.까닭;
       걸린것.push([w[0], w[1], 까닭]);
       고칠것.push({ w, 까닭 });
+    } else if (v?.답 === '괜찮음') {
+      찍기(w[0], w[1]);   // 두 물음을 다 지났고 목록에도 안 걸렸다. 판정이 빠진 낱말에는 안 찍는다
     }
   }
 
@@ -200,20 +204,26 @@ for (let i = 0; i < 할것.length; i += 묶음) {
     입력 += k.usage?.input_tokens || 0; 출력 += k.usage?.output_tokens || 0;
     const 새것 = new Map();
     for (const line of 글자(k).split(/\r?\n/)) {
-      const m = line.match(/^\s*([가-힣0-9]{2,12})\s*\|\s*(.+?)\s*$/);
+      const m = line.match(/^\s*\[?([가-힣A-Z0-9]{2,20})\]?\s*\|\s*(.+?)\s*$/);
       if (m) 새것.set(m[1], m[2]);
     }
-    // 고쳐 쓴 것도 피해자의 눈으로 한 번 더 본다. 걸리면 못 고친 것으로 쳐서 낱말째 뺀다
+    // 고쳐 쓴 것도 두 물음(일반 잣대, 피해자의 눈)을 처음부터 다시 거친다.
+    // 둘 다 «괜찮음» 이라고 답한 것만 받는다. 걸리거나 답이 빠지면 못 고친 것으로 쳐서 낱말째 뺀다
     const 후보 = 고칠것.map(x => ({ 이름: x.w[0], 글: 새것.get(x.w[0]) || '' })).filter(x => x.글);
-    const 다시걸림 = new Set();
+    const 통과 = new Set();
     if (후보.length) {
-      const kv = await 불러본다({ model: 모델, max_tokens: 3000, messages: [{ role: 'user', content: 안전.피해자물음(후보) }] });
-      입력 += kv.usage?.input_tokens || 0; 출력 += kv.usage?.output_tokens || 0;
-      for (const [이름, v] of 안전.판정읽기(글자(kv))) if (v.답 === '고칠것') 다시걸림.add(이름);
+      const [kg, kv] = await Promise.all([
+        불러본다({ model: 판정모델, max_tokens: 3000, messages: [{ role: 'user', content: 물음(후보.map(x => [x.이름, x.글])) + '\n\n' + 안전.규칙글() }] }),
+        불러본다({ model: 판정모델, max_tokens: 3000, messages: [{ role: 'user', content: 안전.피해자물음(후보) }] }),
+      ]);
+      입력 += (kg.usage?.input_tokens || 0) + (kv.usage?.input_tokens || 0);
+      출력 += (kg.usage?.output_tokens || 0) + (kv.usage?.output_tokens || 0);
+      const 일반 = 안전.판정읽기(글자(kg)), 피해 = 안전.판정읽기(글자(kv));
+      for (const x of 후보) if (일반.get(x.이름)?.답 === '괜찮음' && 피해.get(x.이름)?.답 === '괜찮음') 통과.add(x.이름);
     }
     for (const x of 고칠것) {
       const n = 새것.get(x.w[0]);
-      if (n && 성한가(x.w[0], n) && !다시걸림.has(x.w[0])) { 고친것.push([x.w[0], x.w[1], n]); x.w[1] = n; }
+      if (n && 성한가(x.w[0], n) && 통과.has(x.w[0])) { 고친것.push([x.w[0], x.w[1], n]); x.w[1] = n; if (WRITE) 찍기(x.w[0], n); }
       else 못고친것.push([x.w[0], x.w[1], x.까닭]);
     }
   }
@@ -229,7 +239,12 @@ for (const [w, o, n] of 고친것) console.log(`  ${w}\n    전: ${o}\n    후: 
 console.log('\n■ 못 고쳐 뺄 것');
 for (const [w, c, why] of 못고친것) console.log(`  ${w} (${why})\n    ${c}`);
 
-if (!WRITE) { console.error('\n미리보기만 했다. 실제로 고치려면 --쓰기 를 붙일 것.'); process.exit(0); }
+if (!WRITE) {
+  // 미리보기에서도 걸리지 않은 힌트에는 도장을 찍는다(글이 그대로이므로). 걸린 것이 있으면 실패로 끝난다
+  if (!맛보기) console.error(`도장 ${도장쓰기(도장, 낱말들)}개 (packs/안전도장.json)`);
+  console.error('\n미리보기만 했다. 실제로 고치려면 --쓰기 를 붙일 것.');
+  process.exit(걸린것.length ? 1 : 0);
+}
 
 const 뺄이름 = new Set(못고친것.map(r => r[0]));
 pack.groups[0].words = pack.groups[0].words.filter(w => !뺄이름.has(w[0]));
@@ -245,3 +260,4 @@ if (뺄이름.size) {
     '\n# 안전 검사에 걸렸는데 고쳐 쓰지도 못한 말\n' + [...뺄이름].join('\n') + '\n', 'utf8');
 }
 console.error(`→ ${packPath} 갱신 (낱말 ${pack.groups[0].words.length}개)`);
+console.error(`도장 ${도장쓰기(도장, pack.groups.flatMap(g => g.words))}개 (packs/안전도장.json) — 같이 커밋할 것`);
