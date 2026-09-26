@@ -566,14 +566,27 @@ const freeLetter = () => EASY || !!(PACK && PACK.giveFirst);
 const locked = c => !!(c.solved || c.given);
 
 function giveFirst(ws) {
-  // 단어장이 "giveFirstLong": 5 를 달면 기초 판에서 다섯 글자 넘는 낱말도 첫 글자를 연다 —
-  // «어렵고 딱딱하다» 는 반응에 맞춘 것. 긴 낱말은 실마리 하나면 떠오르는 경우가 많다
-  const longAt = EASY && PACK && PACK.giveFirstLong ? PACK.giveFirstLong : 0;
+  // 단어장이 "giveLone": 5 를 달면 기초 판에서 다섯 글자 넘는 낱말은 첫 글자 대신 «겹치지 않는
+  // 칸» 을 연다. 첫 칸은 대개 다른 낱말과 겹쳐 있어 열어 줘 봐야 그 낱말로도 알 수 있는
+  // 글자였다. 다른 낱말에서 올 길이 없는 칸이야말로 실마리가 필요한 곳이다.
+  // 다만 다 열지는 않는다 — 이어진 빈 칸 묶음마다 한 칸 건너 하나씩, 낱말의 절반까지만.
+  // 그러면 빈 칸마다 옆에 아는 글자가 하나는 있게 된다
+  const loneAt = EASY && PACK && PACK.giveLone ? PACK.giveLone : 0;
+  const open = c => { if (c && (!c.ch || c.ch === c.ans)) { c.ch = c.ans; c.given = true; } };
   for (const w of ws) {
-    if (crossCount(w) && !(longAt && w.len >= longAt)) continue;
-    const c = wordCells(w)[0];
+    const cs = wordCells(w);
+    if (loneAt && w.len >= loneAt) {
+      let run = 0, left = Math.floor(w.len / 2);
+      for (const c of cs) {
+        if (c.across !== null && c.down !== null) { run = 0; continue; }
+        if (run % 2 === 0 && left > 0) { open(c); left--; }
+        run++;
+      }
+      continue;
+    }
+    if (crossCount(w)) continue;
     // 비었으면 열어 주고, 이미 맞는 글자가 들어 있으면(예전 판, 또는 사람이 친 것) 잠근다
-    if (c && (!c.ch || c.ch === c.ans)) { c.ch = c.ans; c.given = true; }
+    open(cs[0]);
   }
 }
 
