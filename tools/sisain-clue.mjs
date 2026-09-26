@@ -109,7 +109,7 @@ for (const [w, clue, k] of 결과) {
   if (clue.length > 46) { 버림.push([w, clue, '너무 김']); continue; }
   if (clue.length < 6) { 버림.push([w, clue, '너무 짧음']); continue; }
   let 샘 = false;
-  for (let i = 0; i + 2 <= w.length; i++) if (clue.includes(w.slice(i, i + 2))) 샘 = true;
+  for (let i = 0; i + 3 <= w.length; i++) if (clue.includes(w.slice(i, i + 3))) 샘 = true;
   if (샘 || clue.includes(w)) { 버림.push([w, clue, '정답이 샘']); continue; }
   통과.push([w, clue, k]);
 }

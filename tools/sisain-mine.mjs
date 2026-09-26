@@ -69,7 +69,8 @@ const 물음 = (덩이) => `시사 크로스워드에 실을 낱말을 기사에
 
 ■ 힌트 규칙
 - 마흔 자 안쪽. 한 줄로 읽히게.
-- 정답 글자를 힌트에 쓰지 않는다. 정답의 두 글자가 잇달아 들어가도 안 된다.
+- 정답이 힌트에 통째로 들어가면 안 된다. 정답의 세 글자가 잇달아 들어가도 안 된다.
+  («유럽연합» 힌트에 «유럽» 은 써도 되고, «온실가스감축목표» 힌트에 «온실가스» 는 안 된다)
 - 그 말이 «무엇인가» 를 적는다. 언제 쓰는 말인지, 왜 중요한지는 적지 않는다.
 - 사전 뜻풀이처럼 쓰지 않는다. «~하는 방식», «~하는 관계», «~적 영향력» 으로 맺지 않는다.
 - 눈에 보이는 장면으로. 누가 무엇을 하는지, 어디서 무슨 일이 벌어지는지.
@@ -116,7 +117,9 @@ for (let i = 0; i < 글.length; i += 한번에) {
 const 통과 = [], 버림 = [];
 for (const [w, clue, k] of 캔것.values()) {
   let 샘 = false;
-  for (let i = 0; i + 2 <= w.length; i++) if (clue.includes(w.slice(i, i + 2))) 샘 = true;
+  // 두 음절까지는 힌트에 써도 된다(사람이 정한 선). 세 음절부터 막는다
+  for (let i = 0; i + 3 <= w.length; i++) if (clue.includes(w.slice(i, i + 3))) 샘 = true;
+  if (clue.includes(w)) 샘 = true;
   if (샘) { 버림.push([w, clue, '정답이 샘']); continue; }
   if (clue.length > 46 || clue.length < 6) { 버림.push([w, clue, '길이']); continue; }
   통과.push([w, clue, k]);

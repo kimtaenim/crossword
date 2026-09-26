@@ -7,8 +7,12 @@
    판을 깔 때 앞쪽 낱말이 먼저 쓰인다. 그러니 차례가 곧 «무엇이 판에 자주 뜨는가» 다.
      1. 새말이면서 자주 나오는 말   요즘 들어 처음 보이는데 벌써 여러 기사에 오른 말
      2. 새말                      처음 보이지만 아직 한두 번
-     3. 오래된 말 가운데 자주 나오는 것
+     3. 오래된 말 가운데 요즘도 쓰이는 것
    «새말» 은 처음 나온 날이 요즘 구간(뒤쪽 25%) 안에 든 말이다.
+
+   ■ 묵은 말은 넣지 않는다
+   오래전부터 있던 말인데 요즘 기사에 한 번도 안 나오면 뺀다. 시사 단어장에
+   «요즘 아무도 안 쓰는 말» 이 섞이면 판이 낡아 보인다.
 
    ■ 사람이 고친 힌트는 지킨다
    옛 단어장에 있던 낱말이 다시 캐이면, 힌트는 옛것을 쓴다. 사람이 손으로 고쳐 온 것들이라
@@ -31,15 +35,16 @@ const 캔것 = JSON.parse(fs.readFileSync(캔것경로, 'utf8'));
 const packPath = 'packs/news.json';
 const pack = JSON.parse(fs.readFileSync(packPath, 'utf8'));
 
-/** 옛 단어장의 힌트와 갈래 — 사람이 고쳐 온 것이라 지킨다 */
 /** 사람이 빼기로 한 낱말 — 다시 캐여도 넣지 않는다 */
 let 뺀말 = new Set();
 try {
-  뺀말 = new Set(fs.readFileSync('packs/뺀말.txt', 'utf8').split(/?
-/)
-    .map(l => l.trim()).filter(l => l && !l.startsWith('#')));
+  뺀말 = new Set(fs.readFileSync('packs/뺀말.txt', 'utf8')
+    .split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(l => l && !l.startsWith('#')));
 } catch (_) {}
 
+/** 옛 단어장의 힌트와 갈래 — 사람이 고쳐 온 것이라 지킨다 */
 const 옛것 = new Map();
 for (const g of pack.groups) for (const w of g.words) 옛것.set(w[0], { clue: w[1], kind: w[2] });
 
@@ -62,13 +67,25 @@ const 센다 = w => {
   return { 전체, 요즘, 처음 };
 };
 
+/* 캐낸 것만으로 지으면 단어장이 되레 줄어든다. 캐기는 기사에 걸린 말만 집어 오는데,
+   옛 단어장에는 그동안 사람이 쌓아 온 말이 사백 개 넘게 있다(기준금리·공정거래…).
+   --옛것도 를 주면 그 말들도 후보에 넣는다. 다만 새 말과 똑같은 잣대를 받는다 —
+   묵은 말이면 여기서도 빠지고, 줄 세우기에서도 새 말 뒤에 선다. */
+const 옛것도 = process.argv.includes('--옛것도');
+const 후보 = [...캔것];
+if (옛것도) for (const [w, { clue, kind }] of 옛것) if (!캔것.some(c => c[0] === w)) 후보.push([w, clue, kind]);
+
 const rows = [];
-for (const [w, clue, kind] of 캔것) {
+for (const [w, clue, kind] of 후보) {
   const c = 센다(w);
   if (c.전체 === 0) continue;                       // 기사에 없는 말은 캐낸 것이 아니다
   if (뺀말.has(w)) continue;                        // 사람이 빼기로 한 말
   const 옛 = 옛것.get(w);
   const 새말 = c.처음 >= 요즘부터;
+  // 오래된 말인데 요즘 안 쓰이고, 일 년을 통틀어도 두어 번뿐이면 뺀다.
+  // «요즘 구간에 안 나온다» 만으로 자르면 최저임금·공정거래처럼 멀쩡한 말이 무더기로 빠진다 —
+  // 요즘 구간이 278건뿐이라 거기 안 걸리는 게 이상한 일이 아니다.
+  if (!새말 && c.요즘 === 0 && c.전체 <= 2) continue;
   rows.push({
     w,
     clue: 옛 ? 옛.clue : clue,
@@ -92,7 +109,7 @@ for (let i = 0; i < rows.length; i++) {
 }
 
 const 셈 = (n) => rows.filter(r => r.순위 === n).length;
-console.log(`캐낸 것 ${캔것.length}종 → 기사에 있는 것 ${rows.length}종`);
+console.log(`후보 ${후보.length}종 (캐낸 것 ${캔것.length}) → 단어장에 들어갈 것 ${rows.length}종`);
 console.log(`  새말이면서 자주 나옴 ${셈(0)}  ·  새말 ${셈(1)}  ·  오래된 말 ${셈(2)}`);
 console.log(`  그중 사람이 고친 힌트를 지킨 것 ${rows.filter(r => r.손질).length}종`);
 console.log(`  (새말 = ${요즘부터} 이후에 처음 나온 말)\n`);

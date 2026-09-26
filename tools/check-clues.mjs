@@ -22,9 +22,11 @@ for (const pack of window.PACKS) {
       if (/[^가-힣A-Z0-9]/.test(word)) say('칠 수 없는 글자가 있음 (한글·대문자·숫자만)');
       // 정답이 그대로 들어 있나
       if (clue.includes(word)) say('힌트에 정답이 그대로 들어 있음');
-      // 정답의 두 음절 이상이 붙어서 들어 있나
-      for (let i = 0; i + 2 <= word.length; i++) {
-        const bit = word.slice(i, i + 2);
+      // 정답의 세 음절 이상이 붙어서 들어 있나.
+      // 두 음절까지는 봐준다 — «유럽연합» 힌트에 «유럽» 도 못 쓰면 «큰 대륙의 모임» 같은
+      // 두루뭉술한 말밖에 안 남는다. 그렇게 어려워진 낱말을 여럿 뺐다. 사람이 정한 선이다.
+      for (let i = 0; i + 3 <= word.length; i++) {
+        const bit = word.slice(i, i + 3);
         if ((ALLOW[word] || []).includes(bit)) continue;
         if (clue.includes(bit)) { say(`정답의 "${bit}" 가 그대로 노출됨`); break; }
       }
