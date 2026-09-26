@@ -400,6 +400,12 @@ const wornOut = word =>
  * 세로로 붙이려면 그 음절이 단어의 짝수 번째에 있어야 하지만(세로는 가로줄에서 시작),
  * 가로로 붙이는 데는 그런 제약이 없다.
  */
+/* 긴 낱말은 서로 잘 물려서 판이 촘촘해진다. 그래서 길수록 점수를 줬는데,
+   여덟 자짜리가 그 덕에 자꾸 판에 올라왔다. 여덟 칸을 정확히 채워야 하는 말은
+   뜻을 알아도 못 맞힌다 — «토지거래허가구역» 에서 걸렸다.
+   물리는 맛은 다섯 자면 충분하다. 거기서 점수를 멈춘다. */
+const 길이값 = (word) => Math.min(word.length, 5);
+
 function lookahead(word, x, y, dir) {
   let n = 0;
   for (let i = 0; i < word.length; i++) {
@@ -430,7 +436,7 @@ function tryAt(cell, dir, lo, hi) {
     if ((dir === 'D' ? y + word.length - 1 : y) > hi + (dir === 'D' ? STRADDLE : 0)) continue;
     const cross = fits(word, x, y, dir, true);
     if (cross < 0) continue;
-    const score = cross * 100 + lookahead(word, x, y, dir) + word.length - wornOut(word) + Math.random();
+    const score = cross * 100 + lookahead(word, x, y, dir) + 길이값(word) - wornOut(word) + Math.random();
     if (score > bestScore) { bestScore = score; best = { wi, x, y }; }
   }
   if (!best) return false;
@@ -475,7 +481,7 @@ function seedAcross(y, lo, hi, free) {
     if (word.length > W || recentish(word)) continue;
     const x = (Math.random() * (W - word.length + 1)) | 0;
     if (fits(word, x, y, 'A', false) < 0) continue;
-    const score = lookahead(word, x, y, 'A') + word.length - wornOut(word) + Math.random();
+    const score = lookahead(word, x, y, 'A') + 길이값(word) - wornOut(word) + Math.random();
     if (score > bestScore) { bestScore = score; best = { wi, x }; }
   }
   if (!best) return false;
