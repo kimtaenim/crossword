@@ -569,19 +569,20 @@ function giveFirst(ws) {
   // 단어장이 "giveLone": 5 를 달면 기초 판에서 다섯 글자 넘는 낱말은 첫 글자 대신 «겹치지 않는
   // 칸» 을 연다. 첫 칸은 대개 다른 낱말과 겹쳐 있어 열어 줘 봐야 그 낱말로도 알 수 있는
   // 글자였다. 다른 낱말에서 올 길이 없는 칸이야말로 실마리가 필요한 곳이다.
-  // 다만 다 열지는 않는다 — 이어진 빈 칸 묶음마다 한 칸 건너 하나씩, 낱말의 절반까지만.
-  // 그러면 빈 칸마다 옆에 아는 글자가 하나는 있게 된다
+  // 다만 «힌트는 가끔 한 번씩만» — 겹치지 않는 칸이 세 칸 넘게 이어진 곳에만, 그 가운데
+  // 한 글자를 연다. 두 칸까지는 양옆의 겹친 글자로 버틸 수 있다
   const loneAt = EASY && PACK && PACK.giveLone ? PACK.giveLone : 0;
   const open = c => { if (c && (!c.ch || c.ch === c.ans)) { c.ch = c.ans; c.given = true; } };
   for (const w of ws) {
     const cs = wordCells(w);
     if (loneAt && w.len >= loneAt) {
-      let run = 0, left = Math.floor(w.len / 2);
-      for (const c of cs) {
-        if (c.across !== null && c.down !== null) { run = 0; continue; }
-        if (run % 2 === 0 && left > 0) { open(c); left--; }
-        run++;
+      let best = null, run = [];
+      for (const c of [...cs, null]) {
+        if (c && !(c.across !== null && c.down !== null)) { run.push(c); continue; }
+        if (run.length >= 3 && (!best || run.length > best.length)) best = run;
+        run = [];
       }
+      if (best) open(best[Math.floor(best.length / 2)]);
       continue;
     }
     if (crossCount(w)) continue;
