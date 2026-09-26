@@ -1467,20 +1467,25 @@ const unCaps = (j, e) => (!e.shiftKey && capsOn(e) && SINGLE[j]) || j;
  * 아이폰 한글 자판은 글자를 입력칸에 넣지 않고 keydown 의 key 로 자모(ㅅ, ㄲ, ㅃ)를
  * 바로 보낸다. 우리가 그걸 받아 조합하고 preventDefault 하므로 iOS 는 글쇠가 «먹지
  * 않았다» 고 보고 한 번 누른 ⇧ 를 풀지 않는다 — 그 뒤 모든 글쇠가 shiftKey=1 에
- * 된소리로 온다. 그래서 ⇧ 뒤 첫 글쇠 하나만 된소리로 받고, 그다음부터 ⇧ 가 풀리지
- * 않은 채 오는 된소리는 홑소리로 되돌린다. 사람이 ⇧ 를 다시 누르면 처음부터 센다.
+ * 된소리로 온다. 그래서 된소리는 «⇧ 를 방금 눌렀고, 그때 자판의 ⇧ 가 켜져 있을 때»
+ * 딱 한 글쇠만 받는다. 그 밖에 오는 된소리(⇧ 가 안 풀린 채 오는 것)는 홑소리로 되돌린다.
+ *
+ * 처음엔 «⇧ 글쇠 없이 shift 켜진 첫 글쇠» 도 된소리로 받았는데, 그 예외로 ㅃㅉㄸㄲ 이
+ * 새어 들어왔다. 사람이 ⇧ 를 안 눌렀는데 된소리가 될 길은 없어야 한다. ⇧ 글쇠는
+ * keydown 으로 오지만, 켜진 ⇧ 를 끄는 탭이 keyup 으로만 올 수도 있어 둘 다 받는다.
  */
-let softShift = 0;   // 0 없음 · 1 ⇧ 방금 눌림(다음 글쇠 하나) · 2 이미 한 번 썼는데 안 풀림
+let softShift = 0;   // 0 없음 · 1 ⇧ 방금 눌림(다음 글쇠 하나) · 2 글쇠 하나 썼음(⇧ 가 안 풀려도 더는 안 받음)
 // 화면 자판의 글쇠는 code 가 비거나 Unidentified 로 온다. 붙박이 자판(KeyT 처럼 자리가 있는 것)은 건드리지 않는다
 const softKey = e => MOBILE || !e.code || e.code === 'Unidentified';
 function unSoftShift(j, e) {
   if (!softKey(e)) return j;
-  if (!e.shiftKey) { softShift = 0; return j; }
-  // ⇧ 글쇠 자체가 keydown 으로 안 올 때도 있다(자판이 이미 ⇧ 켜진 채였을 때).
-  // 그래서 «shift 가 켜진 첫 글쇠» 는 무조건 된소리로 받고, 그다음부터 되돌린다
-  if (softShift !== 2) { softShift = 2; return j; }
+  const armed = softShift === 1;
+  softShift = e.shiftKey ? 2 : 0;
+  // ⇧ 를 방금 눌렀는데 자판의 ⇧ 가 꺼졌다면 «켜진 것을 끈 탭» 이다 — 홑소리
+  if (armed && e.shiftKey) return j;
   return SINGLE[j] || j;
 }
+if (MOBILE) window.addEventListener('keyup', e => { if (e.key === 'Shift') softShift = 1; });
 
 const ABC = [
   ['1','2','3','4','5','6','7','8','9','0'],
@@ -1606,7 +1611,7 @@ window.addEventListener('keydown', e => {
     }
   }
   const jamo = jamoOf(e);
-  if (jamo) { e.preventDefault(); anchorIME(true); input(jamo); noteKey(e, '조합기'); return; }
+  if (jamo) { e.preventDefault(); anchorIME(true); input(unSoftShift(jamo, e)); noteKey(e, '조합기'); return; }
   // 한글 IME 가 켜져 있어 자모/음절이 그대로 들어오는 경우
   if (k.length === 1) {
     const cc = k.charCodeAt(0);
