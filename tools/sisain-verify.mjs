@@ -14,6 +14,7 @@
    사람이 손으로 고친 힌트는 검사하지 않는다(--사람것).
    --쓰기 가 없으면 미리보기만 한다.
 */
+import { 힌트규칙 } from './lib-hint.mjs';
 import { 안전모듈, 재료기사 } from './lib-safety.mjs';
 import fs from 'fs';
 import path from 'path';
@@ -108,7 +109,7 @@ for (let i = 0; i < 대상.length; i += 묶음크기) {
   const j = await 불러본다({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
-      messages: [{ role: 'user', content: 물음(덩이) + '\n\n' + 안전.규칙글() }],
+      messages: [{ role: 'user', content: 물음(덩이) + '\n\n' + 힌트규칙() + '\n\n' + 안전.규칙글() }],
     });
   for (const line of (j.content || []).map(c => c.text || '').join('').split(/\r?\n/)) {
     const m = line.match(/^\s*([가-힣0-9]{2,12})\s*\|\s*(맞음|고침|버림)\s*(?:\|\s*(.+?))?\s*$/);

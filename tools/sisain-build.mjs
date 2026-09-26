@@ -22,6 +22,7 @@
 */
 import fs from 'fs';
 import path from 'path';
+import { 너무어려운가 } from './lib-hint.mjs';
 
 const repo = process.argv[2] && !process.argv[2].startsWith('--')
   ? process.argv[2] : path.join(process.cwd(), '..', 'sisain-chatbot');
@@ -76,6 +77,7 @@ const 후보 = [...캔것];
 if (옛것도) for (const [w, { clue, kind }] of 옛것) if (!캔것.some(c => c[0] === w)) 후보.push([w, clue, kind]);
 
 const rows = [];
+const 어려워뺀 = [];
 for (const [w, clue, kind] of 후보) {
   const c = 센다(w);
   if (c.전체 === 0) continue;                       // 기사에 없는 말은 캐낸 것이 아니다
@@ -86,6 +88,10 @@ for (const [w, clue, kind] of 후보) {
   // «요즘 구간에 안 나온다» 만으로 자르면 최저임금·공정거래처럼 멀쩡한 말이 무더기로 빠진다 —
   // 요즘 구간이 278건뿐이라 거기 안 걸리는 게 이상한 일이 아니다.
   if (!새말 && c.요즘 === 0 && c.전체 <= 2) continue;
+  // 길고 드문 말은 풀 사람이 못 푼다 — 비경제활동인구(7글자, 기사 몇 건) 같은 것.
+  // 기준은 lib-hint.mjs 의 «너무어려운가». 그래도 살릴 말은 packs/살린말.txt 에 적는다.
+  const 어려움 = 너무어려운가(w, c.전체);
+  if (어려움.어렵다) { 어려워뺀.push(`${w} — ${어려움.까닭}`); continue; }
   rows.push({
     w,
     clue: 옛 ? 옛.clue : clue,
@@ -96,6 +102,7 @@ for (const [w, clue, kind] of 후보) {
     순위: 새말 ? (c.전체 >= 3 ? 0 : 1) : 2,
   });
 }
+if (어려워뺀.length) console.log(`너무 어려워 뺀 말 ${어려워뺀.length}개\n  ` + 어려워뺀.join('\n  '));
 rows.sort((a, b) => a.순위 - b.순위 || b.전체 - a.전체 || a.w.localeCompare(b.w));
 
 /* 힌트가 똑같은 낱말이 둘 생기면 푸는 사람은 어느 쪽인지 알 길이 없다.

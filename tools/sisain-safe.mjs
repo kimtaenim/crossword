@@ -19,6 +19,7 @@
    기계가 보기 전에 낱말 목록으로 먼저 턴다(아래 거친말). 목록에 없는 것도 모델이 잡는다.
    사람이 손댄 힌트도 검사한다 — 안전은 예외를 두지 않는다.
 */
+import { 힌트규칙 } from './lib-hint.mjs';
 import { 안전모듈, 재료기사 } from './lib-safety.mjs';
 import fs from 'fs';
 import path from 'path';
@@ -195,7 +196,7 @@ for (let i = 0; i < 할것.length; i += 묶음) {
   }
 
   if (고칠것.length) {
-    const k = await 불러본다({ model: 모델, max_tokens: 3000, messages: [{ role: 'user', content: 다시쓰라(고칠것) + '\n\n' + 안전.규칙글() }] });
+    const k = await 불러본다({ model: 모델, max_tokens: 3000, messages: [{ role: 'user', content: 다시쓰라(고칠것) + '\n\n' + 힌트규칙() + '\n\n' + 안전.규칙글() }] });
     입력 += k.usage?.input_tokens || 0; 출력 += k.usage?.output_tokens || 0;
     const 새것 = new Map();
     for (const line of 글자(k).split(/\r?\n/)) {
