@@ -143,9 +143,9 @@ for (let i = 0; i < 할것.length; i += 묶음) {
   // 두 번 따로 묻는다 — 일반 잣대와 «피해자의 눈». 한 물음에 섞으면 피해자 잣대가 묻힌다
   // (돌려차기 힌트는 사실이고 비하도 없어서 일반 잣대를 그대로 지나갔다).
   const [j, jv, jd] = await Promise.all([
-    불러본다({ model: 판정모델, max_tokens: 3000, messages: [{ role: 'user', content: 물음(덩이) + '\n\n' + 안전.규칙글() }] }),
-    불러본다({ model: 판정모델, max_tokens: 3000, messages: [{ role: 'user', content: 안전.피해자물음(덩이.map(w => ({ 이름: w[0], 글: w[1] }))) }] }),
-    불러본다({ model: 판정모델, max_tokens: 2000, messages: [{ role: 'user', content: 난이도물음(덩이) }] }),
+    불러본다({ model: 판정모델, max_tokens: 8000, output_config: { effort: 'low' }, messages: [{ role: 'user', content: 물음(덩이) + '\n\n' + 안전.규칙글() }] }),
+    불러본다({ model: 판정모델, max_tokens: 8000, output_config: { effort: 'low' }, messages: [{ role: 'user', content: 안전.피해자물음(덩이.map(w => ({ 이름: w[0], 글: w[1] }))) }] }),
+    불러본다({ model: 판정모델, max_tokens: 8000, output_config: { effort: 'low' }, messages: [{ role: 'user', content: 난이도물음(덩이) }] }),
   ]);
   입력 += (j.usage?.input_tokens || 0) + (jv.usage?.input_tokens || 0) + (jd.usage?.input_tokens || 0);
   출력 += (j.usage?.output_tokens || 0) + (jv.usage?.output_tokens || 0) + (jd.usage?.output_tokens || 0);
@@ -189,8 +189,8 @@ for (let i = 0; i < 할것.length; i += 묶음) {
     const 통과 = new Set();
     if (후보.length) {
       const [kg, kv] = await Promise.all([
-        불러본다({ model: 판정모델, max_tokens: 3000, messages: [{ role: 'user', content: 물음(후보.map(x => [x.이름, x.글])) + '\n\n' + 안전.규칙글() }] }),
-        불러본다({ model: 판정모델, max_tokens: 3000, messages: [{ role: 'user', content: 안전.피해자물음(후보) }] }),
+        불러본다({ model: 판정모델, max_tokens: 8000, output_config: { effort: 'low' }, messages: [{ role: 'user', content: 물음(후보.map(x => [x.이름, x.글])) + '\n\n' + 안전.규칙글() }] }),
+        불러본다({ model: 판정모델, max_tokens: 8000, output_config: { effort: 'low' }, messages: [{ role: 'user', content: 안전.피해자물음(후보) }] }),
       ]);
       입력 += (kg.usage?.input_tokens || 0) + (kv.usage?.input_tokens || 0);
       출력 += (kg.usage?.output_tokens || 0) + (kv.usage?.output_tokens || 0);
@@ -206,7 +206,8 @@ for (let i = 0; i < 할것.length; i += 묶음) {
   process.stderr.write(`  검사 ${Math.min(i + 묶음, 할것.length)}/${할것.length} — 걸린 것 ${걸린것.length} · 고친 것 ${고친것.length} · 못 고친 것 ${못고친것.length}\r`);
 }
 
-const 값 = Math.round((입력 / 1e6 * 3 + 출력 / 1e6 * 15) * 1400);
+// 판정(opus 5: 입력 $5·출력 $25 /백만 토큰)이 대부분이라 그 값으로 어림한다
+const 값 = Math.round((입력 / 1e6 * 5 + 출력 / 1e6 * 25) * 1400);
 console.error(`\n\n걸린 것 ${걸린것.length} · 고친 것 ${고친것.length} · 못 고쳐 뺄 것 ${못고친것.length} · 너무 어려워 뺄 것 ${어려운것.length}`);
 if (어려운것.length) console.log('■ 너무 어려워 뺄 말\n  ' + 어려운것.join(' '));
 console.error(`입력 ${입력} / 출력 ${출력} 토큰 = 약 ${값}원\n`);
