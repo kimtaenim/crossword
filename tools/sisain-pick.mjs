@@ -35,9 +35,13 @@ const N = Number((process.argv.find(a => a.startsWith('--n=')) || '--n=40').slic
 // 시사어인지 아닌지는 뒤에서 sisain-sieve 가 하나하나 본다 —
 // 통계는 «낱말인가» 까지만 가리고, «시사어인가» 는 거기서 가린다.
 const 많이 = process.argv.includes('--많이');
-const 최소건수 = 많이 ? 2 : 3;
-const 최소날짜 = 많이 ? 2 : 3;
-const 취재하한 = 많이 ? 0.5 : 0.6;
+// --싹쓸이 는 «여러 번 나왔는가» 를 아예 안 본다.
+// 새 기사가 데려온 새 말은 대개 한 번만 나온다 — 거듭 나오길 기다리면 그 주의 말을 놓친다.
+// 대신 시사어인지 아닌지는 뒤에서 sisain-sieve 가 하나하나 본다.
+const 싹쓸이 = process.argv.includes('--싹쓸이');
+const 최소건수 = 싹쓸이 ? 1 : 많이 ? 2 : 3;
+const 최소날짜 = 싹쓸이 ? 1 : 많이 ? 2 : 3;
+const 취재하한 = 싹쓸이 ? 0.5 : 많이 ? 0.5 : 0.6;
 
 const arts = JSON.parse(fs.readFileSync(path.join(repo, 'data/articles.json'), 'utf8'));
 const onto = JSON.parse(fs.readFileSync(path.join(repo, 'data/ontology.json'), 'utf8')).articles || {};
@@ -147,6 +151,7 @@ for (const [w, n] of 최근수) {
   if (취재비 < 취재하한) continue;                         // 칼럼·서평에 퍼진 말
   const 주제쏠림 = 쏠림(글들.flatMap(a => a.주제));
   if (n / 글.length > 0.1) continue;                  // 너무 흔한 일반어
+  if (싹쓸이 && 예전 > 0 && n <= 1) continue;          // 예전에도 있던 말이 한 번뿐이면 새 말이 아니다
   rows.push({ w, n, 예전, 날짜수, 급등, 취재비, 주제쏠림, 점수: 급등 * 취재비 * 주제쏠림 });
 }
 rows.sort((a, b) => b.점수 - a.점수);
