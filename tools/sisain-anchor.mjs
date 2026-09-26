@@ -19,6 +19,7 @@
 */
 import fs from 'fs';
 import path from 'path';
+import { createRequire } from 'module';
 
 const repo = process.argv[2] && !process.argv[2].startsWith('--')
   ? process.argv[2] : path.join(process.cwd(), '..', 'sisain-chatbot');
@@ -33,6 +34,14 @@ for (const line of fs.readFileSync(path.join(repo, '.env.local'), 'utf8').split(
 }
 const KEY = process.env.ANTHROPIC_API_KEY || env.ANTHROPIC_API_KEY;
 if (!KEY) { console.error('ANTHROPIC_API_KEY 가 없습니다'); process.exit(1); }
+
+/* 누설·길이 검사는 시사IN 챗봇 레포의 lib/quality.js 하나를 크로스워드와 퀴즈가 같이 쓴다.
+   («재판소원» 힌트에 정답이 들어 있던 것과, 퀴즈에서 «쿠팡Inc» 를 «쿠팡…» 으로 물은 것이
+   같은 흠이다. 규칙을 양쪽에 따로 적어 두면 한쪽만 고치고 다른 쪽은 잊는다.) */
+const 품질 = (() => {
+  try { return createRequire(import.meta.url)(repo + '/lib/quality.js'); }
+  catch (_) { return null; }
+})();
 
 /** 한 번 끊겼다고 스무 분 작업을 버릴 수는 없다. 세 번까지 쉬었다 다시 부른다 */
 async function 불러본다(body, 횟수 = 3) {
@@ -163,7 +172,8 @@ const 성한가 = (w, clue) => {
   if (낯선이름(clue)) return false;
   if (!clue || clue.length > 60 || clue.length < 6) return false;
   if (거친말.test(clue) || clue.includes(w)) return false;
-  for (let i = 0; i + 3 <= w.length; i++) if (clue.includes(w.slice(i, i + 3))) return false;
+  if (품질 && 품질.누설(w, clue, { 봐주기: 품질.봐주는길이.크로스워드 }).샘) return false;
+  if (!품질) for (let i = 0; i + 3 <= w.length; i++) if (clue.includes(w.slice(i, i + 3))) return false;
   return true;
 };
 
