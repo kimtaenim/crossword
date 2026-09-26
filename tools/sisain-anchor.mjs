@@ -59,9 +59,22 @@ const arts = JSON.parse(fs.readFileSync(path.join(repo, 'data/articles.json'), '
 const packPath = 'packs/news.json';
 const pack = JSON.parse(fs.readFileSync(packPath, 'utf8'));
 
+/* 사람이 손댄 힌트는 기계가 다시 쓰지 않는다. 목록을 단어장 옆에 둔다 —
+   여기 적어 두지 않으면 다음에 돌릴 때 사람 손질이 덮인다. 실제로 그렇게 덮은 적이 있다. */
+const 사람것경로 = 인자('사람것') || 'packs/손댄힌트.txt';
 let 사람것 = new Set();
-const 사람것경로 = 인자('사람것');
-if (사람것경로) 사람것 = new Set(fs.readFileSync(사람것경로, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(Boolean));
+try {
+  사람것 = new Set(fs.readFileSync(사람것경로, 'utf8').split(/\r?\n/)
+    .map(l => l.trim()).filter(l => l && !l.startsWith('#')));
+} catch (_) {}
+
+/* 언제 붙였고, 그때 본 가장 최근 기사가 언제 것인가.
+   맥락은 기사에서 오므로 새 기사가 생긴 낱말만 다시 붙이면 된다. */
+const 내력경로 = 'packs/힌트내력.json';
+let 내력 = {};
+try { 내력 = JSON.parse(fs.readFileSync(내력경로, 'utf8')); } catch (_) {}
+const 전부 = process.argv.includes('--전부');
+const 오늘 = new Date().toISOString().slice(0, 10);
 
 const day = d => (d || '').slice(0, 10).replace(/\./g, '-');
 const 글 = arts.map(a => ({
@@ -83,10 +96,14 @@ function 나온데(w) {
 }
 
 const 대상 = [];
+let 그대로둠 = 0;
 for (const g of pack.groups) for (const w of g.words) {
   if (사람것.has(w[0])) continue;
   const 자리 = 나온데(w[0]);
   if (!자리.length) continue;              // 기사에 없는 말은 맥락을 붙일 데가 없다
+  // 지난번에 본 기사보다 새 기사가 없으면 고칠 까닭이 없다
+  const 지난번 = 내력[w[0]]?.기사;
+  if (!전부 && 지난번 && 자리[0].d <= 지난번) { 그대로둠++; continue; }
   대상.push({ w, 자리 });
 }
 const 할것 = 맛보기 ? 대상.slice(0, 맛보기) : 대상;
@@ -172,10 +189,13 @@ for (let i = 0; i < 할것.length; i += 묶음크기) {
 
 let 고침 = 0, 그대로 = 0;
 const 보기 = [];
-for (const { w } of 할것) {
+const 적을것 = [];
+for (const { w, 자리 } of 할것) {
   const n = 새것.get(w[0]);
   if (n && n !== w[1] && 성한가(w[0], n)) { 보기.push([w[0], w[1], n]); w[1] = n; 고침++; }
   else 그대로++;
+  // 고쳤든 그대로 뒀든, 이 기사까지는 봤다고 적어 둔다. 안 그러면 다음에 또 물어본다
+  적을것.push([w[0], 자리[0].d]);
 }
 
 console.error(`\n맥락을 붙인 힌트 ${고침} · 그대로 둔 것 ${그대로}`);
@@ -195,4 +215,6 @@ function serialize(pk) {
   return `{\n${head}\n  "groups": [\n${groups}\n  ]\n}\n`;
 }
 fs.writeFileSync(packPath, serialize(pack), 'utf8');
-console.error(`→ ${packPath} 갱신`);
+for (const [w, 기사] of 적을것) 내력[w] = { at: 오늘, 기사 };
+fs.writeFileSync(내력경로, JSON.stringify(내력, null, 0).replace(/\},/g, '},\n '), 'utf8');
+console.error(`→ ${packPath} 갱신 · ${내력경로} 에 ${적을것.length}개를 적었다`);

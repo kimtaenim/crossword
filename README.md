@@ -92,7 +92,37 @@
 단어장에서 차지하는 비중은 32% 인데 **판에 나오는 낱말의 54%** 가 요즘 말이 된다.
 그러고도 채움 0.40 / 겹침 1.53 으로 판은 촘촘하다.
 
-새 기사가 쌓이면 다시 훑으면 된다.
+## 기사를 새로 긁어왔을 때
+
+시사 단어장은 기사에서 나온다. 기사가 늘면 이 차례로 돌린다. 앞의 둘은 챗봇 레포에서.
+
+```
+python chatbot/scripts/crawler/crawler_recent.py    # 기사 긁기
+node scripts/prepare_data.js                        # articles.json 다시 만들기
+node scripts/extract_ontology.js                    # 새 기사만 온톨로지 추출
+
+cd ../crossword
+node tools/sisain-mine.mjs   ../sisain-chatbot --새로 > /tmp/캔것.json   # 낱말 캐기
+node tools/sisain-build.mjs  ../sisain-chatbot --캔것=/tmp/캔것.json --옛것도 --쓰기
+node tools/sisain-verify.mjs ../sisain-chatbot --쓰기    # 힌트가 사실과 맞나
+node tools/sisain-anchor.mjs ../sisain-chatbot --쓰기    # 힌트에 «어디서 나온 말인가» 를 새로
+node tools/sisain-sync.mjs   ../sisain-chatbot --write   # 요즘 표시 갱신
+node tools/check-clues.mjs && node tools/bundle.mjs
+```
+
+**힌트는 돌릴 때마다 새로 붙는다.** 맥락은 기사에서 오니까 —
+«경찰 개혁 논의에서 나온» 은 반년 뒤면 옛말이다. 다만 모두 다시 쓰지는 않는다:
+`packs/힌트내력.json` 에 낱말마다 «언제 붙였나 · 그때 본 가장 최근 기사» 를 적어 두고,
+그보다 새 기사가 있는 낱말만 고른다. 새 기사가 없으면 건드리지 않으니 돈도 시간도 안 든다.
+`--전부` 를 주면 날짜와 상관없이 모두 다시 쓴다.
+
+**사람이 손댄 힌트는 기계가 건드리지 않는다.** `packs/손댄힌트.txt` 에 낱말을 적어 두면 된다.
+여기 적지 않으면 다음에 돌릴 때 덮인다 — 실제로 그렇게 덮은 적이 있다.
+
+**빼기로 한 낱말도 남는다.** `packs/뺀말.txt` 에 적힌 말은 기사에서 다시 캐여도 안 들어간다.
+같은 말을 또 빼는 일이 없도록.
+
+훑어보기만 할 때는 이것만 돌려도 된다.
 
 ```
 node tools/sisain-scan.mjs ../sisain-chatbot
