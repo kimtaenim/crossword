@@ -7,6 +7,15 @@ import { createRequire } from 'module';
    묶음(bundle)도 배포도 이 검사를 지나야 한다. 사람이 «검사를 돌리는» 데 기대지 않는다.
    목록은 시사IN 챗봇 레포의 lib/safety.js 하나를 크로스워드와 퀴즈가 같이 쓴다. */
 const 챗봇 = process.env.CHATBOT || '../sisain-chatbot';
+/* 다투는 사안이 든 힌트 가운데 사람이 보고 «이건 괜찮다» 고 적어 둔 것 */
+let 살펴본말 = new Set();
+try {
+  // dir 은 아래에서 정의되므로 여기서는 제 경로를 따로 짠다.
+  // 전에 dir 을 앞당겨 쓰다가 try/catch 가 그 오류를 삼켜 목록이 늘 비어 있었다.
+  살펴본말 = new Set(fs.readFileSync(fileURLToPath(new URL('../packs/살펴본말.txt', import.meta.url)), 'utf8')
+    .split(String.fromCharCode(10)).map(l => l.trim()).filter(l => l && !l.startsWith('#')));
+} catch (_) {}
+
 let 안전 = null, 품질 = null;
 try { 품질 = createRequire(import.meta.url)(챗봇 + '/lib/quality.js'); } catch (_) {}
 try { 안전 = createRequire(import.meta.url)(챗봇 + '/lib/safety.js'); }
@@ -56,6 +65,12 @@ for (const pack of window.PACKS) {
       if (안전) {
         const r = 안전.검사(`${word} ${clue}`);
         if (!r.안전) say(`나가면 안 되는 말: ${r.걸린말.join(', ')}`);
+        // 역사·외교로 다투는 사안이 들어 있으면, 사람이 한 번 보고 살펴본말.txt 에 적어야 나간다.
+        // 낱말만 봐서는 못 가른다 — 그 사안을 다루는 힌트는 괜찮고, 다른 말의 «예» 로 쓴 것이 문제다.
+        const v = 안전.살펴볼까(clue);
+        if (v.볼것 && !살펴본말.has(word)) {
+          say(`다투는 사안이 들어 있음(${v.말.join(', ')}) — 기사를 보고 판단한 뒤 packs/살펴본말.txt 에 적을 것`);
+        }
       }
       if (clue.length > MAXLEN) say(`힌트가 김 (${clue.length}자, ${MAXLEN}자 넘음)`);
       if (clue.length < 6) say('힌트가 너무 짧음');
