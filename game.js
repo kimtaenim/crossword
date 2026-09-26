@@ -2058,8 +2058,21 @@ async function loadPacks() {
       if (!r.ok) throw new Error(`${n}: ${r.status}`);
       return r.json();
     }));
-  return 도장거르기(packs.filter(p => p && p.groups && p.groups.length), base);
+  // 시사 단어장은 매주 자동 작업이 챗봇 사이트에 올린다. 거기서 받고, 못 받으면 이 저장소의 것을 쓴다.
+  // 어느 쪽이든 같은 곳의 도장으로 거른다.
+  let 도장곳 = base;
+  try {
+    const [rp, rs] = await Promise.all([fetch(원격 + 'news.json', { cache: 'no-cache' }), fetch(원격 + 'stamps.json', { cache: 'no-cache' })]);
+    if (rp.ok && rs.ok) {
+      const 새것 = await rp.json(), 도장 = await rs.json();
+      const i = packs.findIndex(p => p && p.id === 'news');
+      if (i >= 0 && 새것 && 새것.groups) { packs[i] = 새것; 원격도장 = 도장; }
+    }
+  } catch (_) {}
+  return 도장거르기(packs.filter(p => p && p.groups && p.groups.length), 도장곳);
 }
+const 원격 = 'https://sisain-chatbot.vercel.app/crossword/';
+let 원격도장 = null;
 
 /*
  * 안전 도장 거르기. 시사 단어장은 모델 안전 검사(tools/sisain-safe.mjs)를 지나 도장이 찍힌 힌트만 보여 준다.
@@ -2074,8 +2087,8 @@ async function 도장키(낱말, 힌트) {
 }
 async function 도장거르기(packs, base) {
   if (!packs.some(p => 도장받을판.includes(p.id))) return packs;
-  let 도장 = null;
-  try {
+  let 도장 = 원격도장;
+  if (!도장) try {
     const r = await fetch(new URL('안전도장.json', base), { cache: 'no-cache' });
     if (r.ok) 도장 = await r.json();
   } catch (_) {}
