@@ -29,6 +29,27 @@ for (const line of fs.readFileSync(path.join(repo, '.env.local'), 'utf8').split(
 const KEY = process.env.ANTHROPIC_API_KEY || env.ANTHROPIC_API_KEY;
 if (!KEY) { console.error('ANTHROPIC_API_KEY 가 없습니다'); process.exit(1); }
 
+/** 한 번 끊겼다고 스무 분 작업을 버릴 수는 없다. 세 번까지 쉬었다 다시 부른다 */
+async function 불러본다(body, 횟수 = 3) {
+  let 마지막;
+  for (let i = 0; i < 횟수; i++) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify(body),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(JSON.stringify(j).slice(0, 200));
+      return j;
+    } catch (e) {
+      마지막 = e;
+      await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+    }
+  }
+  throw 마지막;
+}
+
 const arts = JSON.parse(fs.readFileSync(path.join(repo, 'data/articles.json'), 'utf8'));
 const 글 = arts.map(a => [a.title, a.subtitle, a.summary, a.body].filter(Boolean).join(' '));
 const 낱말 = fs.readFileSync(0, 'utf8').split(/\s+/).filter(w => /^[가-힣0-9]{3,8}$/.test(w));
@@ -78,17 +99,11 @@ let 입력토큰 = 0, 출력토큰 = 0;
 for (let i = 0; i < 낱말.length; i += 묶음크기) {
   const 덩이 = 낱말.slice(i, i + 묶음크기).map(w => ({ w, ex: 대목(w) })).filter(x => x.ex.length);
   if (!덩이.length) continue;
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({
+  const j = await 불러본다({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
       messages: [{ role: 'user', content: 물음(덩이) }],
-    }),
-  });
-  const j = await res.json();
-  if (!res.ok) { console.error(JSON.stringify(j).slice(0, 300)); process.exit(1); }
+    });
   const text = (j.content || []).map(c => c.text || '').join('');
   for (const line of text.split(/\r?\n/)) {
     const m = line.match(/^\s*([가-힣0-9]{3,8})\s*\|\s*([^|]+?)\s*\|\s*(.+?)\s*$/);
