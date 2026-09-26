@@ -1,6 +1,16 @@
 /* 힌트 점검 — 정답이 새거나, 너무 길거나, 겹치는 힌트를 잡아낸다.
    node tools/check-clues.mjs */
 import fs from 'fs';
+import { createRequire } from 'module';
+
+/* 4겹: 내보내기 직전. 안전 검사에 걸리면 여기서 실패한다 —
+   묶음(bundle)도 배포도 이 검사를 지나야 한다. 사람이 «검사를 돌리는» 데 기대지 않는다.
+   목록은 시사IN 챗봇 레포의 lib/safety.js 하나를 크로스워드와 퀴즈가 같이 쓴다. */
+const 챗봇 = process.env.CHATBOT || '../sisain-chatbot';
+let 안전 = null;
+try { 안전 = createRequire(import.meta.url)(챗봇 + '/lib/safety.js'); }
+catch (_) { console.log(`※ 안전 목록을 못 읽었습니다(${챗봇}/lib/safety.js). CHATBOT= 으로 경로를 주세요.
+`); }
 import { fileURLToPath } from 'url';
 // pathname 을 그대로 쓰면 윈도에서 «/C:/...» 가 되어 못 찾는다
 const dir = fileURLToPath(new URL('../packs/', import.meta.url));
@@ -32,6 +42,10 @@ for (const pack of window.PACKS) {
         const bit = word.slice(i, i + 3);
         if ((ALLOW[word] || []).includes(bit)) continue;
         if (clue.includes(bit)) { say(`정답의 "${bit}" 가 그대로 노출됨`); break; }
+      }
+      if (안전) {
+        const r = 안전.검사(`${word} ${clue}`);
+        if (!r.안전) say(`나가면 안 되는 말: ${r.걸린말.join(', ')}`);
       }
       if (clue.length > MAXLEN) say(`힌트가 김 (${clue.length}자, ${MAXLEN}자 넘음)`);
       if (clue.length < 6) say('힌트가 너무 짧음');
