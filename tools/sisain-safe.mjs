@@ -133,7 +133,7 @@ const 도장 = 도장읽기();
 const 찍기 = (w, c) => { 도장[도장키(w, c)] = { 날: new Date().toISOString().slice(0, 10), 모델: 판정모델, 규칙판: 판 }; };
 const 묶음 = 30;
 let 입력 = 0, 출력 = 0;
-const 걸린것 = [], 고친것 = [], 못고친것 = [], 어려운것 = [];
+const 걸린것 = [], 고친것 = [], 못고친것 = [], 어려운것 = [], 일반어 = [];
 const 살린 = 살린말들();
 
 console.error(`힌트 ${할것.length}개를 전수로 본다\n`);
@@ -164,6 +164,8 @@ for (let i = 0; i < 할것.length; i += 묶음) {
     const v = 판정.get(w[0]);
     // 너무 어려운 말은 힌트를 고쳐도 소용없다 — 낱말째 뺀다 (살린말.txt 에 적힌 것은 둔다)
     if (난이도.get(w[0]) === '어려움' && !살린.has(w[0])) { 어려운것.push(w[0]); continue; }
+    // 시사와 상관없는 보통 낱말도 뺀다 — 시사 단어장이 «공동체·플라스틱» 으로 채워지면 시사 퍼즐이 아니다
+    if (난이도.get(w[0]) === '일반어' && !살린.has(w[0])) { 일반어.push(w[0]); continue; }
     // 기계로 먼저 턴다 — 거친 말, 특정 사건 이름(공용 목록), 뉴스 곁가지 꼴
     const 목록에걸림 = 거친말.test(w[1]) || !안전.검사(w[1]).안전 || 안전.곁가지(w[1]).붙음;
     if (목록에걸림 || v?.답 === '고칠것') {
@@ -210,6 +212,7 @@ for (let i = 0; i < 할것.length; i += 묶음) {
 const 값 = Math.round((입력 / 1e6 * 5 + 출력 / 1e6 * 25) * 1400);
 console.error(`\n\n걸린 것 ${걸린것.length} · 고친 것 ${고친것.length} · 못 고쳐 뺄 것 ${못고친것.length} · 너무 어려워 뺄 것 ${어려운것.length}`);
 if (어려운것.length) console.log('■ 너무 어려워 뺄 말\n  ' + 어려운것.join(' '));
+if (일반어.length) console.log('■ 시사 용어가 아니라 뺄 말\n  ' + 일반어.join(' '));
 console.error(`입력 ${입력} / 출력 ${출력} 토큰 = 약 ${값}원\n`);
 
 console.log('■ 고친 것');
@@ -221,10 +224,10 @@ if (!WRITE) {
   // 미리보기에서도 걸리지 않은 힌트에는 도장을 찍는다(글이 그대로이므로). 걸린 것이 있으면 실패로 끝난다
   console.error(`도장 ${도장쓰기(도장, 낱말들, 판)}개 (packs/안전도장.json)`);
   console.error('\n미리보기만 했다. 실제로 고치려면 --쓰기 를 붙일 것.');
-  process.exit(걸린것.length || 어려운것.length ? 1 : 0);
+  process.exit(걸린것.length || 어려운것.length || 일반어.length ? 1 : 0);
 }
 
-const 뺄이름 = new Set([...못고친것.map(r => r[0]), ...어려운것]);
+const 뺄이름 = new Set([...못고친것.map(r => r[0]), ...어려운것, ...일반어]);
 pack.groups[0].words = pack.groups[0].words.filter(w => !뺄이름.has(w[0]));
 const q = s => JSON.stringify(s);
 const head = Object.keys(pack).filter(k => k !== 'groups')
@@ -236,6 +239,8 @@ fs.writeFileSync(packPath, `{\n${head}\n  "groups": [\n${groups}\n  ]\n}\n`, 'ut
 const 오늘 = new Date().toISOString().slice(0, 10);
 if (못고친것.length) fs.appendFileSync('packs/뺀말.txt',
   `\n# ${오늘} 안전·사실 판정에 걸렸는데 고쳐 쓰지도 못한 말\n` + 못고친것.map(r => r[0]).join('\n') + '\n', 'utf8');
+if (일반어.length) fs.appendFileSync('packs/뺀말.txt',
+  `\n# ${오늘} 시사 용어가 아닌 보통 낱말\n` + 일반어.join('\n') + '\n', 'utf8');
 if (어려운것.length) fs.appendFileSync('packs/뺀말.txt',
   `\n# ${오늘} 너무 어려운 말 (보통 독자가 뜻을 짐작 못 함). 살리려면 살린말.txt 에 적는다\n` + 어려운것.join('\n') + '\n', 'utf8');
 console.error(`→ ${packPath} 갱신 (낱말 ${pack.groups[0].words.length}개)`);
