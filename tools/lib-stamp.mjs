@@ -9,8 +9,20 @@
 import fs from 'fs';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { 잣대글 } from './lib-judge.mjs';
 
 const 곳 = fileURLToPath(new URL('../packs/안전도장.json', import.meta.url));
+
+/** 안전 규칙의 판. 규칙(lib/safety.js 의 규칙글·피해자 물음, lib-judge.mjs 의 판정·난이도 물음)이 바뀌면 판이 바뀌고, 옛 판의 도장은 무효가 된다 —
+    규칙을 조이면 이미 나간 힌트도 새 규칙으로 다시 검사받는다 */
+export const 규칙판 = (안전) =>
+  crypto.createHash('sha256').update(안전.규칙글() + '\n' + 안전.피해자물음([]) + '\n' + 잣대글()).digest('hex').slice(0, 12);
+
+/** 이 도장이 지금 규칙으로 찍힌 것인가 */
+export const 유효한가 = (도장, 낱말, 힌트, 판) => {
+  const d = 도장[도장키(낱말, 힌트)];
+  return !!d && d.규칙판 === 판;
+};
 
 export const 도장키 = (낱말, 힌트) =>
   crypto.createHash('sha256').update(`${낱말}\t${힌트}`).digest('hex').slice(0, 20);
@@ -19,11 +31,11 @@ export function 도장읽기() {
   try { return JSON.parse(fs.readFileSync(곳, 'utf8')); } catch (_) { return {}; }
 }
 
-/** 지금 있는 힌트에 대한 도장만 남기고 새 도장을 더해 쓴다 */
-export function 도장쓰기(도장, 지금힌트들) {
+/** 지금 있는 힌트에, 지금 규칙판으로 찍힌 도장만 남겨 쓴다. 화면(game.js)은 이 파일에 있는 것만 보여 준다 */
+export function 도장쓰기(도장, 지금힌트들, 판) {
   const 남길 = new Set(지금힌트들.map(([w, c]) => 도장키(w, c)));
   const out = {};
-  for (const k of Object.keys(도장).sort()) if (남길.has(k)) out[k] = 도장[k];
+  for (const k of Object.keys(도장).sort()) if (남길.has(k) && (!판 || 도장[k].규칙판 === 판)) out[k] = 도장[k];
   fs.writeFileSync(곳, JSON.stringify(out, null, 0).replace(/,"/g, ',\n"') + '\n', 'utf8');
   return Object.keys(out).length;
 }

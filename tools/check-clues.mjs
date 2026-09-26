@@ -1,7 +1,7 @@
 /* 힌트 점검 — 정답이 새거나, 너무 길거나, 겹치는 힌트를 잡아낸다.
    node tools/check-clues.mjs */
 import { 안전모듈, 품질모듈 } from './lib-safety.mjs';
-import { 도장키, 도장읽기 } from './lib-stamp.mjs';
+import { 도장읽기, 규칙판, 유효한가 } from './lib-stamp.mjs';
 import fs from 'fs';
 import { createRequire } from 'module';
 
@@ -44,6 +44,7 @@ const ALLOW = { '레고마인드스톰': ['레고'], '소프트웨어': ['웨어
 /* 모델 검사 도장. 시사 단어장(news)의 힌트는 sisain-safe 의 두 물음(일반 잣대·피해자의 눈)을
    지나 도장이 찍힌 것만 나간다. 힌트 글이 바뀌면 도장도 사라진다 — 손으로 고친 것도 다시 거쳐야 한다. */
 const 도장 = 도장읽기();
+const 판 = 규칙판(안전);
 const 도장받을판 = new Set(['news']);
 let 도장없음 = 0;
 
@@ -86,7 +87,7 @@ for (const pack of window.PACKS) {
           say(`뉴스 곁가지가 붙어 있음(«${k.어디}») — 뜻만 남기거나, 꼭 필요하면 보고 packs/살펴본말.txt 에 적을 것`);
         }
       }
-      if (도장받을판.has(pack.id) && !도장[도장키(word, clue)]) { 도장없음++; bad++; }
+      if (도장받을판.has(pack.id) && !유효한가(도장, word, clue, 판)) { 도장없음++; bad++; }
       if (clue.length > MAXLEN) say(`힌트가 김 (${clue.length}자, ${MAXLEN}자 넘음)`);
       if (clue.length < 6) say('힌트가 너무 짧음');
       if (seen.has(clue)) say(`"${seen.get(clue)}" 와 힌트가 똑같음`);
@@ -94,6 +95,6 @@ for (const pack of window.PACKS) {
     }
   }
 }
-if (도장없음) console.log(`  모델 안전 검사(sisain-safe)를 아직 안 거친 시사 힌트 ${도장없음}개 — node tools/sisain-safe.mjs 를 돌려 도장을 받을 것`);
+if (도장없음) console.log(`  모델 안전 검사(sisain-safe)를 아직 안 거친 시사 힌트 ${도장없음}개 (도장이 없거나 옛 규칙으로 찍힘) — node tools/sisain-safe.mjs --쓰기 로 도장을 받을 것`);
 console.log(bad ? `\n힌트 ${n}개 중 문제 ${bad}건` : `힌트 ${n}개 — 문제 없음`);
 process.exit(bad ? 1 : 0);

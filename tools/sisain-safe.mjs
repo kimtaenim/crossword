@@ -21,7 +21,9 @@
 */
 import { 힌트규칙 } from './lib-hint.mjs';
 import { 안전모듈, 품질모듈, 재료기사 } from './lib-safety.mjs';
-import { 도장키, 도장읽기, 도장쓰기 } from './lib-stamp.mjs';
+import { 도장키, 도장읽기, 도장쓰기, 규칙판, 유효한가 } from './lib-stamp.mjs';
+import { 판정물음 as 물음, 난이도물음, 난이도읽기 } from './lib-judge.mjs';
+import { 살린말들 } from './lib-hint.mjs';
 import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
@@ -78,7 +80,12 @@ const 원문 = arts.map(a => [a.title, a.subtitle, a.summary, a.body].filter(Boo
 const packPath = 'packs/news.json';
 const pack = JSON.parse(fs.readFileSync(packPath, 'utf8'));
 const 낱말들 = pack.groups.flatMap(g => g.words);
-const 할것 = 맛보기 ? 낱말들.slice(0, 맛보기) : 낱말들;
+// 지금 규칙으로 도장을 받은 힌트는 다시 묻지 않는다(글도 규칙도 그대로이므로). --전부 면 모두 다시 본다.
+// 규칙이 바뀌면 판이 바뀌어 모든 도장이 무효가 되고, 전부 다시 검사받는다.
+const 판 = 규칙판(안전);
+const 전부 = process.argv.includes('--전부');
+const 대상 = 전부 ? 낱말들 : 낱말들.filter(w => !유효한가(도장읽기(), w[0], w[1], 판));
+const 할것 = 맛보기 ? 대상.slice(0, 맛보기) : 대상;
 
 /** 목록으로 먼저 턴다. 여기 걸리면 모델에게 묻지 않고 바로 고쳐 쓴다 */
 const 거친말 = /빨갱이|종북|좌빨|수꼴|토착왜구|매국노|틀딱|급식충|맘충|김치녀|한남충|짱깨|쪽바리|병신|미친놈|벙어리|절름발이|장애자|불구자|창녀|화냥|시럽급여|기생충같|떼쓰|밥그릇|철밥통/;
@@ -93,43 +100,6 @@ function 대목(w, 개수 = 2) {
   }
   return out;
 }
-
-const 물음 = (덩이) => `시사 주간지가 내는 크로스워드의 열쇠다. 나가면 안 되는 것이 섞였는지, 뜻이 바른지 본다.
-
-낱말 하나 틀린 것과는 다른 문제다. 매체 이름을 달고 나가는 물건이라, 아래 같은 것이 하나라도
-섞이면 매체가 그렇게 말한 것이 된다.
-
-■ 걸러야 하는 것
-- 특정 집단을 비하하거나 조롱하는 말 (빨갱이, 시럽급여, 틀딱, 맘충 …)
-- 성별·나이·지역·출신·장애·성적지향으로 사람을 묶어 규정하는 서술
-  («청년 여성 노동자들의 공통점» 처럼 어떤 처지를 한 집단의 속성인 양 적는 것)
-- 정치적으로 한쪽 편을 드는 서술. 어느 당이나 진영이 옳다 그르다 하는 투
-- 기사에 인용된 험한 말을 따옴표 없이 옮겨, 매체가 하는 말처럼 읽히게 한 것
-- 사람의 위상을 매기는 말 (전 지도자, 거물, 원로 …)
-- 역사·외교로 다투는 사안을 아무렇지 않은 «보기» 로 드는 것.
-  사도광산 유네스코 등재를 «인류에게 값진 문화재» 의 예로 들면, 강제동원 역사를 두고
-  다투는 일을 우리가 받아들인 것처럼 읽힌다. 야스쿠니·독도·위안부·역사교과서도 그렇다.
-  그 사안을 다루는 낱말이면 괜찮다. 다른 낱말을 설명하는 «예» 로 끌어다 쓰는 것이 문제다.
-- 맥락이 낱말과 상관없는 것. «집값 오르자 둘째 낳기 포기» 를 주택담보대출 앞에 붙이면
-  낱말과 이어지지 않는 데다 아이 낳는 일에 대한 판단까지 실린다.
-- 실제 범죄·사고·참사의 피해자나 가해자, 숨진 사람을 곁가지로 끌어다 쓴 것.
-  «일자리 — 프리랜서 디자이너가 돌려차기 사건으로 모두 잃은, 돈을 받고 일하는 곳» 이 나갔다.
-  사람이 크게 다친 사건이 퍼즐의 재료가 된 것이다. 낱말과 이어져 있어도 고친다.
-- 재판·수사 중인 실존 인물 이름을 붙여 혐의를 사실처럼 적은 것, 실존 인물을 곁가지로 쓴 것
-
-■ 걸러서는 안 되는 것
-- 사실을 사실대로 적은 것. 비판적 사실도 사실이면 괜찮다
-- 제도나 사건의 이름 자체 (내란·계엄·파업 같은 말은 그 자체로 문제가 아니다)
-
-■ 함께 보는 것 — 뜻이 바른가
-열쇠가 그 낱말의 뜻을 바르게 적고 있는가. 이것이 틀리면 안전 문제보다 먼저 고쳐야 한다.
-  «원내대표 — 여당 소속 의원들을 모아 주는 사람» 은 틀렸다. 국회에서 제 당을 대표해
-  다른 당과 협상하는 의원이다. 이런 것이 여러 검사를 다 지나 나갔다.
-앞에 붙은 맥락이 그 낱말과 이어지지 않는 것도 여기서 잡는다.
-
-한 줄에 하나씩 "낱말|괜찮음" 또는 "낱말|고칠것|무엇이 문제인지 한 구절" 꼴로만 적는다.
-
-${덩이.map(w => `[${w[0]}] ${w[1]}`).join('\n')}`;
 
 const 다시쓰라 = (목록) => `시사 주간지 크로스워드의 열쇠를 다시 쓴다. 지금 열쇠에 나가면 안 되는 표현이 있다.
 
@@ -160,10 +130,11 @@ const 성한가 = (w, clue) => {
 const 판정모델 = process.env.SAFE_MODEL || 'claude-opus-5';
 const 모델 = 'claude-sonnet-5';   // 다시 쓰기
 const 도장 = 도장읽기();
-const 찍기 = (w, c) => { 도장[도장키(w, c)] = { 날: new Date().toISOString().slice(0, 10), 모델: 판정모델 }; };
+const 찍기 = (w, c) => { 도장[도장키(w, c)] = { 날: new Date().toISOString().slice(0, 10), 모델: 판정모델, 규칙판: 판 }; };
 const 묶음 = 30;
 let 입력 = 0, 출력 = 0;
-const 걸린것 = [], 고친것 = [], 못고친것 = [];
+const 걸린것 = [], 고친것 = [], 못고친것 = [], 어려운것 = [];
+const 살린 = 살린말들();
 
 console.error(`힌트 ${할것.length}개를 전수로 본다\n`);
 
@@ -171,31 +142,36 @@ for (let i = 0; i < 할것.length; i += 묶음) {
   const 덩이 = 할것.slice(i, i + 묶음);
   // 두 번 따로 묻는다 — 일반 잣대와 «피해자의 눈». 한 물음에 섞으면 피해자 잣대가 묻힌다
   // (돌려차기 힌트는 사실이고 비하도 없어서 일반 잣대를 그대로 지나갔다).
-  const [j, jv] = await Promise.all([
+  const [j, jv, jd] = await Promise.all([
     불러본다({ model: 판정모델, max_tokens: 3000, messages: [{ role: 'user', content: 물음(덩이) + '\n\n' + 안전.규칙글() }] }),
     불러본다({ model: 판정모델, max_tokens: 3000, messages: [{ role: 'user', content: 안전.피해자물음(덩이.map(w => ({ 이름: w[0], 글: w[1] }))) }] }),
+    불러본다({ model: 판정모델, max_tokens: 2000, messages: [{ role: 'user', content: 난이도물음(덩이) }] }),
   ]);
-  입력 += (j.usage?.input_tokens || 0) + (jv.usage?.input_tokens || 0);
-  출력 += (j.usage?.output_tokens || 0) + (jv.usage?.output_tokens || 0);
+  입력 += (j.usage?.input_tokens || 0) + (jv.usage?.input_tokens || 0) + (jd.usage?.input_tokens || 0);
+  출력 += (j.usage?.output_tokens || 0) + (jv.usage?.output_tokens || 0) + (jd.usage?.output_tokens || 0);
+  const 난이도 = 난이도읽기(글자(jd));
 
   const 판정 = new Map();
   // 공용 판정읽기를 쓴다. 전에는 한글·숫자 열두 자까지만 읽어서, 영문이 섞이거나 긴 낱말은 판정이 빠졌다
   for (const [이름, v] of 안전.판정읽기(글자(j))) 판정.set(이름.replace(/^\[|\]$/g, ''), v);
-  for (const [이름, v] of 안전.판정읽기(글자(jv))) {
+  const 피해판정 = 안전.판정읽기(글자(jv));
+  for (const [이름, v] of 피해판정) {
     if (v.답 === '고칠것') 판정.set(이름, { 답: '고칠것', 까닭: `피해자의 눈: ${v.까닭 || '괴로운 글'}` });
   }
 
   const 고칠것 = [];
   for (const w of 덩이) {
     const v = 판정.get(w[0]);
+    // 너무 어려운 말은 힌트를 고쳐도 소용없다 — 낱말째 뺀다 (살린말.txt 에 적힌 것은 둔다)
+    if (난이도.get(w[0]) === '어려움' && !살린.has(w[0])) { 어려운것.push(w[0]); continue; }
     // 기계로 먼저 턴다 — 거친 말, 특정 사건 이름(공용 목록), 뉴스 곁가지 꼴
     const 목록에걸림 = 거친말.test(w[1]) || !안전.검사(w[1]).안전 || 안전.곁가지(w[1]).붙음;
     if (목록에걸림 || v?.답 === '고칠것') {
       const 까닭 = 목록에걸림 ? '거친 말 목록에 걸림' : v.까닭;
       걸린것.push([w[0], w[1], 까닭]);
       고칠것.push({ w, 까닭 });
-    } else if (v?.답 === '괜찮음') {
-      찍기(w[0], w[1]);   // 두 물음을 다 지났고 목록에도 안 걸렸다. 판정이 빠진 낱말에는 안 찍는다
+    } else if (v?.답 === '괜찮음' && 피해판정.get(w[0])?.답 === '괜찮음' && 난이도.has(w[0])) {
+      찍기(w[0], w[1]);   // 세 물음(일반·피해자·난이도)에 모두 답을 받고 다 지났다. 하나라도 답이 빠지면 안 찍는다 — 다음에 다시 묻는다
     }
   }
 
@@ -231,7 +207,8 @@ for (let i = 0; i < 할것.length; i += 묶음) {
 }
 
 const 값 = Math.round((입력 / 1e6 * 3 + 출력 / 1e6 * 15) * 1400);
-console.error(`\n\n걸린 것 ${걸린것.length} · 고친 것 ${고친것.length} · 못 고쳐 뺄 것 ${못고친것.length}`);
+console.error(`\n\n걸린 것 ${걸린것.length} · 고친 것 ${고친것.length} · 못 고쳐 뺄 것 ${못고친것.length} · 너무 어려워 뺄 것 ${어려운것.length}`);
+if (어려운것.length) console.log('■ 너무 어려워 뺄 말\n  ' + 어려운것.join(' '));
 console.error(`입력 ${입력} / 출력 ${출력} 토큰 = 약 ${값}원\n`);
 
 console.log('■ 고친 것');
@@ -241,12 +218,12 @@ for (const [w, c, why] of 못고친것) console.log(`  ${w} (${why})\n    ${c}`)
 
 if (!WRITE) {
   // 미리보기에서도 걸리지 않은 힌트에는 도장을 찍는다(글이 그대로이므로). 걸린 것이 있으면 실패로 끝난다
-  if (!맛보기) console.error(`도장 ${도장쓰기(도장, 낱말들)}개 (packs/안전도장.json)`);
+  console.error(`도장 ${도장쓰기(도장, 낱말들, 판)}개 (packs/안전도장.json)`);
   console.error('\n미리보기만 했다. 실제로 고치려면 --쓰기 를 붙일 것.');
-  process.exit(걸린것.length ? 1 : 0);
+  process.exit(걸린것.length || 어려운것.length ? 1 : 0);
 }
 
-const 뺄이름 = new Set(못고친것.map(r => r[0]));
+const 뺄이름 = new Set([...못고친것.map(r => r[0]), ...어려운것]);
 pack.groups[0].words = pack.groups[0].words.filter(w => !뺄이름.has(w[0]));
 const q = s => JSON.stringify(s);
 const head = Object.keys(pack).filter(k => k !== 'groups')
@@ -255,9 +232,10 @@ const groups = pack.groups.map(g =>
   `    {\n      "name": ${q(g.name)},\n      "words": [\n` +
   g.words.map(w => '        [' + w.map(q).join(', ') + ']').join(',\n') + '\n      ]\n    }').join(',\n');
 fs.writeFileSync(packPath, `{\n${head}\n  "groups": [\n${groups}\n  ]\n}\n`, 'utf8');
-if (뺄이름.size) {
-  fs.appendFileSync('packs/뺀말.txt',
-    '\n# 안전 검사에 걸렸는데 고쳐 쓰지도 못한 말\n' + [...뺄이름].join('\n') + '\n', 'utf8');
-}
+const 오늘 = new Date().toISOString().slice(0, 10);
+if (못고친것.length) fs.appendFileSync('packs/뺀말.txt',
+  `\n# ${오늘} 안전·사실 판정에 걸렸는데 고쳐 쓰지도 못한 말\n` + 못고친것.map(r => r[0]).join('\n') + '\n', 'utf8');
+if (어려운것.length) fs.appendFileSync('packs/뺀말.txt',
+  `\n# ${오늘} 너무 어려운 말 (보통 독자가 뜻을 짐작 못 함). 살리려면 살린말.txt 에 적는다\n` + 어려운것.join('\n') + '\n', 'utf8');
 console.error(`→ ${packPath} 갱신 (낱말 ${pack.groups[0].words.length}개)`);
-console.error(`도장 ${도장쓰기(도장, pack.groups.flatMap(g => g.words))}개 (packs/안전도장.json) — 같이 커밋할 것`);
+console.error(`도장 ${도장쓰기(도장, pack.groups.flatMap(g => g.words), 판)}개 (packs/안전도장.json) — 같이 커밋할 것`);

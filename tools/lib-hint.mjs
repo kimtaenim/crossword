@@ -22,7 +22,7 @@ export function 힌트규칙() {
 const 하한 = [[7, 8], [6, 3]];   // [글자 수 이상, 기사 수 이상]
 
 let 살린말 = null;
-function 살린말들() {
+export function 살린말들() {
   if (살린말) return 살린말;
   try {
     살린말 = new Set(fs.readFileSync(new URL('../packs/살린말.txt', import.meta.url), 'utf8')

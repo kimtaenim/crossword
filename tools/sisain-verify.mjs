@@ -25,10 +25,12 @@ const WRITE = process.argv.includes('--쓰기');
 const 인자 = k => (process.argv.find(a => a.startsWith('--' + k + '=')) || '').split('=')[1];
 
 const env = {};
-for (const line of fs.readFileSync(path.join(repo, '.env.local'), 'utf8').split(/\r?\n/)) {
-  const eq = line.indexOf('=');
-  if (eq > 0) env[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
-}
+try {   // 자동 작업(GitHub Actions)에는 .env.local 이 없고 키는 환경 변수로 온다
+  for (const line of fs.readFileSync(path.join(repo, '.env.local'), 'utf8').split(/\r?\n/)) {
+    const eq = line.indexOf('=');
+    if (eq > 0) env[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+  }
+} catch (_) {}
 const KEY = process.env.ANTHROPIC_API_KEY || env.ANTHROPIC_API_KEY;
 if (!KEY) { console.error('ANTHROPIC_API_KEY 가 없습니다'); process.exit(1); }
 

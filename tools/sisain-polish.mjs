@@ -16,6 +16,7 @@
 */
 import { 힌트규칙 } from './lib-hint.mjs';
 import { 안전모듈, 재료기사 } from './lib-safety.mjs';
+import { 도장읽기, 규칙판, 유효한가 } from './lib-stamp.mjs';
 import fs from 'fs';
 import path from 'path';
 
@@ -26,10 +27,12 @@ const WRITE = process.argv.includes('--쓰기');
 const 인자 = k => (process.argv.find(a => a.startsWith('--' + k + '=')) || '').split('=')[1];
 
 const env = {};
-for (const line of fs.readFileSync(path.join(repo, '.env.local'), 'utf8').split(/\r?\n/)) {
-  const eq = line.indexOf('=');
-  if (eq > 0) env[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
-}
+try {   // 자동 작업(GitHub Actions)에는 .env.local 이 없고 키는 환경 변수로 온다
+  for (const line of fs.readFileSync(path.join(repo, '.env.local'), 'utf8').split(/\r?\n/)) {
+    const eq = line.indexOf('=');
+    if (eq > 0) env[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+  }
+} catch (_) {}
 const KEY = process.env.ANTHROPIC_API_KEY || env.ANTHROPIC_API_KEY;
 if (!KEY) { console.error('ANTHROPIC_API_KEY 가 없습니다'); process.exit(1); }
 
@@ -64,8 +67,19 @@ if (사람것경로) {
   사람것 = new Set(fs.readFileSync(사람것경로, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(Boolean));
 }
 
+/* --새것만: 자동 작업이 쓴다. 매주 모든 힌트를 다시 쓰면 멀쩡한 힌트가 흔들리고 안전 도장도 다 날아간다.
+   그래서 (1) 안전 도장이 없는 힌트(새로 캐 온 말, 고쳐진 말)와 (2) packs/다시쓸말.txt 에 적힌 말만 다시 쓴다. */
+const 새것만 = process.argv.includes('--새것만');
+const 다시쓸말경로 = 'packs/다시쓸말.txt';
+const 다시쓸말 = new Set(fs.existsSync(다시쓸말경로)
+  ? fs.readFileSync(다시쓸말경로, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#')) : []);
+const 도장 = 도장읽기(), 판 = 규칙판(안전);
 const 대상 = [];
-for (const g of pack.groups) for (const w of g.words) if (!사람것.has(w[0])) 대상.push(w);
+for (const g of pack.groups) for (const w of g.words) {
+  if (사람것.has(w[0])) continue;
+  if (새것만 && !다시쓸말.has(w[0]) && 유효한가(도장, w[0], w[1], 판)) continue;
+  대상.push(w);
+}
 console.error(`고칠 힌트 ${대상.length}개 (사람이 고친 ${사람것.size}개는 그대로 둔다)`);
 
 const 물음 = (덩이) => `시사 크로스워드 힌트를 다시 쓴다. 지금 힌트는 뜻은 맞는데 사전 뜻풀이 투라 읽어도 그림이 안 그려진다.
@@ -163,3 +177,9 @@ function serialize(pk) {
 }
 fs.writeFileSync(packPath, serialize(pack), 'utf8');
 console.error(`→ ${packPath} 갱신 (낱말 ${남길.length}개)`);
+if (새것만 && 다시쓸말.size) {
+  // 이번에 다시 쓴 말은 목록에서 지운다 (머리 주석은 남긴다)
+  const 한것 = new Set(대상.map(w => w[0]));
+  const 줄 = fs.readFileSync(다시쓸말경로, 'utf8').split(/\r?\n/).filter(l => !한것.has(l.trim()));
+  fs.writeFileSync(다시쓸말경로, 줄.join('\n'), 'utf8');
+}
