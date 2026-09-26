@@ -566,8 +566,11 @@ const freeLetter = () => EASY || !!(PACK && PACK.giveFirst);
 const locked = c => !!(c.solved || c.given);
 
 function giveFirst(ws) {
+  // 단어장이 "giveFirstLong": 5 를 달면 기초 판에서 다섯 글자 넘는 낱말도 첫 글자를 연다 —
+  // «어렵고 딱딱하다» 는 반응에 맞춘 것. 긴 낱말은 실마리 하나면 떠오르는 경우가 많다
+  const longAt = EASY && PACK && PACK.giveFirstLong ? PACK.giveFirstLong : 0;
   for (const w of ws) {
-    if (crossCount(w)) continue;
+    if (crossCount(w) && !(longAt && w.len >= longAt)) continue;
     const c = wordCells(w)[0];
     // 비었으면 열어 주고, 이미 맞는 글자가 들어 있으면(예전 판, 또는 사람이 친 것) 잠근다
     if (c && (!c.ch || c.ch === c.ans)) { c.ch = c.ans; c.given = true; }
