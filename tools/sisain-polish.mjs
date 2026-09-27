@@ -59,6 +59,28 @@ async function 불러본다(body, 횟수 = 3) {
   throw 마지막;
 }
 
+/* 장면은 시사IN 기사에서 찾는다 (편집국 결정, 2026-09-27). 낱말마다 그 말이 중심인 기사 대목을 셋까지 준다.
+   범죄·참사가 중심인 기사는 재료에서 뺀다(재료기사). 고른 기사는 번호를 받아 단어장에 링크로 남긴다(pack.기사). */
+const arts = 재료기사(안전, JSON.parse(fs.readFileSync(path.join(repo, 'data/articles.json'), 'utf8')));
+const 원문 = arts.map(a => ({
+  id: String(a.id), d: String(a.date || '').slice(0, 10).replace(/\./g, '-'), 제목: a.title || '',
+  t: [a.title, a.subtitle, a.summary, a.body].filter(Boolean).join(' '),
+})).sort((a, b) => b.d.localeCompare(a.d));
+function 기사대목(w, 개수 = 3) {
+  const 후보 = [];
+  for (const a of 원문) {
+    const n = a.t.split(w).length - 1;
+    if (!n) continue;
+    // 한 번 스친 기사보다 그 말이 중심인 기사(제목에 있거나 여러 번 나온 것)를 먼저. 같으면 새 기사 먼저
+    후보.push({ a, 중심: (a.제목.includes(w) ? 3 : 0) + Math.min(n, 5) });
+  }
+  후보.sort((x, y) => y.중심 - x.중심 || y.a.d.localeCompare(x.a.d));
+  return 후보.slice(0, 개수).map(({ a }) => {
+    const i = a.t.indexOf(w);
+    return { id: a.id, 글: `(${a.d} «${a.제목.slice(0, 40)}») ${a.t.slice(Math.max(0, i - 90), i + 110).replace(/\s+/g, ' ').trim()}` };
+  });
+}
+
 const packPath = 'packs/news.json';
 const pack = JSON.parse(fs.readFileSync(packPath, 'utf8'));
 
@@ -97,8 +119,8 @@ const 물음 = (덩이) => `시사 크로스워드 힌트를 다시 쓴다. 지�
 - 아는 사람이 옆에서 일러 주듯. 한 가지 구체적인 것을 집어 주면 좋다.
 - 정답이 통째로 들어가면 안 된다. 정답의 세 글자가 잇달아 들어가도 안 된다.
   («유럽연합» 힌트에 «유럽» 은 써도 되고, «온실가스감축목표» 힌트에 «온실가스» 는 안 된다)
-- 사실과 다른 것을 지어내지 않는다. 장면은 누구나 아는 일, 되풀이되는 뉴스에서 고른다.
-- 지금 힌트가 이미 장면을 담고 있으면 그대로 둔다. 사전 풀이뿐이면 반드시 고친다.
+- 사실과 다른 것을 지어내지 않는다. 장면은 함께 준 시사IN 기사 대목에서 고르고, 기사에 적힌 사실만 쓴다.
+- 지금 힌트에 기사에서 온 시사 장면이 없으면 반드시 새로 쓴다.
 
 ■ 함께 가릴 것
 그 낱말이 뉴스를 웬만큼 보는 사람에게 낯선 말인가.
@@ -109,13 +131,16 @@ const 물음 = (덩이) => `시사 크로스워드 힌트를 다시 쓴다. 지�
 그 말을 모르는 사람이 힌트만 읽고도 «아, 그런 걸 그렇게 부르는구나» 하게 쓴다.
 쉬운 우리말로 뜻을 먼저 일러 주고, 어디에 쓰이는 말인지 한 가지를 집어 준다.
 
-한 줄에 하나씩 "낱말|아는말 또는 낯선말|고친 힌트" 꼴로만 적는다. 다른 말은 쓰지 않는다.
+한 줄에 하나씩 "낱말|아는말 또는 낯선말|고친 힌트|장면을 가져온 기사 번호" 꼴로만 적는다. 다른 말은 쓰지 않는다.
+기사에서 장면을 가져오지 않았으면 기사 번호 자리에 «없음» 이라고 적는다.
 고칠 데가 없으면 지금 힌트를 그대로 적는다.
 
-${덩이.map(([w, clue]) => `${w} | ${clue}${다시쓸말.has(w) ? '   ← 편집국이 다시 쓰라고 한 말. 지금 힌트를 그대로 두지 말고 반드시 새로 쓴다' : ''}`).join('\n')}`;
+${덩이.map(([w, clue]) => `${w} | ${clue}${다시쓸말.has(w) ? '   ← 편집국이 다시 쓰라고 한 말. 지금 힌트를 그대로 두지 말고 반드시 새로 쓴다' : ''}` +
+  기사대목(w).map(e => `\n   기사 ${e.id}: ${e.글}`).join('')).join('\n\n')}`;
 
 const 묶음크기 = 25;
 const 새힌트 = new Map();
+const 새기사 = new Map();   // 낱말 → 장면을 가져온 시사IN 기사 번호
 const 어려움 = new Set();
 let 입력토큰 = 0, 출력토큰 = 0;
 
@@ -129,9 +154,12 @@ await 동시에(묶음들_, async (i) => {
       messages: [{ role: 'user', content: 물음(덩이) + '\n\n' + 힌트규칙() + '\n\n' + 안전.규칙글() }],
     });
   for (const line of (j.content || []).map(c => c.text || '').join('').split(/\r?\n/)) {
-    const m = line.match(/^\s*([가-힣0-9]{2,10})\s*\|\s*(아는말|낯선말)\s*\|\s*(.+?)\s*$/);
+    const m = line.match(/^\s*([가-힣0-9A-Z]{2,10})\s*\|\s*(아는말|낯선말)\s*\|\s*(.+?)\s*(?:\|\s*(\d+|없음)\s*)?$/);
     if (!m) continue;
-    const [, w, 익숙함, clue] = m;
+    const [, w, 익숙함, clue, 번호] = m;
+    // 준 기사 가운데 하나라야 받는다. 없으면 그 말이 가장 중심인 기사를 링크로 단다
+    const 준것 = 기사대목(w).map(e => e.id);
+    if (준것.length) 새기사.set(w, 준것.includes(번호) ? 번호 : 준것[0]);
     if (익숙함 === '낯선말') 어려움.add(w);      // 빼지는 않는다. 몇 개인지만 센다
     새힌트.set(w, clue);
   }
@@ -166,6 +194,13 @@ for (const g of pack.groups) {
   }
 }
 pack.groups = [{ name: pack.groups[0].name, words: 남길 }];
+// 기사 링크: 낱말 → 시사IN 기사 번호. 화면은 낱말을 맞힌 뒤에 «관련 기사» 로 보여 준다(game.js)
+pack.기사 = pack.기사 || {};
+for (const [w, id] of 새기사) if (바뀐.has(w) || !pack.기사[w]) pack.기사[w] = id;
+// 다시 쓰지 않은 말(사람이 고친 힌트 등)도 그 말이 가장 중심인 기사를 «관련 기사» 로 단다
+for (const w of 남길) if (!pack.기사[w[0]]) { const e = 기사대목(w[0], 1)[0]; if (e) pack.기사[w[0]] = e.id; }
+const 남은말 = new Set(남길.map(w => w[0]));
+for (const w of Object.keys(pack.기사)) if (!남은말.has(w)) delete pack.기사[w];
 
 console.error(`\n고친 힌트 ${고침} · 그대로 둔 것 ${그대로} · 낯선 말 ${어려움.size}개(빼지 않고 힌트를 더 또렷이 썼다)`);
 console.error(`입력 ${입력토큰} / 출력 ${출력토큰} 토큰 = 약 ${Math.round((입력토큰 / 1e6 * 1 + 출력토큰 / 1e6 * 5) * 1400)}원`);

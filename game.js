@@ -915,7 +915,15 @@ function renderClue() {
       `<span class="tag ${w.dir === 'A' ? 'a' : 'd'}">${w.num} ${w.dir === 'A' ? '가로' : '세로'}</span>` +
       `<span class="len">${w.len}${isAlpha(w.word[0]) ? '자 (영문)' : hasAlpha(w.word) ? '글자 (영문·숫자 섞임)' : '글자'}</span>` +
     '</div>' +
-    `<p class="txt">${w.clue}</p>`;
+    `<p class="txt">${w.clue}</p>` + 기사링크(w);
+}
+
+/* 시사 단어장은 힌트의 장면을 가져온 시사IN 기사를 단다(pack.기사: 낱말 → 기사 번호).
+   기사 제목이 답을 알려 줄 수 있으니 낱말을 맞힌 뒤에만 보여 준다. */
+function 기사링크(w) {
+  const id = w && w.solved && PACK && PACK.기사 && PACK.기사[w.word];
+  if (!id || !/^\d+$/.test(String(id))) return '';
+  return `<a class="art" href="https://www.sisain.co.kr/news/articleView.html?idxno=${id}" target="_blank" rel="noopener">관련 기사 보기 ↗</a>`;
 }
 
 function renderList() {
@@ -927,7 +935,7 @@ function renderList() {
     .filter(w => w.y + (w.dir === 'D' ? w.len - 1 : 0) >= from && w.y <= to)
     .sort((a, b) => a.num - b.num);
   const row = w => `<li class="${w.solved ? 'ok' : ''} ${curWord() === w ? 'on' : ''}" data-id="${w.id}">` +
-    `<b>${w.num}</b><span>${w.clue}</span></li>`;
+    `<b>${w.num}</b><span>${w.clue}${기사링크(w)}</span></li>`;
   box.innerHTML =
     `<h3>가로</h3><ul>${ws.filter(w => w.dir === 'A').map(row).join('')}</ul>` +
     `<h3>세로</h3><ul>${ws.filter(w => w.dir === 'D').map(row).join('')}</ul>`;
