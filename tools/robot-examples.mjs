@@ -29,12 +29,14 @@ const 낱말 = pack.groups.flatMap(g => g.words.map(w => w[0]));
    낱말 가운데서 끊긴 것이고, 단어장의 낱말이 그 자리에 걸쳐 있으면(«현대로» + «템») 역시 붙인다. 나머지는 띄운다 */
 // 단어장에 없지만 자료에서 줄 끝에 자주 걸리는 말
 const 걸친말 = ['서비스', '레퍼런스', '시나리오', '컨소시엄', '소프트뱅크', '플랫폼', '인프라', '엘리베이터'];
+const 홑말 = new Set('약 이 그 등 및 또 새 첫 각 총 뒤 앞 곳 더 덜 잘 못 안 위 밑 옆 곧 늘 꼭 즉 단 때 것 수 중 그 저 두 세 네'.split(' '));
 function 이음(a, b) {
   if (!/[가-힣]$/.test(a) || !/^[가-힣]/.test(b)) return a + ' ' + b;
   const 앞토막 = a.match(/[가-힣0-9]+$/)[0], 뒤토막 = b.match(/^[가-힣]+/)[0];   // «24개» 는 세 글자짜리 토막
-  if (앞토막.length <= 1 || 뒤토막.length <= 1) return a + b;
   const 자리 = a.slice(-8) + b.slice(0, 8);
   if ([...낱말, ...걸친말].some(w => w.length >= 3 && 자리.includes(w) && !a.slice(-8).includes(w) && !b.slice(0, 8).includes(w))) return a + b;
+  // 한 글자 토막이라도 «약 170대» 의 «약», «등» 처럼 홀로 서는 말이면 낱말 가운데가 아니다
+  if ((앞토막.length <= 1 && !홑말.has(앞토막)) || (뒤토막.length <= 1 && !홑말.has(뒤토막))) return a + b;
   return a + ' ' + b;
 }
 
@@ -42,9 +44,9 @@ const 군더더기 = /^(로봇 스터디 (마스터 문서|2차 발제 자료)|\
 // 소제목은 문장이 아니다 — «1985, 델타 로봇 — 병렬 기구의 등장 누가·왜» 처럼 짧고 마침표 없이 끝나며 육하원칙 꼬리가 붙는다
 const 소제목 = s => s.length <= 70 && !/[.!?]$/.test(s) && /(누가|무엇을|언제|어디서|어떻게|왜|얼마나|얼마)(·(누가|무엇을|언제|어디서|어떻게|왜|얼마나|얼마))*$/.test(s);
 // 문장 꼴인가 — 마침표로 끝나거나, «…내세움» «…겨냥» 처럼 ㅁ 받침 명사꼴·서술형으로 끝난다
-const 문장꼴 = s => /[.!?]$/.test(s) || /[다요죠]$/.test(s) || (/[가-힣]$/.test(s) && (s.charCodeAt(s.length - 1) - 0xac00) % 28 === 16)
+const 문장꼴 = s => !(/ — /.test(s) && s.length < 50 && !/[.!?]$/.test(s)) && (/[.!?]$/.test(s) || /[다요죠]$/.test(s) || (/[가-힣]$/.test(s) && (s.charCodeAt(s.length - 1) - 0xac00) % 28 === 16)
   // 표의 «내용» 칸은 «…취지» «…겨냥» 처럼 명사로 끝난다. 서른 자 넘는 것만 문장으로 친다. «③ 손끝과 감각 : …» 같은 차례 줄은 뺀다
-  || (s.length >= 30 && /[가-힣]$/.test(s) && !/ : /.test(s));
+  || (s.length >= 30 && /[가-힣]$/.test(s) && !/ : /.test(s)));
 function 문장들(글) {
   const out = [];
   for (const 덩이 of 글.split(/\n\s*\n/)) {
@@ -121,15 +123,22 @@ function 다듬기(s, w) {
   return (앞 > 0 ? '…' : '') + t.trim() + (앞 + 최대길이 < s.length ? '…' : '');
 }
 
+// 그 말이 한 번만 든 문장, 그중 알맞은 길이(30~110자)부터, 같으면 짧은 것.
+// 자료 자체를 가리키는 말(«스터디 명제», «3부 참조», «라인업», «출처»)이 든 문장은 밖에서 읽으면 낯설어 뒤로 미룬다
+const 자료말 = /스터디|명제|참조|참고|출처|라인업|계보|항목|본 문서|아래 표|위 표|크로스체크|이 용어|이 말|한 줄에/;
+// 3점 넘으면 아예 안 쓴다 — 자료를 가리키는 말, «…과 같은» 으로 시작하는 것, 서른 자가 안 되는 토막
+const 점수 = (s, w) => (s.match(낱말꼴(w)).length === 1 ? 0 : 2) + (s.length < 30 ? 3 : s.length > 110 ? 1 : 0) + (자료말.test(s) ? 4 : 0)
+  + (new RegExp('^' + 낱말꼴(w).source + '(과|와) 같은').test(s) ? 3 : 0);   // «서빙로봇과 같은 구도이며…» 는 그 말을 안 알려 준다
 function 예문(w) {
-  const 후보 = 자료.filter(s => 낱말꼴(w).test(s) && !조각샘(s, w) && !다친일.test(s));
-  // 그 말이 한 번만 든 문장, 그중 알맞은 길이(30~110자)부터, 같으면 짧은 것
-  const 점수 = s => (s.match(낱말꼴(w)).length === 1 ? 0 : 5) + (s.length < 30 ? 3 : s.length > 110 ? 1 : 0);
-  후보.sort((a, b) => 점수(a) - 점수(b) || a.length - b.length);
+  const 후보 = 자료.filter(s => 낱말꼴(w).test(s) && !조각샘(s, w) && !다친일.test(s) && 점수(s, w) < 3);
+  // 같은 점수면 일흔 자 안팎을 먼저 — 제일 짧은 것은 «…의 출발점.» 처럼 토막말이기 쉽다
+  후보.sort((a, b) => 점수(a, w) - 점수(b, w) || Math.abs(a.length - 70) - Math.abs(b.length - 70));
   const 고른 = [];
   for (const s of 후보) {
     const t = 가림(다듬기(s, w), w);
-    if (고른.some(g => g.예문.slice(0, 30) === t.slice(0, 30))) continue;   // 같은 자리에서 나온 것
+    // 표와 줄글에 같은 문장이 있다(«제조비의 60%를 차지하는 액추에이터는…»). 빈칸을 빼고 앞 스무 자가 같으면 같은 문장
+    const 꼴 = x => x.replace(/\s+/g, '').slice(0, 20);
+    if (고른.some(g => 꼴(g.예문) === 꼴(t))) continue;
     고른.push({ 예문: t });
     if (고른.length >= 개수) break;
   }
@@ -140,6 +149,12 @@ function 예문(w) {
 const 표 = {};
 for (const w of 낱말) { const es = 예문(w); if (es.length) 표[w] = es; }
 
+// --보기=낱말 : 그 낱말의 후보 문장을 점수와 함께 다 보여 준다 (왜 그 문장이 뽑혔는지 볼 때)
+const 보기 = (process.argv.find(a => a.startsWith('--보기=')) || '').slice(5);
+if (보기) {
+  for (const s of 자료.filter(s => 낱말꼴(보기).test(s))) console.log(조각샘(s, 보기) ? '조각' : 다친일.test(s) ? '다침' : `${점수(s, 보기)}`.padStart(3), '|', s);
+  process.exit(0);
+}
 const n = Object.keys(표).length;
 console.log(`자료 문장 ${자료.length}개 · 낱말 ${낱말.length}개 중 예문 있는 것 ${n}개 (${Object.values(표).reduce((a, b) => a + b.length, 0)}문장)`);
 if (!WRITE) { for (const w of Object.keys(표).slice(0, 12)) console.log(' ', w, '|', 표[w].map(e => e.예문).join(' | ')); process.exit(0); }
