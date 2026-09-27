@@ -38,7 +38,7 @@ const arts = 재료기사(안전, JSON.parse(fs.readFileSync(path.join(repo, 'da
 // 조각은 정답이 넉 자 이하면 두 글자부터, 다섯 자 이상이면 세 글자부터 가린다.
 // («부당노동행위» 에서 «노동» 까지 가리면 «원청 노동자» 가 «원청 ㅇㅇ자» 가 됐다)
 function 가림(글, w) {
-  let out = 글.split(w).join('ㅇ'.repeat(w.length));
+  let out = 글.replace(낱말꼴(w), 'ㅇ'.repeat(w.length));
   const 최소 = w.length <= 4 ? 2 : 3;
   for (let n = w.length - 1; n >= 최소; n--)
     for (let i = 0; i + n <= w.length; i++) out = out.split(w.slice(i, i + n)).join('ㅇ'.repeat(n));
@@ -47,17 +47,22 @@ function 가림(글, w) {
 // 사람이 다치거나 숨진 일을 퍼즐 재료로 쓰지 않는다(편집국 원칙). 그런 말이 든 제목·문장은 예문으로 안 쓴다
 const 다친일 = /사망|숨지|숨진|숨졌|목숨|부상|다쳐|다친|다쳤|피해자|희생|참사|살해|살인|폭행|성폭|성범죄|자살|극단적 선택|유족|시신|중상|학대|추락|질식|익사|분신/;
 const 괜찮은글 = 글 => 안전.검사(글).안전 && !안전.곁가지(글).붙음 && !다친일.test(글);
+// 낱말이 다른 낱말의 꼬리로 들어 있는 것은 그 말이 아니다 («전당대회» 의 «당대회», «지방선거» 의 «선거»).
+// 바로 앞에 한글 음절이 붙어 있으면 세지 않는다. 뒤에는 조사가 붙으므로 막지 않는다
+const 낱말꼴 = w => new RegExp('(?<![가-힣])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+const 든다 = (글, w) => 낱말꼴(w).test(글);
+const 몇번 = (글, w) => (글.match(낱말꼴(w)) || []).length;
 
 /** 그 말이 든 문장 하나를 최대길이 안쪽으로 */
 function 문장(본문, w) {
   const 문장들 = 본문.split(/(?<=[다요까][.?!])\s+|(?<=[.?!])\s+(?=[가-힣A-Z«〈"'‘“])/);
-  const 든것 = 문장들.filter(s => s.includes(w) && s.length >= 12).sort((a, b) => a.length - b.length);
+  const 든것 = 문장들.filter(s => 든다(s, w) && s.length >= 12).sort((a, b) => a.length - b.length);
   if (!든것.length) return '';
   // 사진 설명 앞의 «ⓒ시사IN 누구», 본문 중간의 «■» 소제목 표시가 문장에 섞여 들어온다. ■ 앞은 버리고, 남은 ■ 는 뗀다
   let s = 든것[0].replace(/^ⓒ\S+\s+\S+\s*/, '').replace(/^.{0,30}?■\s*/, '').replace(/\s*■\s*/g, ' ').trim();
   if (s.length > 최대길이) {
-    const i = s.indexOf(w);
-    const 앞 = Math.max(0, Math.min(i - 20, s.length - 최대길이));
+    const i = s.search(낱말꼴(w));
+    const 앞 = Math.max(0, Math.min(i - 20, s.length - 최대길이));   // i 는 낱말꼴로 찾은 자리
     s = (앞 > 0 ? '…' : '') + s.slice(앞, 앞 + 최대길이).trim() + (앞 + 최대길이 < s.length ? '…' : '');
   }
   return s;
@@ -66,8 +71,8 @@ function 문장(본문, w) {
 function 예문(w) {
   const 제목에 = [], 본문에 = [];
   for (const a of arts) {
-    if (a.제목.includes(w)) { if (괜찮은글(a.제목)) 제목에.push({ a, 글: a.제목 }); continue; }
-    const n = a.본문.split(w).length - 1;
+    if (든다(a.제목, w)) { if (괜찮은글(a.제목)) 제목에.push({ a, 글: a.제목 }); continue; }
+    const n = 몇번(a.본문, w);
     if (n >= 1) {   // 본문에 한 번만 나와도 후보다 (편집국 결정)
       const s = 문장(a.본문, w);
       if (s && 괜찮은글(s)) 본문에.push({ a, 글: s, n });
