@@ -2053,6 +2053,8 @@ if (vv) {
       // 자판이 올라와 칸을 가릴 때만 끌어온다. 그리고 막 들어와 보던 자리로
       // 옮기는 동안에는 건드리지 않는다 — 안 그러면 복원한 자리가 딸려 간다
       const covered = vv.height < window.innerHeight - 60;
+      // 기기 자판이 떠 있는 동안에는 힌트 밑 예문을 숨긴다 — 예문 두 줄이 판을 다 가렸다. 자판을 내리면 다시 보인다
+      document.body.classList.toggle('kbup', covered);
       if (covered && Date.now() > settling) {
         const c = S.cur && G.cells.get(S.cur);
         if (c) scrollTo(c);

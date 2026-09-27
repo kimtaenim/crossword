@@ -426,6 +426,8 @@
   .ex .src { font-weight: 600; opacity: .85; }
   .ex .quo { margin-left: 5px; opacity: .9; }
   #list .ex { font-size: 11px; margin-top: 3px; }
+  /* 자판(기기 자판이 올라왔거나 내장 자판을 켰을 때)이 떠 있으면 예문을 숨겨 판이 보이게 한다 */
+  body.kbup .cluebar .ex, body:not(.nokb) .cluebar .ex { display: none; }
 </style>
 </head>
 <body>
@@ -520,6 +522,6 @@
   <button class="close" onclick="this.closest('dialog').close()">시작하기</button>
 </dialog>
 
-<script src="game.js?v=20260927d"></script>
+<script src="game.js?v=20260927e"></script>
 </body>
 </html>
