@@ -918,7 +918,8 @@ function renderClue() {
       `<span class="tag ${w.dir === 'A' ? 'a' : 'd'}">${w.num} ${w.dir === 'A' ? '가로' : '세로'}</span>` +
       `<span class="len">${w.len}${isAlpha(w.word[0]) ? '자 (영문)' : hasAlpha(w.word) ? '글자 (영문·숫자 섞임)' : '글자'}</span>` +
       // 자판이 떠 있어 아래 단추 줄을 치웠을 때 쓰는 작은 단추. CSS 가 빽빽한 꼴에서만 보여 준다
-      '<span class="mini"><button data-go="-1" title="이전 단어">‹</button><button data-go="1" title="다음 단어">›</button><button data-hint="1" title="한 칸 열기">💡</button></span>' +
+      '<span class="mini"><button data-go="-1" title="이전 단어">‹</button><button data-go="1" title="다음 단어">›</button>' +
+      '<button data-hint="1" title="한 칸 열기">💡</button><button data-open="1" title="단어 열기">🔓</button></span>' +
     '</div>' +
     `<p class="txt">${w.clue}</p>` + 예문줄(w);
 }
@@ -2044,6 +2045,7 @@ document.getElementById('clue').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.go) nextWord(Number(b.dataset.go));
   else if (b.dataset.hint) document.getElementById('hint').click();
+  else if (b.dataset.open) document.getElementById('open').click();
 });
 document.getElementById('prev').addEventListener('click', () => nextWord(-1));
 document.getElementById('next').addEventListener('click', () => nextWord(1));
