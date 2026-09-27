@@ -923,18 +923,21 @@ function renderClue() {
     `<p class="txt">${w.clue}</p>` + 예문줄(w);
 }
 
-/* 예문 — 그 말이 쓰인 시사IN 기사 둘. 제목·문장에서 정답은 ㅇㅇㅇ 으로 가려 두었다(tools/sisain-examples.mjs).
+/* 예문 — 그 말이 쓰인 시사IN 기사 둘(tools/sisain-examples.mjs), 또는 로봇 스터디 자료의 문장 둘(tools/robot-examples.mjs).
+   제목·문장에서 정답은 ㅇㅇㅇ 으로 가려 두었다.
    작은 글씨로 날짜·제목을 보여 주고 기사로 잇는다. 매주 새 기사가 들어오면 바뀐다. */
 const 글자만 = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function 예문줄(w) {
   const es = w && PACK && PACK.예문 && PACK.예문[w.word];
   if (!Array.isArray(es) || !es.length) return 기사링크(w);
   // 회색 작은 글씨, 인용 표시. 날짜 · 〈제목〉 그리고 본문 문장은 따옴표로
-  return '<ul class="ex">' + es.filter(e => /^\d+$/.test(String(e.id))).map(e =>
-    `<li><a href="https://www.sisain.co.kr/news/articleView.html?idxno=${e.id}" target="_blank" rel="noopener">` +
-    `<span class="src">${글자만(e.날)} · 〈${글자만(e.제목)}〉</span>` +
-    (e.예문 ? `<span class="quo">“${글자만(e.예문)}”</span>` : '') +
-    `</a></li>`).join('') + '</ul>';
+  // 기사 번호가 있으면(시사) 날짜·제목을 달고 기사로 잇는다. 없으면(로봇 — 스터디 자료에서 뽑은 문장) 문장만 보여 준다
+  return '<ul class="ex">' + es.filter(e => /^\d+$/.test(String(e.id)) || e.예문).map(e => /^\d+$/.test(String(e.id))
+    ? `<li><a href="https://www.sisain.co.kr/news/articleView.html?idxno=${e.id}" target="_blank" rel="noopener">` +
+      `<span class="src">${글자만(e.날)} · 〈${글자만(e.제목)}〉</span>` +
+      (e.예문 ? `<span class="quo">“${글자만(e.예문)}”</span>` : '') +
+      `</a></li>`
+    : `<li><span class="quo">“${글자만(e.예문)}”</span></li>`).join('') + '</ul>';
 }
 
 /* 시사 단어장은 힌트의 장면을 가져온 시사IN 기사를 단다(pack.기사: 낱말 → 기사 번호).

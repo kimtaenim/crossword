@@ -424,7 +424,8 @@
   .ex a { color: inherit; text-decoration: none; }
   .ex a:hover .src { text-decoration: underline; }
   .ex .src { font-weight: 600; opacity: .85; }
-  .ex .quo { margin-left: 5px; opacity: .9; }
+  .ex .quo { opacity: .9; }
+  .ex .src + .quo { margin-left: 5px; }
   #list .ex { font-size: 11px; margin-top: 3px; }
   /* 빽빽한 꼴 — 자판이 떠 있을 때(기기 자판 kbup, 내장 자판 nokb 꺼짐).
      점수 머리와 아래 단추 줄을 치우고, 힌트·예문·판만 둔다. 예문은 자판이 떠 있어도 보인다 (편집국 결정) */
@@ -533,6 +534,6 @@
   <button class="close" onclick="this.closest('dialog').close()">시작하기</button>
 </dialog>
 
-<script src="game.js?v=20260927k"></script>
+<script src="game.js?v=20260927l"></script>
 </body>
 </html>

@@ -1,0 +1,1108 @@
+로봇 스터디 마스터 문서
+
+ROBOT STUDY · MASTER DOCUMENT
+
+로봇 스터디 마스터 문서
+용어의 역사와 해부
+코봇·AMR 같은 쉬운 말부터 4축·6축, 액추에이터, 하모닉 드라이브까지 —
+로봇 용어를 연대기와 부품 해부의 두 축으로 정리한 스터디 자료
+
+작성 기준 : 육하원칙 팩트 브리핑 · 항목별 출처 URL 노출 · 나무위키·네이버블로그 제외 · 출처 간 이견은 6부 크로스체크 노트에
+정리
+목차
+1부
+
+핵심 용어 지도
+
+2부
+
+연대기 : 유압 로봇팔에서 휴머노이드까지 (①-⑥)
+
+3부
+
+개념 깊이 보기 : 손목 3축 교차, 좌표계 분류, 하모닉 드라이브
+
+4부
+
+용어 해부 : 구동계에서 거래 용어까지 (①-⑧)
+
+5부
+
+부수 용어 사전 : UR5, 6D마우스, IMU, 깊이카메라 등
+
+6부
+
+크로스체크 노트 : 출처 간 연도가 엇갈리는 지점
+
+7부
+
+전체 출처 목록
+
+1
+
+로봇 스터디 마스터 문서
+
+1부. 핵심 용어 지도
+용어
+
+뜻
+
+등장 시기
+
+축(axis) / 자유도(DoF)
+
+로봇 관절의 회전·이동 방향 수. 축이 많을수록 자세가 자유로움
+
+1960년대 개념 정착
+
+다관절(articulated) 로봇
+
+사람 팔처럼 회전 관절을 이은 로봇. 6축이 표준
+
+1969-1973
+
+SCARA(4축)
+
+수평 방향은 유연, 수직 방향은 강성인 조립 특화 4축 로봇
+
+1978
+
+델타(병렬) 로봇
+
+가는 팔 3개가 병렬로 연결된 초고속 픽앤플레이스 로봇
+
+1985
+
+코봇(cobot)
+
+안전펜스 없이 사람 곁에서 일하는 협동로봇
+
+1996 개념 / 2008 상용화
+
+AGV
+
+바닥 와이어·자기테이프 등 정해진 경로를 따라가는 무인운반차
+
+1953-54
+
+AMR
+
+센서·SLAM으로 스스로 지도를 만들고 경로를 바꾸는 자율이동로봇
+
+2010년대
+
+페이로드(payload)
+
+로봇이 들 수 있는 최대 하중
+
+공통 스펙 용어
+
+엔드이펙터
+
+팔 끝에 붙는 그리퍼·용접기 등 작업 도구
+
+공통 스펙 용어
+
+2부. 연대기 : 유압 로봇팔에서 휴머노이드까지
+① 1954-1961 : 산업용 로봇의 탄생 — 유압의 시대
+1954, 조지 데볼의 특허 출원 누가·무엇을
+발명가 조지 데볼이 1954년 12월 10일 "Programmed Article Transfer"라는 제목의 특허를 출원, 1961년 6월 13일 미국 특
+허 2,988,237호로 등록. 디지털 명령을 저장해 부품을 옮기는 기계라는 개념이 처음 문서화된 사건. 특허문에서 데볼은 "순환
+식 디지털 제어가 필요한 광대한 응용 분야에 보편적으로 쓸 수 있는 범용 기계를 최초로 제공한다"고 명시.
+출처 https://en.wikipedia.org/wiki/Unimate
+출처 https://www.historyofinformation.com/detail.php?entryid=4071
+출처 https://www.invent.org/inductees/george-devol
+
+1956-1962, 최초의 로봇 회사 유니메이션 누가·어디서
+1956년 데볼이 사업가 조셉 엥겔버거를 만나 세계 최초의 로봇 회사 유니메이션(Unimation) 설립. 본사는 코네티컷주 댄버리,
+회사명은 Universal Automation의 축약. 두 사람은 자동차 공장 15곳과 타 업종 약 20곳을 돌며 수요를 조사한 뒤 제품을 설
+계했고, 엥겔버거는 이후 '로봇공학의 아버지'로 불림.
+출처 https://en.wikipedia.org/wiki/Unimation
+출처 https://www.automate.org/robotics/engelberger/joseph-engelberger-unimate
+출처 https://arxiv.org/pdf/1503.04967
+
+1961, 유니메이트 GM 공장 투입 언제·어디서·왜
+1961년 뉴저지주 유잉의 GM Inland Fisher Guide 공장 조립라인에 약 4,000파운드(1.8톤)의 유니메이트가 투입되어 다이캐
+스팅 부품 적재를 수행. 배기가스 중독·사지 절단 위험이 있던 작업으로, '사람이 하기 위험한 일부터'라는 로봇 도입 논리가 여
+
+2
+
+로봇 스터디 마스터 문서
+
+기서 시작. 초기 유니메이트는 유압 구동에 디지털 제어·자기 드럼 메모리를 썼고, 당시 시판 부품이 부족해 거의 모든 부품을 자
+체 설계·가공.
+출처 https://www.historyofinformation.com/detail.php?entryid=4071
+출처 https://robotsguide.com/robots/unimate
+출처 https://spectrum.ieee.org/george-devol-a-life-devoted-to-invention-and-robots
+출처 https://en.wikipedia.org/wiki/Unimation
+
+1966, 조니 카슨 쇼의 유니메이트 어떻게
+1966년 NBC '투나잇 쇼'에 유니메이트가 출연해 골프공 퍼팅, 맥주 따르기, 밴드 지휘 시연으로 대중에게 로봇을 각인. 같은 해
+코네티컷에서 양산 개시, 1975년에야 유니메이션 첫 흑자 기록 — 산업이 자리 잡는 데 걸린 시간을 보여주는 대목.
+출처 https://www.automate.org/robotics/engelberger/joseph-engelberger-unimate
+출처 https://www.historyofinformation.com/detail.php?entryid=4071
+
+같은 시기, AGV의 원조는 로봇팔과 동시 출발 무엇을
+1954년 배럿 일렉트로닉스의 아서 "맥" 배럿이 최초의 AGV 'Guide-O-Matic'을 선보임. 천장 와이어, 이후 바닥 매설 와이어
+의 전자기 신호를 따라가며 창고에서 트레일러를 견인하는 방식. '움직이는 로봇'의 계보가 로봇팔과 거의 동시에 출발했다는
+뜻.
+출처 https://www.iqsdirectory.com/articles/automated-guided-vehicle/types-of-agvs-automatic-guided-vehicles.html
+출처 https://blog.3ds.com/brands/delmia/introducing-agvs-on-the-shop-floor-here-is-what-you-need-to-keep-in-mind/
+
+② 1969-1974 : 전기 구동과 6축 표준의 등장
+1969, 스탠퍼드 암 — 최초의 전전기식 6축 누가·어떻게
+빅터 샤인먼이 스탠퍼드 AI연구소(SAIL) 재학 중 컴퓨터 제어가 가능한 최초의 전전기식 6축 매니퓰레이터 '스탠퍼드 암' 개발.
+유압에서 전기 모터로 넘어가며 정밀 제어와 조립·용접 같은 섬세한 작업의 길이 열림. 손목 3축을 한 점에서 교차시켜 역기구학
+의 닫힌 해를 얻은 설계(3부 참조).
+출처 https://medium.com/silicon-valley-robotics/farewell-to-victor-scheinman-inventor-of-the-modern-robot-arm-d02c07db0afa
+출처 https://en.wikipedia.org/wiki/Victor_Scheinman
+출처 https://ethw.org/Oral-History:Victor_Scheinman
+
+1973, KUKA 파물루스 — 6축 전기 구동 산업로봇의 세계 최초 어디서
+독일 아우크스부르크의 기계업체 KUKA가 세계 최초의 6축 전기 구동 산업용 로봇 KR FAMULUS 출시. 6축 다관절 구조는 오
+늘날 산업용 로봇의 가장 흔한 기구학 형태가 되었고, 이전 로봇보다 훨씬 넓은 동작 범위와 유연성을 제공. KUKA는 1898년 켈
+러와 크나피히가 세운 조명 회사(Keller und Knappich Augsburg의 약자)에서 출발해 용접 자동화를 거쳐 로봇에 진입한 케
+이스.
+출처 https://www.kuka.com/en-us/company/iimagazine/2023/11/experience-the-german-engineering-spirit
+출처 https://www.allaboutlean.com/kuka-famulus/
+출처 https://robotsdoneright.com/Articles/kuka-robotic-history.html
+
+1974, ASEA IRB 6 — 마이크로프로세서 제어의 시작 어떻게·왜
+스웨덴 베스테로스의 ASEA(현 ABB)가 만든 IRB 6는 인텔 최초 칩셋을 쓴 최초의 마이크로컴퓨터 제어 전기 산업로봇. 5축, 하
+중 6kg, 1975-1992년 사이 1,900대 판매. 연속 경로(continuous path) 작업이 가능해 아크 용접·가공에 널리 사용. 설계자는
+비에른 바이히브로트, 오베 쿨보리, 벵트 닐손, 헤르베르트 카우프만. 첫 두 대는 스웨덴 마그누손에 파이프 연마·광택용으로 납
+품되어 1974년 1월 가동.
+출처 https://www.historyofinformation.com/detail.php?entryid=4352
+출처 https://scispace.com/pdf/from-the-unimate-to-the-delta-robot-the-early-decades-of-5pduggsavq.pdf
+출처 https://www.allaboutlean.com/kuka-famulus/
+출처 https://members.worldrobotics.org/robot-history
+
+3
+
+로봇 스터디 마스터 문서
+
+1974, 신시내티 밀라크론 T3 무엇을
+미국 최대 공작기계 업체 신시내티 밀라크론이 최초의 마이크로컴퓨터 제어 상용 로봇 T3("The Tomorrow Tool") 출시, 볼보
+등 자동차 업계에 판매. 로봇 사업부는 1990년 ABB가 인수. 같은 해 일본에서는 야스카와전기와 화낙(FANUC)이 로봇 생산 개
+시 — 일본 로봇 강국화의 출발점.
+출처 https://arxiv.org/pdf/1704.08617
+출처 https://www.academia.edu/38567057/From_the_Unimate_to_the_Delta_robot_the_early_decades_of_Industrial_Robotics
+출처 https://www.allaboutlean.com/kuka-famulus/
+
+③ 1978-1985 : 4축 vs 6축, 축 개념의 분화
+1978, 4축 SCARA의 발명 누가·어디서·왜
+일본 야마나시대학의 마키노 히로시 교수가 SCARA(Selective Compliance Assembly Robot Arm) 첫 시제품 제작. 1977년
+도쿄 국제산업로봇심포지엄(ISIR)에서 이탈리아 SIGMA 조립로봇 발표에 자극받아 2개월 만에 설계에 착수했고, 야마나시대학
++일본 기업 13개사가 1978년 4월부터 3년간 SCARA 로봇 컨소시엄을 운영. 1981년부터 도시바기계·산쿄세이키·펜텔·NEC 등
+컨소시엄 참여사들이 상용 SCARA를 조립라인에 투입.
+출처 https://www.jstage.jst.go.jp/article/jrobomech/26/1/26_5/_pdf/-char/en
+출처 https://www.researchgate.net/publication/286780501_Development_of_the_SCARA
+출처 https://www.evsint.com/who-invented-the-first-scara-robot/
+출처 https://grokipedia.com/page/SCARA
+
+4축과 6축의 역할 분담 무엇을
+6축 다관절이 무거운 하중을 정밀하게 다루는 반면, 4축 SCARA는 집어서 돌려 놓는 픽앤플레이스에 특화. 유연성은 낮지만 훨
+씬 빨라 전자부품 삽입 등 칩·시계 제조를 가속. "몇 축이냐"는 질문은 사실상 "어떤 작업이냐"는 질문과 같음(구조적 이유는 3
+부 참조).
+출처 https://www.aventine.org/robotics/history-of-robotics/
+
+1978, 6축 PUMA — 조립용 표준 로봇 누가·어떻게
+샤인먼은 1973년 Vicarm을 세워 로봇팔을 제조하다 1977년 설계를 유니메이션에 매각, GM 지원 아래
+PUMA(Programmable Universal Machine for Assembly)로 발전. 1978년 12월 첫 유닛이 GM에 설치되었고 지금도 로봇
+연구자들이 쓰는 아키텍처. 샤인먼이 이 로봇용으로 만든 BASIC 기반 언어 VAL은 로봇 프로그래밍 언어의 원형 중 하나(5부 참
+조).
+출처 https://ethw.org/Oral-History:Victor_Scheinman
+출처 https://blog.robotiq.com/a-brief-history-of-robots-in-manufacturing
+출처 https://grokipedia.com/page/Programmable_Universal_Machine_for_Assembly
+출처 https://rodneybrooks.com/the-origin-of-robot-arm-programming-languages/1000/
+
+1985, 델타 로봇 — 병렬 기구의 등장 누가·왜
+EPFL(스위스 로잔연방공대)의 레몽 클라벨 교수가 팔 3개짜리 병렬 델타 로봇 발명. 스위스 초콜릿 공장에서 반복 수작업에 시
+달리는 노동자들을 보고 착안. 모터를 모두 베이스에 두고 팔을 가볍게 만들어 초고속 픽앤플레이스 구현, 첫 산업 적용은 프레
+첼을 블리스터 트레이에 담는 로봇 6대 설치. 클라벨 교수는 2025년 6월 24일 별세.
+출처 https://actu.epfl.ch/news/epfl-mourns-pioneering-roboticist-reymond-clavel-2
+출처 https://ifr.org/robot-history
+출처 https://grokipedia.com/page/Delta_robot
+
+4
+
+로봇 스터디 마스터 문서
+
+④ 1996-2008 : 코봇(협동로봇)의 발명과 상용화
+1996, 코봇 개념의 탄생 누가·어디서·왜
+노스웨스턴대의 에드 콜게이트·마이클 페시킨 교수가 1995년부터 GM 수석엔지니어 프라사드 아켈라와 함께, 사람 곁에서 안
+전하게 작업물을 유도하는 로봇 연구 시작. 처음 이름은 '프로그래머블 컨스트레인트 머신'이었으나 더 친근한 이름에 50달러
+상금을 걸자 박사후연구원 브렌트 길레스피가 'cobot'을 제안해 채택. 첫 논문 "Cobots: Robots for Collaboration with
+Human Operators"는 1996년 11월 발표. 초기 코봇은 자체 동력 없이 사람이 힘을 내고 로봇이 경로를 안내하는 수동형이었
+고, 월스트리트저널 2000년 1월 1일 밀레니엄판에 '내일의 단어'로 등재.
+출처 https://mccormick.northwestern.edu/news/articles/2016/08/twenty-years-later-cobots-co-opt-assembly-lines.html
+출처 https://peshkin.mech.northwestern.edu/publications/1996_Colgate_CobotsRobotsCollaboration.pdf
+출처 https://www.beboqrobotics.com/blog/2023/03/01/history-of-collaborative-robots/
+
+1999, 특허 등록 언제·무엇을
+1999년 9월 14일 미국 특허 5,952,796호가 "사람과 컴퓨터 제어 매니퓰레이터 간 직접 물리적 상호작용을 위한 장치와 방
+법"으로 등록.
+출처 https://www.articsledge.com/post/collaborative-robots-cobots
+
+2004-2005, 대기업과 스타트업의 진입 누가
+KUKA가 2004년 첫 코봇 LBR3 출시(독일항공우주센터 DLR과의 협력 성과 계열). 2005년 덴마크 남덴마크대 출신 3인 — 에
+스벤 외스터가드, 크리스티안 카소, 카스퍼 스토이 — 이 유니버설로봇(Universal Robots) 창업.
+출처 https://iticollege.edu/blog/collaborative-robots-in-manufacturing/
+출처 https://www.articsledge.com/post/collaborative-robots-cobots
+출처 https://www.beboqrobotics.com/blog/2023/03/01/history-of-collaborative-robots/
+
+2008, UR5 — 최초의 상용 코봇 언제·어디서·어떻게
+유니버설로봇이 안전펜스 없이 사람 곁에서 작동하는 세계 최초의 상용 협동로봇 UR5 출시, 덴마크 기술고무·플라스틱 업체
+Linatex의 CNC 머신텐딩에 첫 설치. 18.4kg의 이 로봇팔은 외부 프로그래머 없이 프로그래밍 경험이 없는 현장 작업자가 터치
+패드로 직접 셋업 — '로봇 도입 장벽은 하드웨어값이 아니라 프로그래밍 인건비'라는 통찰의 산물. 이후 2012년 UR10, 2015
+년 탁상형 UR3로 확장.
+출처 https://www.engineering.com/infographic-a-brief-history-of-collaborative-robots/
+출처 https://www.articsledge.com/post/collaborative-robots-cobots
+출처 https://www.wiredworkers.io/blog/from-robot-to-cobot/
+
+⑤ 1953-현재 : AGV에서 AMR로 — 물류 이동 로봇의 세대교체
+AGV와 AMR의 차이 무엇을·어떻게
+구분
+
+AGV
+
+AMR
+
+항법
+
+와이어·자기테이프·QR 등 고정 경로
+
+라이다·카메라·SLAM으로 실시간 지도 생성
+
+장애물 대응
+
+멈추고 대기
+
+스스로 우회 경로 재탐색
+
+인프라
+
+바닥 공사 등 외부 설비 필요
+
+별도 인프라 최소화
+
+AGV는 표식·유도선을 따라 움직이고 장애물을 만나면 멈춰 기다림. AMR은 카메라·레이저 센서로 주변 지도를 만들어 최적 경
+로를 스스로 선택하며 외부 인프라가 거의 불필요. 업계는 이동로봇을 AGV, AMR, 그리고 이동+조작이 결합된 복합로봇의 3대
+범주로 관례적으로 구분.
+
+5
+
+로봇 스터디 마스터 문서
+
+출처 https://aiut.com/en/blog/amr-or-agv/
+출처 https://www.hokuyo-usa.com/resources/infographics/differences-between-agvs-and-amrs
+출처 https://faxiangongchang.com/en/reports/china-mobile-robot-agv-amr-2026
+
+1973, 볼보의 유럽 첫 AGV 어디서
+볼보가 스웨덴 공장 엔진 조립라인 자재 보급에 유럽 최초의 AGV 시스템을 배치, AGV의 고급 제조업 진입을 상징.
+출처 https://faxiangongchang.com/en/reports/china-mobile-robot-agv-amr-2026
+
+2012, 아마존의 키바 인수 언제·왜
+아마존이 키바 시스템즈를 7억 7,500만 달러에 인수하며 모바일 로봇 시장 진입. 키바는 바닥 바코드 스티커로 창고를 항행하
+는 AGV 방식. 아마존이 키바 외부 판매를 중단하고 자사 물류에 독점 투입하면서 산업용 AGV 시장 관심이 급증 — 창고 로봇 혁
+명의 방아쇠.
+출처 https://www.therobotreport.com/a-decade-after-acquiring-kiva-amazon-unveils-its-first-amr/
+출처 https://blog.3ds.com/brands/delmia/introducing-agvs-on-the-shop-floor-here-is-what-you-need-to-keep-in-mind/
+
+2022, 아마존 프로테우스 — AGV에서 AMR로 무엇을
+키바 인수 10년 만에 아마존이 첫 완전 자율 AMR '프로테우스' 공개. 격리 구역에서만 움직이던 키바와 달리 직원들 사이를 자
+유롭게 다니며 GoCart(운반 카트)를 들어 옮김. AGV→AMR 전환의 상징적 사건.
+출처 https://www.therobotreport.com/a-decade-after-acquiring-kiva-amazon-unveils-its-first-amr/
+
+⑥ 2020년대 : 휴머노이드와 피지컬 AI
+2024, 보스턴다이내믹스의 전동 아틀라스 전환 언제·왜
+보스턴다이내믹스가 유압식 아틀라스를 은퇴시키고 완전 전동 버전 출시. 연구 시연용이 아니라 산업 환경의 지속 운용을 겨냥
+한 상업 배치용 설계 — 1970년대 유압→전기 전환이 휴머노이드에서 반복된 셈.
+출처 https://www.aimagicx.com/blog/humanoid-robots-workplace-tesla-optimus-atlas-2026
+출처 https://www.meta-intelligence.tech/en/insight-physical-ai
+
+실전 배치 경쟁 : Figure, Agility, Tesla 누가·어디서
+Figure AI의 로봇은 BMW 제조 시설과 아마존 창고에서 사람 작업자와 함께 실제 생산 작업 수행. 어질리티 로보틱스의
+Digit은 GXO와의 다년 RaaS 계약으로 토트 10만 개 이상을 처리해 '최초의 상업적 생산성 휴머노이드' 타이틀의 유력 후보. 테
+슬라 옵티머스는 2024년 Gen 2가 프리몬트 생산 현장에서 배터리 셀 분류·부품 취급·품질 검사 수행. 현대차는 보스턴다이내
+믹스, 메르세데스는 앱트로닉, BMW는 Figure, 도요타는 어질리티와 각각 제휴 — 테슬라만 자체 개발 노선.
+출처 https://www.aimagicx.com/blog/humanoid-robots-workplace-tesla-optimus-atlas-2026
+출처 https://newmarketpitch.com/blogs/news/humanoid-robotics-figure-vs-tesla
+출처 https://optimusk.blog/blog/what-is-tesla-optimus/
+
+2025-2026, '양산 원년' 담론 언제·왜
+테슬라(옵티머스 2026년 양산 계획), Figure AI, 중국 유비테크 등의 계획을 근거로 2025-2026년이 휴머노이드의 산업 규모
+검증·상업화 가속의 핵심 시기로 간주됨. 자동차 제조 중심 B2B 현장에서 먼저 확산(유비테크 Walker S1, 샤오펑 Iron 등이
+BYD·지커·샤오펑 공장 투입). 주의 : 이 전망은 업체 발표 기반으로, 실제 달성 여부는 별도 검증 필요.
+출처 https://eu.36kr.com/en/p/3476581554018438
+
+6
+
+로봇 스터디 마스터 문서
+
+3부. 개념 깊이 보기
+① 손목 3축 교차 — 컴퓨터 한계를 기구로 돌파한 설계
+6축 로봇은 앞 3축(허리·어깨·팔꿈치)이 손끝의 '위치'를, 뒤 3축(손목)이 '자세'를 담당. 역기구학(원하는 손끝 위치·자세에서 관
+절 각도 6개를 역산하는 계산)은 일반 구조에서 수치 반복 계산으로만 풀리지만, 손목 3축의 회전축이 한 점에서 만나도록 설계
+하면 위치 문제와 자세 문제가 분리되어 공식으로 딱 떨어지는 닫힌 해가 나옴.
+스탠퍼드 암이 바로 피퍼(Pieper)의 논문이 제시한 대로 손목 3축을 한 점에서 교차시켜 닫힌 해를 얻었고, 덕분에 당시의 느린
+컴퓨터로도 임의 경로를 정확히 추종 — 조립·아크용접 같은 정교한 응용이 열림. 이 '구형 손목(spherical wrist)' 문법은 지금
+6축 로봇에도 그대로 유지.
+출처 https://en.wikipedia.org/wiki/Victor_Scheinman
+
+② 좌표계로 읽는 로봇 형태 분류 — 4축은 왜 수평, 6축은 왜 수직인가
+형태
+
+공간을 훑는 방식
+
+비유
+
+직교형(Cartesian/갠트리)
+
+X·Y·Z 직선 3개
+
+크레인 게임기
+
+원통형
+
+회전 1 + 상하 + 전후 직선
+
+회전문 기둥에 달린 서랍
+
+극좌표형(구형)
+
+좌우 회전 + 상하 회전 + 팔 신축
+
+전차 포탑 : 포신이 돌고, 들리고, 늘어남
+
+수평다관절(SCARA)
+
+수직축 중심 회전 관절들
+
+스탠드 조명 팔
+
+수직다관절(articulated)
+
+수평축 중심 회전 관절들
+
+사람 팔
+
+병렬(parallel/델타)
+
+팔 여러 개가 한 플랫폼 공유
+
+거미 다리
+
+극좌표형의 대표가 초기 유니메이트. 몸통이 돌고 팔이 기울고 앞으로 뻗어, 팔 끝의 도달 공간이 구(球)의 일부 모양이 되어 붙
+은 이름.
+SCARA가 '수평'인 이유 : 평행한 축을 가진 회전 관절 3개 + 기구 사슬 끝의 직동 관절 1개로 구성. 회전축들이 모두 바닥에 수
+직으로 서 있어 팔 전체가 테이블 위를 쓸듯 수평면에서만 움직이고, 상하는 끝의 직선축 하나가 전담. 그 결과 수평 방향 힘에는
+유연하게(compliant) 반응해 삽입·픽업 시 미세 위치 오차를 흡수하면서 수직 방향으로는 강성을 유지 — 부품을 위에서 아래
+로 꽂는 조립에 최적. 이름 자체가 Selective Compliance(선택적 유연성) Assembly Robot Arm.
+출처 https://www.researchgate.net/figure/One-of-the-first-prototypes-of-SCARA-robot-designed-by-Hiroshi-Makino_fig5_331090220
+출처 https://grokipedia.com/page/SCARA
+
+6축이 '수직'인 이유 : 어깨·팔꿈치 관절의 회전축이 수평으로 누워 있어 팔이 사람 팔처럼 수직 평면을 크게 오르내림. 어느 방
+향에서든 손목을 돌려 접근 가능하고, 무거운 하중을 정밀하게 다루는 대신 SCARA보다 느림.
+출처 https://www.aventine.org/robotics/history-of-robotics/
+
+한 줄 정리 : 4축=수평은 "위에서 꽂는 조립을 빠르게", 6축=수직은 "어느 각도로든 접근을 자유롭게"라는 설계 목적의 차이
+
+7
+
+로봇 스터디 마스터 문서
+
+③ 하모닉 드라이브 — 원리와 역사
+부품
+
+역할
+
+웨이브 제너레이터
+
+타원형 캠. 모터축에 연결되는 입력
+
+플렉스플라인
+
+얇은 강철 컵. 타원에 눌려 탄성 변형하며 바깥에 톱니
+
+서큘러 스플라인
+
+고정된 강체 링. 안쪽에 톱니
+
+원리 : 타원형 웨이브 제너레이터가 유연한 플렉스플라인을 타원으로 변형시키면 마주보는 두 지점에서만 고정 링 기어와 이빨
+이 맞물림. 플렉스플라인의 이빨 수가 링보다 약간 적어 이 작은 차이가 높은 감속비를 만들고, 동시에 많은 이빨이 맞물려 있어
+강성도 높음. 예 : 플렉스플라인 200개, 서큘러 스플라인 202개면 감속비 100:1이 한 단에서 구현. 딱딱한 기어를 굴리는 게 아
+니라 금속의 탄성 변형으로 동력을 전달하는, 기계공학의 상식을 뒤집은 발상.
+출처 https://pmc.ncbi.nlm.nih.gov/articles/PMC11368676/
+출처 https://howtomechatronics.com/how-it-works/what-is-strain-wave-gear-harmonic-drive-a-perfect-gear-set-for-roboticsapplications/
+
+역사 : 발명자는 특허 200건 이상을 보유한 미국 발명가 C. 월튼 머서. 탄성 변형을 동작 매체로 삼는 비강체 역학 연구자로, 전
+시에는 항공기 사출좌석·캐노피 분리장치 등 안전장치도 개발. 스트레인 웨이브 기어는 1955년 발명·특허되었고, USM사와 함
+께 기구를 완성해 1960년 상용화하며 USM 하모닉 드라이브 사업부 출범 — 이것이 성장해 일본·미국에 공장을 둔 하모닉드라
+이브 그룹이 됨. 즉 '하모닉 드라이브'는 상표명이고 일반명사는 스트레인 웨이브 기어(파동기어).
+출처 https://legacy.harmonicdrive.net/aboutus/musser/
+출처 https://www.harmonicdrive.net/technology/harmonicdrive
+출처 https://www.automate.org/motion-control/videos/c-walton-musser-prolific-inventor
+
+원래 우주 응용을 겨냥한 설계였으나 제로 백래시·소형화·1단 고감속 특성으로 타 산업에 빠르게 확산, NASA 달 탐사차(Lunar
+Rover)에도 채택. 1970-80년대 전기 구동 다관절 로봇이 표준이 되면서 "작고 가볍고 유격 없는 감속기"가 관절마다 필요해졌
+고, 하모닉(소형 관절)과 나브테스코 RV(대형 관절)의 분업 구도가 굳어져 현재에 이름.
+출처 https://harmonicdrive.de/en/company
+출처 https://hackaday.com/2026/03/11/3d-printing-a-harmonic-pin-ring-gearing-drive/
+
+8
+
+로봇 스터디 마스터 문서
+
+4부. 용어 해부 : 구동계에서 거래 용어까지
+① 구동계 : 로봇의 근육과 힘줄
+용어
+
+풀이
+
+액추에이터(actuator)
+
+전기·유압·공압 에너지를 실제 움직임(회전·직선운동)으로 바꾸는 구동장치. 사람으로 치면 근육. 관절 하
+나마다 하나씩
+
+서보모터(servo
+
+위치·속도·토크를 피드백 받아 정밀 제어되는 전기 모터. 산업용 로봇 액추에이터의 표준
+
+motor)
+인코더(encoder)
+
+모터 축의 회전 각도·속도를 읽는 센서. 서보 제어의 '눈금자'
+
+감속기(reducer)
+
+모터의 빠른 회전을 느리고 힘센 회전으로 바꾸는 기어 장치. 로봇 원가의 핵심 부품
+
+백래시(backlash)
+
+기어 이빨 사이 유격 때문에 생기는 헛돎. '제로 백래시'가 감속기 세일즈 포인트
+
+토크(torque)
+
+회전시키는 힘. 페이로드와 함께 로봇의 '힘' 스펙을 결정
+
+동력원 구분은 시대사와 겹침 : 전기 모터+기어박스가 현재 대부분의 휴머노이드를 구동(모터 자체 효율 약 80%, 기어박스 결
+합 시 약 40%). 유압은 큰 힘·동적 동작에 강해 보스턴다이내믹스 구형 아틀라스가 사용했으나 2024년 전동 전환으로 업계 전
+동화 흐름을 상징.
+출처 https://www.articsledge.com/post/ai-humanoid-robots
+
+감속기의 양대 산맥 : 하모닉 드라이브(3부 참조, 소형 관절 담당)와 RV 감속기. RV 감속기는 일본 나브테스코 장악 분야로, 정
+밀 사이클로이드 기어 특허 취득 후 1986년 양산 개시. RV 감속기 세계 시장의 약 60%를 나브테스코, 하모닉 감속기의 약
+15%를 하모닉드라이브사가 점유. 크고 힘이 세서 어깨·허리 같은 대형 관절 담당 — "일본이 로봇 부품을 쥐고 있다"는 말의 실
+체.
+출처 https://www.yooheart-robot.com/news/4580/
+
+② 구조·기구학 : 로봇의 뼈대와 움직임의 문법
+용어
+
+풀이
+
+매니퓰레이터(manipulator)
+
+'조작하는 팔' 전체를 가리키는 공식 용어. 로봇팔의 학술적 이름
+
+자유도(DoF)
+
+독립적으로 움직일 수 있는 방향의 수. 공간상 임의 위치+자세에는 6자유도 필요
+
+기구학 / 역기구학
+
+관절 각도로 손끝 위치를 구하는 계산(순기구학)과 그 역산(역기구학). 로봇 제어 수학의 뼈대
+
+특이점(singularity)
+
+특정 자세에서 축들이 겹쳐 자유도를 잃고 제어가 불안정해지는 지점. 티칭 때 피해야 하는 함정
+
+리치(reach) / 작업영역
+
+팔이 닿는 최대 거리와, 손끝이 갈 수 있는 공간 전체
+
+형태 분류와 연대기 대응 : 직교(3D프린터·갠트리) → 원통형·극좌표형(초기 유니메이트) → 수평다관절 4축(1978 SCARA) →
+수직다관절 6축(1973 파물루스, 1978 PUMA) → 병렬(1985 델타). 상세 원리는 3부 ② 참조.
+
+9
+
+로봇 스터디 마스터 문서
+
+③ 손끝과 감각 : 엔드이펙터와 센서
+용어
+
+풀이
+
+엔드이펙터 / EOAT
+
+팔 끝에 붙어 실제 작업을 하는 도구 일체(End Of Arm Tooling). 그리퍼·용접건·스프레이건·흡착패드 등
+
+그리퍼(gripper)
+
+물건을 쥐는 손. 기계식 집게, 진공 흡착, 자석식, 사람 손 모사형까지
+
+힘·토크 센서(F/T)
+
+손목에 달려 접촉힘을 느끼는 센서. 끼워맞춤 조립·연마처럼 '감'이 필요한 작업의 필수품
+
+머신비전
+
+카메라+영상처리로 위치·불량을 판별하는 로봇의 눈
+
+라이다(LiDAR)
+
+레이저를 쏘아 거리를 재는 센서. AMR 항법의 핵심
+
+SLAM
+
+지도를 만들면서 동시에 그 지도 안에서 자기 위치를 추정하는 기술
+
+ISO 정의상 산업용 로봇 본체에는 엔드이펙터가 포함되지 않고, 엔드이펙터까지 붙은 것을 '로봇 시스템'으로 구분. 견적서에서
+로봇 본체 가격과 SI 가격이 따로 노는 이유가 이 정의에 있음.
+출처 https://www.iso.org/news/2016/03/Ref2057.html
+
+AMR의 기술 구조는 인지 계층(2D/3D 라이다·깊이 카메라·초음파 센서·IMU의 다중 센서 융합)을 바탕으로 SLAM으로 지도를
+갱신하며 미지·동적 환경에서 자율 주행하고 장애물을 동적으로 우회. AGV와 AMR을 가르는 것이 결국 이 감각 계층의 유무.
+출처 https://faxiangongchang.com/en/reports/china-mobile-robot-agv-amr-2026
+
+④ 두뇌와 프로그래밍 : 로봇에게 일 시키는 법
+용어
+
+풀이
+
+컨트롤러
+
+로봇 옆의 제어 캐비닛. 기구학 계산과 모터 지령을 담당하는 두뇌
+
+(controller)
+PLC
+
+공장 설비 전체를 관장하는 산업용 제어 컴퓨터. 로봇 컨트롤러와 신호를 주고받으며 라인을 지휘
+
+티치펜던트
+
+손에 들고 로봇을 조금씩 움직여 동작을 가르치는 리모컨 겸 프로그래밍 단말
+
+교시(teaching)
+
+로봇에게 동작을 기억시키는 일. 티치펜던트 교시 → 직접교시(hand guiding) → 오프라인 프로그래밍
+(OLP)으로 진화
+
+사이클타임
+
+한 작업을 마치는 데 걸리는 시간. 생산라인 도입 판단의 제1 지표
+
+PLC는 조립라인·로봇 등 고신뢰성이 필요한 제조 공정 제어용으로 설계된 산업용 디지털 컴퓨터로, 프로그래밍이 쉬워 자동화
+업계의 표준 장비가 됨.
+출처 https://arxiv.org/pdf/1704.08617
+
+티치펜던트의 진화 : KUKA가 1996년 하노버 박람회에서 세계 최초의 PC 기반 로봇 컨트롤러를 선보이며 윈도우 UI와 6D 마우
+스로 로봇을 실시간 조작하는 시대를 엶(6D 마우스는 5부 참조). 교시의 대중화는 2008년 UR5 — 외부 프로그래머 없이 현장
+작업자가 터치패드로 직접 셋업. "로봇 도입 장벽 = 프로그래밍 인건비"라는 통찰이 코봇 산업의 출발점.
+출처 https://www.robots.com/articles/kuka-robot-history
+출처 https://www.engineering.com/infographic-a-brief-history-of-collaborative-robots/
+
+10
+
+로봇 스터디 마스터 문서
+
+⑤ 성능 스펙 읽는 법 : 카탈로그의 세 가지 숫자
+스펙
+
+뜻
+
+주의점
+
+페이로드(payload)
+
+손목 기준 최대 하중
+
+그리퍼 무게까지 포함해 계산
+
+반복정밀도(repeatability)
+
+같은 지점으로 몇 번이고 돌아올 때의 오차(±mm)
+
+카탈로그의 '정밀도'는 대개 이것
+
+정확도(accuracy)
+
+지령한 좌표에 실제로 얼마나 정확히 가는가
+
+반복정밀도보다 대체로 나쁘며 별도 보정 필요
+
+1974년 IRB 6의 스펙이 '5축, 하중 6kg'으로 기록되듯, 축 수와 페이로드는 로봇 역사 기술의 기본 문법.
+출처 https://www.historyofinformation.com/detail.php?entryid=4352
+
+⑥ 안전·협동 규격 : 코봇을 코봇이게 하는 규칙
+ISO 10218-1·2가 산업용 로봇 안전의 기본 규격, ISO/TS 15066이 협동로봇 시스템 안전 요구사항을 보충하는 기술사양. 협
+동 운전의 4가지 기법을 규정.
+협동 모드
+
+내용
+
+안전정격 감시정지
+
+사람이 있으면 로봇 정지
+
+핸드 가이딩
+
+작업자가 손으로 팔을 움직여 교시·조작
+
+속도·거리 감시(SSM)
+
+작업자와의 거리에 따라 감속·정지. 최소 보호 이격거리를 상시 유지
+
+동력·힘 제한(PFL)
+
+접촉힘·압력을 생체역학 한계 이하로 유지해 직접 접촉 허용
+
+출처 https://www.automate.org/robotics/tech-papers/iso-ts-15066-explained
+출처 https://www.evsrobot.com/cobot-safety-standards-iso-10218-vs-iso-ts-15066-buyers-guide.html
+출처 https://www.iso.org/news/2016/03/Ref2057.html
+출처 https://pmc.ncbi.nlm.nih.gov/articles/PMC5117641/
+
+2025년 개정으로 ISO/TS 15066의 내용은 ISO 10218-2:2025에 통합 — 협동 애플리케이션도 개정 산업로봇 안전 체계 아래
+에서 규율. 스터디 명제 "코봇은 로봇 종류가 아니라 운용 방식"의 규격적 근거.
+출처 https://standardbots.com/blog/collaborative-robot-safety-standards
+
+⑦ 최신 용어 : 2020년대의 새 어휘
+용어
+
+풀이
+
+복합로봇(mobile manipulator)
+
+AMR 위에 로봇팔을 얹은 형태. 이동+조작을 한 몸에
+
+RaaS(Robot as a Service)
+
+로봇을 사지 않고 구독·성과 기반으로 쓰는 사업모델
+
+텔레오퍼레이션(teleoperation)
+
+사람이 원격 조종하는 것. 휴머노이드 시연의 자율성 논란 지점
+
+피지컬 AI(physical AI)
+
+AI가 화면 밖 물리 세계에서 몸을 갖고 행동한다는 개념
+
+실례 : RaaS는 어질리티 Digit의 GXO 다년 계약(토트 10만 개 이상 처리), 텔레오퍼레이션 쟁점은 2024-25년 테슬라 옵티머
+스 시연에서 원격조종 패턴이 복수 매체에 의해 지적된 사례. '피지컬 AI'는 머스크가 옵티머스를 테슬라 미래 가치의 80%로 내
+세우며 테슬라를 '피지컬 AI 플랫폼'으로 규정한 데서 보듯 업계 자기규정 용어로 확산 중 — 단, 이 수치는 검증된 사실이 아닌
+CEO의 주장.
+
+11
+
+로봇 스터디 마스터 문서
+
+출처 https://newmarketpitch.com/blogs/news/humanoid-robotics-figure-vs-tesla
+출처 https://www.articsledge.com/post/ai-humanoid-robots
+출처 https://faxiangongchang.com/en/reports/china-mobile-robot-agv-amr-2026
+
+⑧ 거래·구축 용어 : 공기계에서 턴키까지
+용어
+
+풀이
+
+성격
+
+공기계(bare robot)
+
+본체+컨트롤러만 있고 엔드이펙터·프로그램·주변설비가 없는 상태. 이대로는 아무 일
+
+시장 구어
+
+도못함
+SI(System
+
+공기계에 그리퍼·지그·비전·안전설비를 붙이고 교시까지 해 '일하는 시스템'으로 만드
+
+업계 표준 용
+
+Integration)
+
+는일
+
+어
+
+로봇 셀(robot cell)
+
+로봇+주변설비+안전펜스가 묶인 하나의 작업 단위
+
+업계 표준 용
+어
+
+턴키(turnkey)
+
+셀 구축 전체를 한 업체가 일괄 수행해 '키만 돌리면' 되는 납품 방식
+
+계약 용어
+
+출처 등급 주의 : '로봇 공기계'라는 표현 자체는 협회 자료·표준 문서에서 정의된 공식 용어로 확인되지 않은 시장 구어. 다만 개
+념의 근거는 표준에 있음 — ISO 정의상 산업용 로봇 본체에는 엔드이펙터가 미포함이며, 엔드이펙터 결합부터 '로봇 시스템'으
+로 구분.
+출처 : https://www.iso.org/news/2016/03/Ref2057.html
+
+논의 포인트 : 공기계 가격은 공개 시세가 있지만 로봇 도입비의 상당 부분은 SI 비용. "로봇이 싸졌는데 왜 자동화는 비싼가"라
+는 질문의 답이 이 용어 한 줄에 있고, 코봇(UR5의 셀프 셋업)이 노린 것도 정확히 이 SI 비용 절감.
+
+5부. 부수 용어 사전
+본문에 스치듯 등장한 고유명사·기술 용어 보충.
+
+UR3 / UR5 / UR10
+유니버설로봇의 코봇 라인업. UR5(2008)가 세계 최초 상용 코봇으로 덴마크 Linatex에 첫 설치, UR10(2012)은 대형,
+UR3(2015)는 탁상형. 숫자는 대략 페이로드(kg)를 의미.
+출처 https://www.wiredworkers.io/blog/from-robot-to-cobot/
+출처 https://www.articsledge.com/post/collaborative-robots-cobots
+
+6D 마우스
+상하·전후·좌우 이동 3방향 + 3축 회전, 합계 6자유도를 한 손잡이로 입력하는 조작 장치. KUKA가 1996년 세계 최초의 PC 기
+반 로봇 컨트롤러와 함께 티치펜던트에 탑재해, 윈도우 UI에서 로봇을 실시간으로 움직이는 조작 방식을 최초로 구현.
+출처 https://www.robots.com/articles/kuka-robot-history
+
+IMU(관성측정장치)
+가속도계·자이로스코프(경우에 따라 지자기계)를 묶어 기체의 가속도·각속도·자세를 측정하는 센서. X·Y·Z 3축의 선형 가속도
+와 회전 속도를 감지해 로봇의 '평형감각' 역할을 하며, 라이다·카메라가 놓치는 순간적인 움직임 데이터를 보완. AMR·휴머노
+이드·드론 항법의 기본 부품.
+
+12
+
+로봇 스터디 마스터 문서
+
+출처 https://www.advancednavigation.com/tech-articles/inertial-measurement-unit-imu-an-introduction/
+출처 https://www.generationrobots.com/blog/en/imu-and-robotics-all-you-need-to-know/
+
+깊이 카메라(depth camera / RGB-D)
+일반 컬러 영상(RGB)에 픽셀별 거리 정보(D)를 더해 3차원 깊이 지도를 만드는 카메라. ToF(빛 왕복 시간 측정) 방식 등이 있
+고, 물체 인식과 장애물 감지를 한 대로 처리. IMU와 결합하면 저조도에서도 공간 인식 정확도가 올라가 AMR·자율주행 로봇
+인지 계층의 표준 조합.
+출처 https://www.e-consystems.com/blog/camera/technology/the-role-of-inertial-measurement-unit-imu-in-3d-time-of-flightcameras/
+출처 https://faxiangongchang.com/en/reports/china-mobile-robot-agv-amr-2026
+
+2D 라이다 / 3D 라이다
+레이저 거리 측정을 한 평면에서 360도 수행하면 2D, 여러 층을 쌓아 입체로 수행하면 3D. 2D는 실내 AMR의 표준 항법 센서,
+3D는 복잡한 환경·야외용. 실제 배송로봇 설계 사례에서 2D 라이다(360도 평면 깊이 지도)는 위치 추정·장애물 인식용, 깊이 카
+메라는 전방 3D 지도용으로 역할 분담.
+출처 https://arxiv.org/pdf/2103.09229
+출처 https://faxiangongchang.com/en/reports/china-mobile-robot-agv-amr-2026
+
+초음파 센서
+음파의 반사 시간으로 근거리 장애물을 감지하는 저가 센서. 라이다·카메라의 사각을 메우는 근접 보조 역할로 AMR 인지 계층
+에 포함.
+출처 https://faxiangongchang.com/en/reports/china-mobile-robot-agv-amr-2026
+
+VAL
+빅터 샤인먼이 자신의 Vicarm 로봇용으로 만든 BASIC 기반 로봇 프로그래밍 언어(Victor's AL). PDP-11 한 대로 로봇을 프로
+그래밍하는 시연을 통해 복잡한 Algol 계열보다 단순한 언어로 로봇을 다루는 길을 열었고, 이후 유니메이션 PUMA의 언어로
+발전.
+출처 https://rodneybrooks.com/the-origin-of-robot-arm-programming-languages/1000/
+
+드럼 메모리
+초기 유니메이트의 프로그램 저장 장치. 회전하는 자기 드럼에 동작 순서를 기록했고, 패리티 검사까지 갖춘 독자 개발품. 반도
+체 메모리 이전 시대에 '프로그램 가능한 기계'를 구현한 수단.
+출처 https://en.wikipedia.org/wiki/Unimation
+
+Guide-O-Matic / Radox
+Guide-O-Matic은 1954년 배럿 일렉트로닉스의 최초 AGV 제품명. 와이어 신호를 따라 트레일러를 견인. Radox는 같은 회사
+의 무선 조종 산업 차량으로, 팔레트 픽업·견인을 프로그래밍할 수 있었음.
+출처 https://www.iqsdirectory.com/articles/automated-guided-vehicle/types-of-agvs-automatic-guided-vehicles.html
+
+픽앤플레이스(pick and place)
+집어서(pick) 옮겨 놓는(place) 작업의 총칭. 1978년 SCARA가 이 개념의 최초 사례로 꼽히며, 델타 로봇·물류 로봇의 기본 어
+휘.
+출처 https://www.aventine.org/robotics/history-of-robotics/
+
+13
+
+로봇 스터디 마스터 문서
+
+다이캐스팅(die casting)
+녹인 금속을 금형에 고압 주입해 부품을 찍어내는 주조 공법. 뜨거운 금속을 다뤄야 해 최초의 로봇 투입 공정이 됨(1961 유니
+메이트).
+출처 https://www.invent.org/inductees/george-devol
+
+토트(tote) / GoCart
+토트는 물류 창고에서 상품을 담아 옮기는 표준 플라스틱 상자 — 어질리티 Digit의 실적 단위("토트 10만 개 이상"). GoCart는
+아마존 창고의 운반 카트로, AMR 프로테우스가 밑으로 들어가 들어 올려 운반하는 대상.
+출처 https://newmarketpitch.com/blogs/news/humanoid-robotics-figure-vs-tesla
+출처 https://www.therobotreport.com/a-decade-after-acquiring-kiva-amazon-unveils-its-first-amr/
+
+Helix (Figure AI)
+Figure의 휴머노이드 제어용 AI 시스템. 2026년 1월 출시된 Helix 02는 1,000만 파라미터 신경망으로 약 10만 9천 줄의 수작
+업 C++ 균형 제어 코드를 대체 — 규칙 기반 제어에서 학습 기반(임바디드 AI) 제어로의 전환을 보여주는 공개 사례.
+출처 https://newmarketpitch.com/blogs/news/humanoid-robotics-figure-vs-tesla
+
+LBR 시리즈 (KUKA)
+KUKA의 경량 협동로봇 계보. LBR3(2004)가 첫 코봇, LBR4(2008), LBR iiwa(2013)로 이어짐. 독일항공우주센터(DLR) 로보
+틱스·메카트로닉스 연구소와의 협력으로 알루미늄 경량 구조를 채택.
+출처 https://www.beboqrobotics.com/blog/2023/03/01/history-of-collaborative-robots/
+출처 https://www.scribd.com/document/288117684/History-of-Industrial-Robots
+
+T3 (Cincinnati Milacron)
+1974년 신시내티 밀라크론이 낸 최초의 마이크로컴퓨터 제어 상용 로봇("The Tomorrow Tool"). 개발자는 리처드 혼. 볼보
+등 자동차 업계에 판매, 로봇 사업부는 1990년 ABB 인수.
+출처 https://arxiv.org/pdf/1704.08617
+출처 https://www.scribd.com/document/288117684/History-of-Industrial-Robots
+
+Vicarm
+샤인먼이 1973년 마운틴뷰에 세운 로봇팔 제조사. 스탠퍼드 암·MIT 암 계열 설계를 SRI·JPL·MIT 등 연구기관에 공급하다
+1977년 유니메이션에 매각 — PUMA의 모태.
+출처 https://grokipedia.com/page/Programmable_Universal_Machine_for_Assembly
+출처 https://medium.com/silicon-valley-robotics/farewell-to-victor-scheinman-inventor-of-the-modern-robot-arm-d02c07db0afa
+
+로봇(robot)이라는 말
+체코어로 부역 노동을 뜻하는 말에서 유래. 체코 작가 카렐 차페크가 1920년 희곡에서 인공 생체 하인을 가리키는 말로 사용했
+고, 이후 아시모프 등이 확산. 엥겔버거는 아시모프의 로봇 3원칙에서 '해를 끼치지 않는 일부터'라는 사업 철학을 얻었다고 전
+해짐.
+출처 https://www.allaboutlean.com/kuka-famulus/
+출처 https://www.automate.org/robotics/engelberger/joseph-engelberger-unimate
+
+14
+
+로봇 스터디 마스터 문서
+
+6부. 크로스체크 노트 : 출처 간 연도가 엇갈리는
+지점
+쟁점
+
+출처 A
+
+출처 B
+
+정리
+
+최초
+
+1953년, 사우스캐롤라이나 식료품 창고
+
+1954년 Guide-O-Matic 개발
+
+1953년 개발·배치, 1954년 제품화로
+
+AGV
+
+에 견인형 배치
+
+(hokuyo-usa.com,
+
+보는 것이 합리적
+
+연도
+
+(faxiangongchang.com)
+
+iqsdirectory.com)
+
+유니메
+
+1959년 트렌턴 GM 다이캐스팅 공장에
+
+1961년 유잉 GM 공장 투입
+
+1959 시제품, 1961 양산형 판매·설치
+
+이트
+
+시제품 #001 설치 (automate.org)
+
+(robotsguide.com,
+
+로 구분
+
+첫설
+
+historyofinformation.com)
+
+치
+코봇
+
+1996년 발명 (iticollege.edu,
+
+1999년 발명·특허
+
+1996 개념·논문, 1999 특허 등록으로
+
+발명
+
+mccormick.northwestern.edu)
+
+(engineering.com)
+
+구분하면 모순 없음
+
+하모닉
+
+1955년 발명·특허
+
+1957년 특허 (hackaday.com,
+
+1955 발명, 기본 원리 공표·특허
+
+드라이
+
+(harmonicdrive.net,
+
+howtomechatronics.com,
+
+(2,906,143) 1957로 구분하는 서술이
+
+브특
+
+harmonicdrive.de)
+
+yooheart-robot.com)
+
+유력 (legacy.harmonicdrive.net)
+
+1956년 설립 (invent.org)
+
+1962년 설립 (en.wikipedia.org/
+
+1956 데볼·엥겔버거 협력 개시, 법인
+
+wiki/Unimation)
+
+설립·사명 정리는 이후로 구분. 자료마
+
+시점
+
+허연
+도
+유니메
+이션
+설립
+
+다 기준이 다름을 명시하고 인용
+
+연도
+산업로
+
+미국 측은 1961 유니메이트 중심 서술
+
+독일 측은 6축 파물루스를 근대 산업
+
+'최초'의 기준(설치 vs 6축 전기)이 다
+
+봇사의
+
+로봇의 출발로 보는 시각 병존
+
+른 관점 차이
+
+기점
+
+(allaboutlean.com)
+
+7부. 전체 출처 목록
+연대기·용어 해부에 인용된 출처 전체. 나무위키·네이버블로그 제외 원칙 적용.
+공식·학술·표준
+https://www.iso.org/news/2016/03/Ref2057.html
+https://www.jstage.jst.go.jp/article/jrobomech/26/1/26_5/_pdf/-char/en
+https://peshkin.mech.northwestern.edu/publications/1996_Colgate_CobotsRobotsCollaboration.pdf
+https://mccormick.northwestern.edu/news/articles/2016/08/twenty-years-later-cobots-co-opt-assembly-lines.html
+https://actu.epfl.ch/news/epfl-mourns-pioneering-roboticist-reymond-clavel-2
+https://pmc.ncbi.nlm.nih.gov/articles/PMC11368676/
+https://pmc.ncbi.nlm.nih.gov/articles/PMC5117641/
+
+15
+
+로봇 스터디 마스터 문서
+
+https://arxiv.org/pdf/1704.08617
+https://arxiv.org/pdf/1503.04967
+https://arxiv.org/pdf/2103.09229
+https://members.worldrobotics.org/robot-history
+https://ifr.org/robot-history
+https://ethw.org/Oral-History:Victor_Scheinman
+
+업계 단체·기업 공식
+https://www.automate.org/robotics/engelberger/joseph-engelberger-unimate
+https://www.automate.org/robotics/tech-papers/iso-ts-15066-explained
+https://www.automate.org/motion-control/videos/c-walton-musser-prolific-inventor
+https://www.kuka.com/en-us/company/iimagazine/2023/11/experience-the-german-engineering-spirit
+https://www.kuka.com/en-de/company/iimagazine/2023/12/homeofrobotik-robotikgeschichte
+https://www.kuka.com/en-de/company/about-kuka/history
+https://www.harmonicdrive.net/technology/harmonicdrive
+https://legacy.harmonicdrive.net/aboutus/musser/
+https://harmonicdrive.de/en/company
+https://www.invent.org/inductees/george-devol
+https://www.invent.org/blog/inventors/George-Devol-Industrial-Robot
+https://www.advancednavigation.com/tech-articles/inertial-measurement-unit-imu-an-introduction/
+
+전문 매체·역사 아카이브
+https://spectrum.ieee.org/george-devol-a-life-devoted-to-invention-and-robots
+https://www.historyofinformation.com/detail.php?entryid=4071
+https://www.historyofinformation.com/detail.php?entryid=4352
+https://robotsguide.com/robots/unimate
+https://en.wikipedia.org/wiki/Unimate
+https://en.wikipedia.org/wiki/Unimation
+https://en.wikipedia.org/wiki/Victor_Scheinman
+https://medium.com/silicon-valley-robotics/farewell-to-victor-scheinman-inventor-of-the-modern-robot-arm-d02c07db0afa
+https://robohub.org/farewell-to-vic-scheinman-inventor-of-the-modern-robot-arm/
+https://rodneybrooks.com/the-origin-of-robot-arm-programming-languages/1000/
+https://www.aventine.org/robotics/history-of-robotics/
+https://www.allaboutlean.com/kuka-famulus/
+https://www.therobotreport.com/a-decade-after-acquiring-kiva-amazon-unveils-its-first-amr/
+https://www.engineering.com/infographic-a-brief-history-of-collaborative-robots/
+https://emag.directindustry.com/2022/06/23/behind-the-logo-the-origin-of-kuka/
+https://hackaday.com/2026/03/11/3d-printing-a-harmonic-pin-ring-gearing-drive/
+https://howtomechatronics.com/how-it-works/what-is-strain-wave-gear-harmonic-drive-a-perfect-gear-set-for-robotics-applications/
+
+업계 블로그·시장 자료 (교차 확인용 보조 출처)
+https://blog.robotiq.com/a-brief-history-of-robots-in-manufacturing
+https://blog.3ds.com/brands/delmia/introducing-agvs-on-the-shop-floor-here-is-what-you-need-to-keep-in-mind/
+https://aiut.com/en/blog/amr-or-agv/
+https://www.hokuyo-usa.com/resources/infographics/differences-between-agvs-and-amrs
+https://www.conger.com/amr-vs-agv/
+https://www.fdatabot.com/agv-vs-amr-what-is-the-difference-and-how-to-choose-guide/
+https://faxiangongchang.com/en/reports/china-mobile-robot-agv-amr-2026
+https://www.iqsdirectory.com/articles/automated-guided-vehicle/types-of-agvs-automatic-guided-vehicles.html
+https://www.wiredworkers.io/blog/from-robot-to-cobot/
+https://www.articsledge.com/post/collaborative-robots-cobots
+https://www.articsledge.com/post/ai-humanoid-robots
+https://iticollege.edu/blog/collaborative-robots-in-manufacturing/
+
+16
+
+로봇 스터디 마스터 문서
+
+https://www.beboqrobotics.com/blog/2023/03/01/history-of-collaborative-robots/
+https://ebots.com/cobotics-definition-safety-roi-real-world-uses/
+https://standardbots.com/blog/collaborative-robot-safety-standards
+https://www.evsrobot.com/cobot-safety-standards-iso-10218-vs-iso-ts-15066-buyers-guide.html
+https://www.evsint.com/who-invented-the-first-scara-robot/
+https://sastrarobotics.com/scara-robots-the-most-sought-after-robot/
+https://www.yooheart-robot.com/news/4580/
+https://www.newker-cnc.com/news/the-development-history-of-industrial-robots-the-evolution-from-robotic-arms-to-intelligentmanufacturing/
+https://robotsdoneright.com/Articles/kuka-robotic-history.html
+https://www.robots.com/articles/kuka-robot-history
+https://www.e-consystems.com/blog/camera/technology/the-role-of-inertial-measurement-unit-imu-in-3d-time-of-flight-cameras/
+https://www.generationrobots.com/blog/en/imu-and-robotics-all-you-need-to-know/
+https://www.aimagicx.com/blog/humanoid-robots-workplace-tesla-optimus-atlas-2026
+https://www.meta-intelligence.tech/en/insight-physical-ai
+https://newmarketpitch.com/blogs/news/humanoid-robotics-figure-vs-tesla
+https://optimusk.blog/blog/what-is-tesla-optimus/
+https://eu.36kr.com/en/p/3476581554018438
+https://interestingengineering.com/culture/can-optimus-make-america-win
+https://www.researchgate.net/publication/286780501_Development_of_the_SCARA
+https://www.researchgate.net/figure/One-of-the-first-prototypes-of-SCARA-robot-designed-by-Hiroshi-Makino_fig5_331090220
+https://www.researchgate.net/figure/The-legendary-IRB-6-from-12_fig4_329590080
+https://scispace.com/pdf/from-the-unimate-to-the-delta-robot-the-early-decades-of-5pduggsavq.pdf
+https://www.academia.edu/38567057/From_the_Unimate_to_the_Delta_robot_the_early_decades_of_Industrial_Robotics
+https://grokipedia.com/page/SCARA
+https://grokipedia.com/page/Programmable_Universal_Machine_for_Assembly
+https://grokipedia.com/page/Delta_robot
+https://grokipedia.com/page/Cobot
+https://www.scribd.com/document/288117684/History-of-Industrial-Robots
+
+문서 성격 안내 : 연도·인명·수치는 복수 출처로 교차 확인된 사실이고, '비유'(전차 포탑, 크레인 게임기 등)와 '논의 포인트'는
+이해를 돕기 위한 작성자 해설. 2025-2026 휴머노이드 양산 전망은 업체 발표 기반 주장으로 사실과 구분해 인용할 것.
+
+다음 액션 : 스터디 진행 시 1부 용어 지도 → 2부 연대기 토론("왜 그 시점에 그 형태가 나왔는가") → 4부 해부로 복습 → 필
+요 시 공정별 용어(용접·도장·팔레타이징)와 경영지표 용어(로봇 밀도·가동률)를 후속편으로 확장
+
+17
+
+
