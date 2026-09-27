@@ -112,7 +112,7 @@ const 물음 = (덩이) => `시사 크로스워드 힌트를 다시 쓴다. 지�
 한 줄에 하나씩 "낱말|아는말 또는 낯선말|고친 힌트" 꼴로만 적는다. 다른 말은 쓰지 않는다.
 고칠 데가 없으면 지금 힌트를 그대로 적는다.
 
-${덩이.map(([w, clue]) => `${w} | ${clue}`).join('\n')}`;
+${덩이.map(([w, clue]) => `${w} | ${clue}${다시쓸말.has(w) ? '   ← 편집국이 다시 쓰라고 한 말. 지금 힌트를 그대로 두지 말고 반드시 새로 쓴다' : ''}`).join('\n')}`;
 
 const 묶음크기 = 25;
 const 새힌트 = new Map();
@@ -156,11 +156,12 @@ const 성한가 = (w, clue) => {
 };
 
 let 고침 = 0, 그대로 = 0;
+const 바뀐 = new Set();
 const 남길 = [];
 for (const g of pack.groups) {
   for (const w of g.words) {
     const 새것 = 새힌트.get(w[0]);
-    if (새것 && 새것 !== w[1] && 성한가(w[0], 새것)) { w[1] = 새것; 고침++; } else 그대로++;
+    if (새것 && 새것 !== w[1] && 성한가(w[0], 새것)) { w[1] = 새것; 고침++; 바뀐.add(w[0]); } else 그대로++;
     남길.push(w);
   }
 }
@@ -185,8 +186,11 @@ function serialize(pk) {
 fs.writeFileSync(packPath, serialize(pack), 'utf8');
 console.error(`→ ${packPath} 갱신 (낱말 ${남길.length}개)`);
 if (새것만 && 다시쓸말.size) {
-  // 이번에 다시 쓴 말은 목록에서 지운다 (머리 주석은 남긴다)
-  const 한것 = new Set(대상.map(w => w[0]));
+  // 이번에 실제로 새로 쓴 말만 목록에서 지운다 (머리 주석은 남긴다).
+  // 전에는 모델이 «그대로 둔다» 고 답해도 지워서, 편집국이 다시 쓰라고 한 «빅테크» 가 그대로 나갔다
+  const 한것 = new Set(대상.map(w => w[0]).filter(w => 바뀐.has(w)));
+  const 안된것 = [...다시쓸말].filter(w => 대상.some(x => x[0] === w) && !바뀐.has(w));
+  if (안된것.length) console.error(`다시쓸말인데 새로 쓰지 못한 것 (목록에 남긴다): ${안된것.join(' ')}`);
   const 줄 = fs.readFileSync(다시쓸말경로, 'utf8').split(/\r?\n/).filter(l => !한것.has(l.trim()));
   fs.writeFileSync(다시쓸말경로, 줄.join('\n'), 'utf8');
 }
