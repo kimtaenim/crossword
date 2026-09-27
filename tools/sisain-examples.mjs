@@ -35,14 +35,15 @@ const arts = 재료기사(안전, JSON.parse(fs.readFileSync(path.join(repo, 'da
   .sort((a, b) => b.날.localeCompare(a.날));
 
 // 정답을 가린다. 정답 전체뿐 아니라 정답의 두 글자 이상 조각도 가린다 («탄핵소추» 예문의 «탄핵» 이 보였다)
-// 조각은 정답이 넉 자 이하면 두 글자부터, 다섯 자 이상이면 세 글자부터 가린다.
-// («부당노동행위» 에서 «노동» 까지 가리면 «원청 노동자» 가 «원청 ㅇㅇ자» 가 됐다)
-function 가림(글, w) {
-  let out = 글.replace(낱말꼴(w), 'ㅇ'.repeat(w.length));
+// 정답(낱말꼴)만 ㅇㅇㅇ 으로 가린다. 조각까지 가리면 «전당대회» 가 «전ㅇㅇ회» 처럼 우스워진다.
+// 대신 정답 조각(넉 자 이하 답은 두 글자, 다섯 자 이상은 세 글자)이 남아 있는 글은 예문으로 쓰지 않는다(조각샘).
+const 가림 = (글, w) => 글.replace(낱말꼴(w), 'ㅇ'.repeat(w.length));
+function 조각샘(글, w) {
+  const t = 글.replace(낱말꼴(w), '');
   const 최소 = w.length <= 4 ? 2 : 3;
   for (let n = w.length - 1; n >= 최소; n--)
-    for (let i = 0; i + n <= w.length; i++) out = out.split(w.slice(i, i + n)).join('ㅇ'.repeat(n));
-  return out;
+    for (let i = 0; i + n <= w.length; i++) if (t.includes(w.slice(i, i + n))) return true;
+  return false;
 }
 // 사람이 다치거나 숨진 일을 퍼즐 재료로 쓰지 않는다(편집국 원칙). 그런 말이 든 제목·문장은 예문으로 안 쓴다
 const 다친일 = /사망|숨지|숨진|숨졌|목숨|부상|다쳐|다친|다쳤|피해자|희생|참사|살해|살인|폭행|성폭|성범죄|자살|극단적 선택|유족|시신|중상|학대|추락|질식|익사|분신/;
@@ -74,11 +75,12 @@ function 문장(본문, w) {
 function 예문(w) {
   const 제목에 = [], 본문에 = [];
   for (const a of arts) {
+    if (조각샘(a.제목, w)) continue;   // 제목에 정답 조각이 남으면 그 기사는 쓰지 않는다 (제목은 늘 같이 보인다)
     if (든다(a.제목, w)) { if (괜찮은글(a.제목)) 제목에.push({ a, 글: a.제목 }); continue; }
     const n = 몇번(a.본문, w);
     if (n >= 1) {   // 본문에 한 번만 나와도 후보다 (편집국 결정)
       const s = 문장(a.본문, w);
-      if (s && 괜찮은글(s)) 본문에.push({ a, 글: s, n });
+      if (s && 괜찮은글(s) && !조각샘(s, w)) 본문에.push({ a, 글: s, n });
     }
   }
   // 가장 새 기사부터 (편집국 결정: 최신으로). 같은 날이면 제목에 든 것을 먼저
