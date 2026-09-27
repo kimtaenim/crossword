@@ -130,17 +130,16 @@ function 대목(w, 개수 = 2) {
   return out;
 }
 
-/** 보기 다섯 — 정답과, 글자 수가 비슷한 다른 낱말 넷 */
+/** 보기 다섯 — 정답과, 글자 수가 비슷한 다른 낱말 넷.
+    글자 수 ±1 안에 다른 낱말이 넷이 안 되면(«구속전피의자심문» 같은 긴 말) 그다음 가까운 것에서 채운다.
+    전에는 넷을 채울 때까지 무작위로 뽑기만 해서, 또래가 둘뿐인 말에서 끝없이 돌며 관문 전체가 멈췄다. */
 function 보기만들기(w) {
-  const 또래 = 모든낱말.filter(x => x[0] !== w[0] && Math.abs(x[0].length - w[0].length) <= 1);
-  const 뽑은 = [];
-  const 쓴것 = new Set();
-  while (뽑은.length < 4 && 또래.length) {
-    const c = 또래[Math.floor(Math.random() * 또래.length)][0];
-    if (!쓴것.has(c)) { 쓴것.add(c); 뽑은.push(c); }
-  }
-  const 다섯 = [w[0], ...뽑은].sort(() => Math.random() - 0.5);
-  return 다섯;
+  const 거리 = x => Math.max(0, Math.abs(x.length - w[0].length) - 1);
+  const 후보 = [...new Set(모든낱말.map(x => x[0]).filter(x => x !== w[0]))]
+    .map(x => [x, 거리(x), Math.random()])
+    .sort((a, b) => a[1] - b[1] || a[2] - b[2]);
+  const 뽑은 = 후보.slice(0, 4).map(x => x[0]);
+  return [w[0], ...뽑은].sort(() => Math.random() - 0.5);
 }
 
 /** 관문 통과 여부를 묶음으로 묻는다 */
