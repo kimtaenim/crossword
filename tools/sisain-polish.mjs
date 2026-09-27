@@ -14,7 +14,7 @@
 
    --쓰기 가 없으면 미리보기만 한다.
 */
-import { 힌트규칙 } from './lib-hint.mjs';
+import { 힌트규칙, 쓰기설정 } from './lib-hint.mjs';
 import { 안전모듈, 재료기사 } from './lib-safety.mjs';
 import { 도장읽기, 규칙판, 유효한가 } from './lib-stamp.mjs';
 import fs from 'fs';
@@ -117,8 +117,7 @@ let 입력토큰 = 0, 출력토큰 = 0;
 for (let i = 0; i < 대상.length; i += 묶음크기) {
   const 덩이 = 대상.slice(i, i + 묶음크기);
   const j = await 불러본다({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 3000,
+      ...쓰기설정,   // 힌트는 비싼 모델이 쓴다 (lib-hint.mjs)
       messages: [{ role: 'user', content: 물음(덩이) + '\n\n' + 힌트규칙() + '\n\n' + 안전.규칙글() }],
     });
   for (const line of (j.content || []).map(c => c.text || '').join('').split(/\r?\n/)) {

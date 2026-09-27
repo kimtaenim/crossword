@@ -46,3 +46,12 @@ export function 너무어려운가(낱말, 기사수) {
   }
   return { 어렵다: false, 까닭: '' };
 }
+
+/* ■ 누가 쓰고 누가 푸나 — 사람이 정한 원칙
+   힌트와 낱말은 비싼 모델이 쓴다. 싼 모델은 문제를 푸는 쪽(관문)에만 쓴다.
+   약한 모델이 풀 수 있어야 실력 없는 사람도 풀고, 쓰는 쪽이 약하면 힌트가 사전 풀이로 떨어진다.
+   (쓰기를 haiku 로 돌렸더니 판정에 걸린 396개 가운데 15개만 고쳐 넘었다.)
+   Opus 5.5 는 생각이 늘 켜져 있어 답이 잘리지 않게 max_tokens 를 넉넉히 준다. */
+export const 쓰는모델 = process.env.WRITE_MODEL || 'claude-opus-5-5';
+export const 쓰기설정 = { model: 쓰는모델, max_tokens: 16000, output_config: { effort: 'medium' } };
+export const 푸는모델 = 'claude-haiku-4-5-20251001';

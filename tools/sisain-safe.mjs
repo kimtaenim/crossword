@@ -19,7 +19,7 @@
    기계가 보기 전에 낱말 목록으로 먼저 턴다(아래 거친말). 목록에 없는 것도 모델이 잡는다.
    사람이 손댄 힌트도 검사한다 — 안전은 예외를 두지 않는다.
 */
-import { 힌트규칙 } from './lib-hint.mjs';
+import { 힌트규칙, 쓰기설정 } from './lib-hint.mjs';
 import { 안전모듈, 품질모듈, 재료기사 } from './lib-safety.mjs';
 import { 도장키, 도장읽기, 도장쓰기, 규칙판, 유효한가 } from './lib-stamp.mjs';
 import { 판정물음 as 물음, 난이도물음, 난이도읽기 } from './lib-judge.mjs';
@@ -127,10 +127,8 @@ const 성한가 = (w, clue) => {
   return true;
 };
 
-/* 판정은 힌트를 쓴 모델(sonnet)과 다른, 더 센 모델이 한다. 쓴 쪽이 제 글을 제가 보면 같은 데서 눈이 먼다 */
+/* 판정 모델. 쓰기도 Opus 5.5 라 지금은 같은 모델이 쓰고 판정한다(물음은 따로). SAFE_MODEL 로 바꿀 수 있다 */
 const 판정모델 = process.env.SAFE_MODEL || 'claude-opus-5-5';
-// 판정에 걸린 힌트 다시 쓰기. haiku 로 했더니 396개 가운데 15개만 판정을 넘었다 — 걸린 것만 쓰므로 sonnet 으로 한다
-const 모델 = process.env.WRITE_MODEL || 'claude-sonnet-5';
 const 도장 = 도장읽기();
 const 찍기 = (w, c) => { 도장[도장키(w, c)] = { 날: new Date().toISOString().slice(0, 10), 모델: 판정모델, 규칙판: 판 }; };
 const 묶음 = 30;
@@ -185,7 +183,7 @@ for (let i = 0; i < 할것.length; i += 묶음) {
      도장 없이 단어장에 남긴다. 화면에는 안 나오고, 다음 실행에서 다시 쓴다. */
   let 남은 = 고칠것;
   for (let 차례 = 1; 차례 <= 3 && 남은.length; 차례++) {
-    const k = await 불러본다({ model: 모델, max_tokens: 4000, messages: [{ role: 'user', content: 다시쓰라(남은) + '\n\n' + 힌트규칙() + '\n\n' + 안전.규칙글() }] });
+    const k = await 불러본다({ ...쓰기설정, messages: [{ role: 'user', content: 다시쓰라(남은) + '\n\n' + 힌트규칙() + '\n\n' + 안전.규칙글() }] });
     입력 += k.usage?.input_tokens || 0; 출력 += k.usage?.output_tokens || 0;
     const 새것 = new Map();
     for (const line of 글자(k).split(/\r?\n/)) {

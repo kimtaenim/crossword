@@ -14,7 +14,7 @@
 
    힌트는 기사에 적힌 것만 가지고 쓴다. 지어내면 푸는 사람이 영영 못 맞힌다.
 */
-import { 힌트규칙 } from './lib-hint.mjs';
+import { 힌트규칙, 쓰기설정 } from './lib-hint.mjs';
 import { 안전모듈, 재료기사 } from './lib-safety.mjs';
 import fs from 'fs';
 import path from 'path';
@@ -117,8 +117,7 @@ let 입력토큰 = 0, 출력토큰 = 0;
 for (let i = 0; i < 글.length; i += 한번에) {
   const 덩이 = 글.slice(i, i + 한번에);
   const j = await 불러본다({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2000,
+      ...쓰기설정,   // 낱말과 힌트는 비싼 모델이 쓴다 (lib-hint.mjs)
       messages: [{ role: 'user', content: 물음(덩이) + '\n\n' + 힌트규칙() + '\n\n' + 안전.규칙글() }],
     });
   for (const line of (j.content || []).map(c => c.text || '').join('').split(/\r?\n/)) {
