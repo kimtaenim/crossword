@@ -211,6 +211,8 @@ await 동시에(묶음들_, async (i) => {
     for (const x of 남은) {
       const n = 새것.get(x.w[0]);
       if (n && 성한가(x.w[0], n) && 일반.get(x.w[0])?.답 === '괜찮음' && 피해.get(x.w[0])?.답 === '괜찮음') {
+        // 고친 것은 그 자리에서 한 줄씩 남긴다. 끝나기 전에도 진행 기록(live-progress)에서 전·후를 볼 수 있게
+        console.error(`  고침 [${x.w[0]}] 걸린 까닭: ${String(x.까닭 || '').slice(0, 120)}\n     전: ${x.w[1]}\n     후: ${n}`);
         고친것.push([x.w[0], x.w[1], n]); x.w[1] = n; if (WRITE) 찍기(x.w[0], n);
       } else {
         const 까닭 = !n ? '다시 쓴 답이 없음'
@@ -222,7 +224,7 @@ await 동시에(묶음들_, async (i) => {
     남은 = 다음;
   }
   for (const x of 남은) 못고친것.push([x.w[0], x.w[1], x.까닭]);
-  process.stderr.write(`  검사 ${Math.min(i + 묶음, 할것.length)}/${할것.length} — 걸린 것 ${걸린것.length} · 고친 것 ${고친것.length} · 못 고친 것 ${못고친것.length}\r`);
+  process.stderr.write(`  검사 ${Math.min(i + 묶음, 할것.length)}/${할것.length} — 걸린 것 ${걸린것.length} · 고친 것 ${고친것.length} · 못 고친 것 ${못고친것.length}\n`);
 });
 
 // 판정(opus 5.5: 입력 $4·출력 $20 /백만 토큰)이 대부분이라 그 값으로 어림한다
