@@ -118,7 +118,7 @@ for (let i = 0; i < rows.length; i++) {
 
 /* 단어장은 천 개를 유지한다. 넘치면 기사에 마지막으로 나온 지 가장 오래된 말부터 밀려난다 —
    새로 나오는 말이 묵은 말을 밀어내는 방식이다. 같은 날이면 덜 나온 말이 먼저 밀린다. */
-const 한도 = Number(process.env.WORD_LIMIT || 850);   // 늘 850개를 유지한다. 넘치면 가장 오래 안 나온 말부터 밀려난다 (편집국 결정)
+const 한도 = Number(process.env.WORD_LIMIT || 900);   // 늘 900개를 유지한다. 넘치면 가장 오래 안 나온 말부터 밀려난다 (편집국 결정)
 if (rows.length > 한도) {
   const 남길 = new Set([...rows].sort((a, b) => b.마지막.localeCompare(a.마지막) || b.전체 - a.전체).slice(0, 한도).map(r => r.w));
   const 밀린 = rows.filter(r => !남길.has(r.w));
