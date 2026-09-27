@@ -97,7 +97,7 @@ const 물음 = (덩이) => `시사 크로스워드에 실을 낱말을 기사에
 - 그냥 일반 명사 (프로그램, 아이디어, 우리나라)
 
 ■ 힌트 규칙
-- 마흔 자 안쪽. 한 줄로 읽히게.
+- 여든 자 안쪽. 장면을 넣을 자리를 쓴다.
 - 정답이 힌트에 통째로 들어가면 안 된다. 정답의 세 글자가 잇달아 들어가도 안 된다.
   («유럽연합» 힌트에 «유럽» 은 써도 되고, «온실가스감축목표» 힌트에 «온실가스» 는 안 된다)
 - 그 말이 «무엇인가» 를 적는다. 언제 쓰는 말인지, 왜 중요한지는 적지 않는다.
@@ -150,7 +150,7 @@ for (const [w, clue, k] of 캔것.values()) {
   if (clue.includes(w)) 샘 = true;
   if (거친말.test(clue)) { 버림.push([w, clue, '거친 말']); continue; }
   if (샘) { 버림.push([w, clue, '정답이 샘']); continue; }
-  if (clue.length > 60 || clue.length < 6) { 버림.push([w, clue, '길이']); continue; }
+  if (clue.length > 80 || clue.length < 6) { 버림.push([w, clue, '길이']); continue; }
   통과.push([w, clue, k]);
 }
 

@@ -31,8 +31,8 @@ global.window = { PACKS: names.map(n => JSON.parse(fs.readFileSync(dir + n, 'utf
 
 // 힌트에 «언제 어디서 나온 말인가» 를 붙이면서 두 토막이 됐다 —
 // [어디서 나왔나] + [무엇인가]. 마흔여섯 자로는 두 토막이 안 들어간다.
-// 힌트 줄은 넘치면 스스로 스크롤되므로 예순 자까지 받는다.
-const MAXLEN = 60;
+// 힌트 줄은 넘치면 스스로 스크롤되므로 여든 자까지 받는다 (장면을 담으려면 길어진다 — 편집국이 정함).
+const MAXLEN = 80;
 let bad = 0, n = 0;
 const seen = new Map();
 // 일부러 정답의 한 조각을 힌트에 두는 것 — 상표 이름이 곧 실마리인 경우
