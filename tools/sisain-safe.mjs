@@ -85,12 +85,24 @@ const 낱말들 = pack.groups.flatMap(g => g.words);
 // 지금 규칙으로 도장을 받은 힌트는 다시 묻지 않는다(글도 규칙도 그대로이므로). --전부 면 모두 다시 본다.
 // 규칙이 바뀌면 판이 바뀌어 모든 도장이 무효가 되고, 전부 다시 검사받는다.
 const 판 = 규칙판(안전);
+const 거친말 = /빨갱이|종북|좌빨|수꼴|토착왜구|매국노|틀딱|급식충|맘충|김치녀|한남충|짱깨|쪽바리|병신|미친놈|벙어리|절름발이|장애자|불구자|창녀|화냥|시럽급여|기생충같|떼쓰|밥그릇|철밥통/;
+const 성한가 = (w, clue) => {
+  if (!clue || clue.length > 80 || clue.length < 6) return false;
+  if (거친말.test(clue) || clue.includes(w)) return false;
+  if (!안전.검사(clue).안전) return false;
+  if (안전.곁가지(clue).붙음) return false;   // 고쳐 쓴 것에 곁가지를 되붙였으면 버린다
+  if (품질 && 품질.누설(w, clue, { 봐주기: 품질.봐주는길이.크로스워드 }).샘) return false;
+  if (!품질) for (let i = 0; i + 3 <= w.length; i++) if (clue.includes(w.slice(i, i + 3))) return false;
+  return true;
+};
+
 const 전부 = process.argv.includes('--전부');
-const 대상 = 전부 ? 낱말들 : 낱말들.filter(w => !유효한가(도장읽기(), w[0], w[1], 판));
+// 도장이 있어도 기계 검사(길이·누설·금지어)에 걸리면 다시 본다. 이것을 안 해서, 도장 받은 «서울시장» 힌트가
+// 정답 «서울시» 를 드러낸 채 마지막 검사(check-clues)에서 걸려 실행이 멈췄다
+const 대상 = 전부 ? 낱말들 : 낱말들.filter(w => !유효한가(도장읽기(), w[0], w[1], 판) || !성한가(w[0], w[1]));
 const 할것 = 맛보기 ? 대상.slice(0, 맛보기) : 대상;
 
 /** 목록으로 먼저 턴다. 여기 걸리면 모델에게 묻지 않고 바로 고쳐 쓴다 */
-const 거친말 = /빨갱이|종북|좌빨|수꼴|토착왜구|매국노|틀딱|급식충|맘충|김치녀|한남충|짱깨|쪽바리|병신|미친놈|벙어리|절름발이|장애자|불구자|창녀|화냥|시럽급여|기생충같|떼쓰|밥그릇|철밥통/;
 
 function 대목(w, 개수 = 2) {
   const out = [];
@@ -119,15 +131,6 @@ const 다시쓰라 = (목록) => `시사 주간지 크로스워드의 열쇠를 
 ${목록.map(x => `[${x.w[0]}] 지금 열쇠: ${x.w[1]}\n   문제: ${x.까닭}${대목(x.w[0]).map(e => `\n   기사: ${e}`).join('')}`).join('\n\n')}`;
 
 
-const 성한가 = (w, clue) => {
-  if (!clue || clue.length > 80 || clue.length < 6) return false;
-  if (거친말.test(clue) || clue.includes(w)) return false;
-  if (!안전.검사(clue).안전) return false;
-  if (안전.곁가지(clue).붙음) return false;   // 고쳐 쓴 것에 곁가지를 되붙였으면 버린다
-  if (품질 && 품질.누설(w, clue, { 봐주기: 품질.봐주는길이.크로스워드 }).샘) return false;
-  if (!품질) for (let i = 0; i + 3 <= w.length; i++) if (clue.includes(w.slice(i, i + 3))) return false;
-  return true;
-};
 
 /* 판정 모델. 쓰기도 Opus 5.5 라 지금은 같은 모델이 쓰고 판정한다(물음은 따로). SAFE_MODEL 로 바꿀 수 있다 */
 const 판정모델 = process.env.SAFE_MODEL || 'claude-opus-5-5';
@@ -172,9 +175,10 @@ await 동시에(묶음들_, async (i) => {
     // 시사와 상관없는 보통 낱말도 뺀다 — 시사 단어장이 «공동체·플라스틱» 으로 채워지면 시사 퍼즐이 아니다
     if (난이도.get(w[0]) === '일반어' && !살린.has(w[0])) { 일반어.push(w[0]); continue; }
     // 기계로 먼저 턴다 — 거친 말, 특정 사건 이름(공용 목록), 뉴스 곁가지 꼴
-    const 목록에걸림 = 거친말.test(w[1]) || !안전.검사(w[1]).안전 || 안전.곁가지(w[1]).붙음;
+    // 도장을 찍기 전에 마지막 검사(check-clues)와 같은 기계 검사를 다 거친다 — 누설·길이도
+    const 목록에걸림 = !성한가(w[0], w[1]);
     if (목록에걸림 || v?.답 === '고칠것') {
-      const 까닭 = 목록에걸림 ? '거친 말 목록에 걸림' : v.까닭;
+      const 까닭 = 목록에걸림 ? '기계 검사에 걸림 (정답 조각이 드러남·길이·금지어·곁가지 가운데 하나)' : v.까닭;
       걸린것.push([w[0], w[1], 까닭]);
       고칠것.push({ w, 까닭 });
     } else if (v?.답 === '괜찮음' && 피해판정.get(w[0])?.답 === '괜찮음' && 난이도.has(w[0])) {
