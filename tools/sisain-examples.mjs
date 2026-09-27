@@ -11,7 +11,7 @@
 
    ■ 고르는 법
    - 범죄·참사가 중심인 기사는 쓰지 않는다(재료기사). 금지어 목록에 걸리는 글도 쓰지 않는다.
-   - 제목에 그 말이 들어 있는 기사를 먼저, 없으면 그 말이 여러 번 나온(중심인) 기사에서 그 말이 든 문장을 쓴다.
+   - 제목에 그 말이 든 기사, 또는 본문에 그 말이 한 번이라도 나온 기사에서 그 말이 든 문장을 쓴다.
    - 가장 새 기사부터(최신 시사). */
 import { 안전모듈, 재료기사 } from './lib-safety.mjs';
 import fs from 'fs';
@@ -34,7 +34,13 @@ const arts = 재료기사(안전, JSON.parse(fs.readFileSync(path.join(repo, 'da
   .filter(a => /^\d+$/.test(a.id) && a.제목)
   .sort((a, b) => b.날.localeCompare(a.날));
 
-const 가림 = (글, w) => 글.split(w).join('ㅇ'.repeat(w.length));
+// 정답을 가린다. 정답 전체뿐 아니라 정답의 두 글자 이상 조각도 가린다 («탄핵소추» 예문의 «탄핵» 이 보였다)
+function 가림(글, w) {
+  let out = 글.split(w).join('ㅇ'.repeat(w.length));
+  for (let n = w.length - 1; n >= 2; n--)
+    for (let i = 0; i + n <= w.length; i++) out = out.split(w.slice(i, i + n)).join('ㅇ'.repeat(n));
+  return out;
+}
 // 사람이 다치거나 숨진 일을 퍼즐 재료로 쓰지 않는다(편집국 원칙). 그런 말이 든 제목·문장은 예문으로 안 쓴다
 const 다친일 = /사망|숨지|숨진|숨졌|목숨|부상|다쳐|다친|다쳤|피해자|희생|참사|살해|살인|폭행|성폭|성범죄|자살|극단적 선택|유족|시신|중상|학대|추락|질식|익사|분신/;
 const 괜찮은글 = 글 => 안전.검사(글).안전 && !안전.곁가지(글).붙음 && !다친일.test(글);
@@ -58,7 +64,7 @@ function 예문(w) {
   for (const a of arts) {
     if (a.제목.includes(w)) { if (괜찮은글(a.제목)) 제목에.push({ a, 글: a.제목 }); continue; }
     const n = a.본문.split(w).length - 1;
-    if (n >= 2) {
+    if (n >= 1) {   // 본문에 한 번만 나와도 후보다 (편집국 결정)
       const s = 문장(a.본문, w);
       if (s && 괜찮은글(s)) 본문에.push({ a, 글: s, n });
     }

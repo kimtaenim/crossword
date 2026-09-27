@@ -924,9 +924,12 @@ const 글자만 = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '
 function 예문줄(w) {
   const es = w && PACK && PACK.예문 && PACK.예문[w.word];
   if (!Array.isArray(es) || !es.length) return 기사링크(w);
+  // 회색 작은 글씨, 인용 표시. 날짜 · 〈제목〉 그리고 본문 문장은 따옴표로
   return '<ul class="ex">' + es.filter(e => /^\d+$/.test(String(e.id))).map(e =>
     `<li><a href="https://www.sisain.co.kr/news/articleView.html?idxno=${e.id}" target="_blank" rel="noopener">` +
-    `${글자만(e.날)} 〈${글자만(e.제목)}〉${e.예문 ? ' ' + 글자만(e.예문) : ''} ↗</a></li>`).join('') + '</ul>';
+    `<span class="src">${글자만(e.날)} · 〈${글자만(e.제목)}〉</span>` +
+    (e.예문 ? `<span class="quo">“${글자만(e.예문)}”</span>` : '') +
+    `</a></li>`).join('') + '</ul>';
 }
 
 /* 시사 단어장은 힌트의 장면을 가져온 시사IN 기사를 단다(pack.기사: 낱말 → 기사 번호).
