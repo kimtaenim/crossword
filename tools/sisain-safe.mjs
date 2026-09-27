@@ -104,10 +104,11 @@ function 대목(w, 개수 = 2) {
 const 다시쓰라 = (목록) => `시사 주간지 크로스워드의 열쇠를 다시 쓴다. 지금 열쇠에 나가면 안 되는 표현이 있다.
 
 ■ 지킬 것
-- 문제가 된 표현을 빼고, 그 낱말이 무엇인지를 담담하게 적는다.
+- «문제» 에 적힌 것을 모두 고친다. 뜻을 바로잡고, 장면(누가·어디서 이 말을 쓰는지)을 하나 넣는다.
 - 사람을 집단으로 묶어 규정하지 않는다. 한쪽 편을 들지 않는다.
 - 기사에 나온 대목을 앞에 붙이지 않는다. 뜻을 장면으로 적는다 («[어디서 나왔나], [무엇인가]» 꼴 금지).
-- 실제 사건·사고의 피해자나 가해자, 실존 인물 이름을 쓰지 않는다.
+- 실제 사건·사고의 피해자나 가해자, 수사·재판 중인 사람의 이름을 쓰지 않는다.
+  (이념·정책을 스스로 내건 널리 알려진 공인은 대표 예로 들 수 있다)
 - 예순 자 안쪽. 정답이 통째로 들어가면 안 되고, 정답의 세 글자가 잇달아 들어가도 안 된다.
 - 중학생이 소리 내어 읽고 알아들을 말로. «~하는 일», «~인 것», «~하는 곳», «~하는 돈» 으로 끝낸다.
 
@@ -128,7 +129,8 @@ const 성한가 = (w, clue) => {
 
 /* 판정은 힌트를 쓴 모델(sonnet)과 다른, 더 센 모델이 한다. 쓴 쪽이 제 글을 제가 보면 같은 데서 눈이 먼다 */
 const 판정모델 = process.env.SAFE_MODEL || 'claude-opus-5-5';
-const 모델 = process.env.WRITE_MODEL || 'claude-haiku-4-5-20251001';   // 다시 쓰기는 싼 모델. 고친 것도 opus 판정을 다시 받는다
+// 판정에 걸린 힌트 다시 쓰기. haiku 로 했더니 396개 가운데 15개만 판정을 넘었다 — 걸린 것만 쓰므로 sonnet 으로 한다
+const 모델 = process.env.WRITE_MODEL || 'claude-sonnet-5';
 const 도장 = 도장읽기();
 const 찍기 = (w, c) => { 도장[도장키(w, c)] = { 날: new Date().toISOString().slice(0, 10), 모델: 판정모델, 규칙판: 판 }; };
 const 묶음 = 30;
@@ -177,18 +179,22 @@ for (let i = 0; i < 할것.length; i += 묶음) {
     }
   }
 
-  if (고칠것.length) {
-    const k = await 불러본다({ model: 모델, max_tokens: 3000, messages: [{ role: 'user', content: 다시쓰라(고칠것) + '\n\n' + 힌트규칙() + '\n\n' + 안전.규칙글() }] });
+  /* 고쳐 쓰기는 세 번까지 한다. 판정이 왜 걸었는지를 다음 번 쓰기에 그대로 넘긴다.
+     (한 번만 쓰고 못 넘으면 낱말째 버리던 때, 721개 가운데 381개가 그렇게 사라졌다 —
+     판정은 까다로운데 쓰는 쪽은 한 번뿐이었다.) 세 번 다 못 넘으면 버리지 않고
+     도장 없이 단어장에 남긴다. 화면에는 안 나오고, 다음 실행에서 다시 쓴다. */
+  let 남은 = 고칠것;
+  for (let 차례 = 1; 차례 <= 3 && 남은.length; 차례++) {
+    const k = await 불러본다({ model: 모델, max_tokens: 4000, messages: [{ role: 'user', content: 다시쓰라(남은) + '\n\n' + 힌트규칙() + '\n\n' + 안전.규칙글() }] });
     입력 += k.usage?.input_tokens || 0; 출력 += k.usage?.output_tokens || 0;
     const 새것 = new Map();
     for (const line of 글자(k).split(/\r?\n/)) {
       const m = line.match(/^\s*\[?([가-힣A-Z0-9]{2,20})\]?\s*\|\s*(.+?)\s*$/);
       if (m) 새것.set(m[1], m[2]);
     }
-    // 고쳐 쓴 것도 두 물음(일반 잣대, 피해자의 눈)을 처음부터 다시 거친다.
-    // 둘 다 «괜찮음» 이라고 답한 것만 받는다. 걸리거나 답이 빠지면 못 고친 것으로 쳐서 낱말째 뺀다
-    const 후보 = 고칠것.map(x => ({ 이름: x.w[0], 글: 새것.get(x.w[0]) || '' })).filter(x => x.글);
-    const 통과 = new Set();
+    // 고쳐 쓴 것도 두 물음(일반 잣대, 피해자의 눈)을 처음부터 다시 거친다. 둘 다 «괜찮음» 이어야 받는다
+    const 후보 = 남은.map(x => ({ 이름: x.w[0], 글: 새것.get(x.w[0]) || '' })).filter(x => x.글 && 성한가(x.이름, x.글));
+    let 일반 = new Map(), 피해 = new Map();
     if (후보.length) {
       const [kg, kv] = await Promise.all([
         불러본다({ model: 판정모델, max_tokens: 8000, output_config: { effort: 'low' }, messages: [{ role: 'user', content: 물음(후보.map(x => [x.이름, x.글])) + '\n\n' + 안전.규칙글() }] }),
@@ -196,28 +202,36 @@ for (let i = 0; i < 할것.length; i += 묶음) {
       ]);
       입력 += (kg.usage?.input_tokens || 0) + (kv.usage?.input_tokens || 0);
       출력 += (kg.usage?.output_tokens || 0) + (kv.usage?.output_tokens || 0);
-      const 일반 = 안전.판정읽기(글자(kg)), 피해 = 안전.판정읽기(글자(kv));
-      for (const x of 후보) if (일반.get(x.이름)?.답 === '괜찮음' && 피해.get(x.이름)?.답 === '괜찮음') 통과.add(x.이름);
+      일반 = 안전.판정읽기(글자(kg)); 피해 = 안전.판정읽기(글자(kv));
     }
-    for (const x of 고칠것) {
+    const 다음 = [];
+    for (const x of 남은) {
       const n = 새것.get(x.w[0]);
-      if (n && 성한가(x.w[0], n) && 통과.has(x.w[0])) { 고친것.push([x.w[0], x.w[1], n]); x.w[1] = n; if (WRITE) 찍기(x.w[0], n); }
-      else 못고친것.push([x.w[0], x.w[1], x.까닭]);
+      if (n && 성한가(x.w[0], n) && 일반.get(x.w[0])?.답 === '괜찮음' && 피해.get(x.w[0])?.답 === '괜찮음') {
+        고친것.push([x.w[0], x.w[1], n]); x.w[1] = n; if (WRITE) 찍기(x.w[0], n);
+      } else {
+        const 까닭 = !n ? '다시 쓴 답이 없음'
+          : !성한가(x.w[0], n) ? '길이·누설·금지어 기계 검사에 걸림 (예순 자 안쪽, 정답 세 글자 금지)'
+          : (일반.get(x.w[0])?.까닭 || 피해.get(x.w[0])?.까닭 || '판정 답이 빠짐');
+        다음.push({ w: x.w, 까닭: `${x.까닭} / ${차례}번째 고친 것 «${n || ''}» 도 걸림: ${까닭}` });
+      }
     }
+    남은 = 다음;
   }
+  for (const x of 남은) 못고친것.push([x.w[0], x.w[1], x.까닭]);
   process.stderr.write(`  검사 ${Math.min(i + 묶음, 할것.length)}/${할것.length} — 걸린 것 ${걸린것.length} · 고친 것 ${고친것.length} · 못 고친 것 ${못고친것.length}\r`);
 }
 
 // 판정(opus 5.5: 입력 $4·출력 $20 /백만 토큰)이 대부분이라 그 값으로 어림한다
 const 값 = Math.round((입력 / 1e6 * 4 + 출력 / 1e6 * 20) * 1400);
-console.error(`\n\n걸린 것 ${걸린것.length} · 고친 것 ${고친것.length} · 못 고쳐 뺄 것 ${못고친것.length} · 너무 어려워 뺄 것 ${어려운것.length}`);
+console.error(`\n\n걸린 것 ${걸린것.length} · 고친 것 ${고친것.length} · 못 고친 것(다음에 다시) ${못고친것.length} · 너무 어려워 뺄 것 ${어려운것.length}`);
 if (어려운것.length) console.log('■ 너무 어려워 뺄 말\n  ' + 어려운것.join(' '));
 if (일반어.length) console.log('■ 시사 용어가 아니라 뺄 말\n  ' + 일반어.join(' '));
 console.error(`입력 ${입력} / 출력 ${출력} 토큰 = 약 ${값}원\n`);
 
 console.log('■ 고친 것');
 for (const [w, o, n] of 고친것) console.log(`  ${w}\n    전: ${o}\n    후: ${n}`);
-console.log('\n■ 못 고쳐 뺄 것');
+console.log('\n■ 세 번 고쳐도 못 넘은 것 — 도장 없이 남겨 다음에 다시 쓴다');
 for (const [w, c, why] of 못고친것) console.log(`  ${w} (${why})\n    ${c}`);
 
 if (!WRITE) {
@@ -227,7 +241,8 @@ if (!WRITE) {
   process.exit(걸린것.length || 어려운것.length || 일반어.length ? 1 : 0);
 }
 
-const 뺄이름 = new Set([...못고친것.map(r => r[0]), ...어려운것, ...일반어]);
+// 못 고친 것은 빼지 않는다 — 도장 없이 남아 화면에는 안 나오고, 다음 실행에서 다시 쓴다
+const 뺄이름 = new Set([...어려운것, ...일반어]);
 pack.groups[0].words = pack.groups[0].words.filter(w => !뺄이름.has(w[0]));
 const q = s => JSON.stringify(s);
 const head = Object.keys(pack).filter(k => k !== 'groups')
@@ -237,8 +252,6 @@ const groups = pack.groups.map(g =>
   g.words.map(w => '        [' + w.map(q).join(', ') + ']').join(',\n') + '\n      ]\n    }').join(',\n');
 fs.writeFileSync(packPath, `{\n${head}\n  "groups": [\n${groups}\n  ]\n}\n`, 'utf8');
 const 오늘 = new Date().toISOString().slice(0, 10);
-if (못고친것.length) fs.appendFileSync('packs/뺀말.txt',
-  `\n# ${오늘} 안전·사실 판정에 걸렸는데 고쳐 쓰지도 못한 말\n` + 못고친것.map(r => r[0]).join('\n') + '\n', 'utf8');
 if (일반어.length) fs.appendFileSync('packs/뺀말.txt',
   `\n# ${오늘} 시사 용어가 아닌 보통 낱말\n` + 일반어.join('\n') + '\n', 'utf8');
 if (어려운것.length) fs.appendFileSync('packs/뺀말.txt',
