@@ -53,10 +53,13 @@ const 품질 = (() => {
 
 /* 끈질기게 다시 부른다. 인터넷이 몇 분 끊기는 일이 있다 — 그때마다 스무 분 작업을 버릴 수는 없다.
    2초에서 시작해 1분까지 늘려 가며 여섯 번 해 본다. */
-async function 불러본다(body, 횟수 = 6) {
+async function 불러본다(body, 횟수 = 6, 이름 = '') {
   const 쉬는시간 = [2000, 5000, 10000, 20000, 40000, 60000];
   let 마지막;
   for (let i = 0; i < 횟수; i++) {
+    const 시작 = Date.now();
+    // 부를 때마다 한 줄씩 남긴다. 어느 모델 호출에서 서 있는지 실행 화면에서 바로 보이게
+    if (이름) console.error(`  ${시각()} 부름 ${이름} (${body.model})`);
     try {
       // 5분 넘게 답이 없으면 끊고 다시 부른다. 대기 제한이 없어 호출 10개가 한꺼번에 멈춘 채 10분 넘게 서 있었다
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -67,17 +70,17 @@ async function 불러본다(body, 횟수 = 6) {
       });
       const j = await res.json();
       if (!res.ok) throw new Error(JSON.stringify(j).slice(0, 200));
+      if (이름) console.error(`  ${시각()} 받음 ${이름} — ${Math.round((Date.now() - 시작) / 1000)}초`);
       return j;
     } catch (e) {
       마지막 = e;
-      process.stderr.write(`
-  다시 부른다 (${i + 1}/${횟수}) — ${String(e.message || e).slice(0, 60)}
-`);
+      console.error(`  ${시각()} 다시 부른다 ${이름} (${i + 1}/${횟수}) — ${String(e.message || e).slice(0, 60)}`);
       await new Promise(r => setTimeout(r, 쉬는시간[i] || 60000));
     }
   }
   throw 마지막;
 }
+const 시각 = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(11, 19);   // 한국 시각
 const 글자 = j => (j.content || []).map(c => c.text || '').join('');
 
 const 안전 = 안전모듈(repo);
@@ -135,7 +138,7 @@ function 보기만들기(w) {
 }
 
 /** 관문 통과 여부를 묶음으로 묻는다 */
-async function 풀려보기(덩이) {
+async function 풀려보기(덩이, 이름 = '') {
   const 물음 = `한국 시사 크로스워드의 열쇠다. 각 열쇠가 가리키는 낱말을 보기에서 고른다.
 
 낱말을 처음 들어 봐도 괜찮다. 열쇠가 가리키는 쪽을 고르면 된다.
@@ -144,7 +147,7 @@ async function 풀려보기(덩이) {
 한 줄에 하나씩 "번호|고른낱말" 꼴로만 적는다. 다른 말은 쓰지 않는다.
 
 ${덩이.map((x, i) => `${i + 1}. ${x.w[1]}\n   보기: ${x.보기.join(' / ')}`).join('\n')}`;
-  const j = await 불러본다({ model: 푸는모델, max_tokens: 3000, messages: [{ role: 'user', content: 물음 }] });
+  const j = await 불러본다({ model: 푸는모델, max_tokens: 3000, messages: [{ role: 'user', content: 물음 }] }, 6, 이름);
   입력 += j.usage?.input_tokens || 0; 출력 += j.usage?.output_tokens || 0;
   const 답 = new Map();
   for (const line of 글자(j).split(/\r?\n/)) {
@@ -155,7 +158,7 @@ ${덩이.map((x, i) => `${i + 1}. ${x.w[1]}\n   보기: ${x.보기.join(' / ')}`
 }
 
 /** 사실이 맞는지 — 기사 대목과 상식으로 */
-async function 사실보기(덩이) {
+async function 사실보기(덩이, 이름 = '') {
   const 물음 = `한국 시사 크로스워드의 낱말과 열쇠다. 열쇠에 사실과 어긋나는 데가 있는지 본다.
 기사 대목을 함께 주되, 기사에 없는 것도 아는 상식으로 판단한다.
 낱말을 처음 들어 본다면 «모름» 이라고 적는다 — 모르는 것을 틀렸다고 하지 않는다.
@@ -163,7 +166,7 @@ async function 사실보기(덩이) {
 한 줄에 하나씩 "낱말|맞음" / "낱말|틀림|무엇이 틀렸는지" / "낱말|모름" 꼴로만 적는다.
 
 ${덩이.map(x => `[${x.w[0]}] ${x.w[1]}${대목(x.w[0]).map(e => `\n   ${e}`).join('')}`).join('\n\n')}`;
-  const j = await 불러본다({ ...확인설정, messages: [{ role: 'user', content: 물음 }] });   // 사실 확인은 Sonnet (편집국 결정)
+  const j = await 불러본다({ ...확인설정, messages: [{ role: 'user', content: 물음 }] }, 6, 이름);   // 사실 확인은 Sonnet (편집국 결정)
   입력 += j.usage?.input_tokens || 0; 출력 += j.usage?.output_tokens || 0;
   const 답 = new Map();
   for (const line of 글자(j).split(/\r?\n/)) {
@@ -174,7 +177,7 @@ ${덩이.map(x => `[${x.w[0]}] ${x.w[1]}${대목(x.w[0]).map(e => `\n   ${e}`).j
 }
 
 /** 못 넘은 힌트를 다시 쓴다 — 한 번만 */
-async function 다시쓰기(목록) {
+async function 다시쓰기(목록, 이름 = '') {
   if (!목록.length) return new Map();
   const 물음 = `시사 크로스워드 열쇠를 다시 쓴다. 지금 열쇠로는 그 낱말을 가리키지 못한다.
 
@@ -189,7 +192,7 @@ async function 다시쓰기(목록) {
 한 줄에 하나씩 "낱말|다시 쓴 열쇠" 꼴로만 적는다.
 
 ${목록.map(x => `[${x.w[0]}] 지금 열쇠: ${x.w[1]}${대목(x.w[0]).map(e => `\n   ${e}`).join('')}`).join('\n\n')}`;
-  const j = await 불러본다({ ...쓰기설정, messages: [{ role: 'user', content: 물음 + '\n\n' + 힌트규칙() + '\n\n' + 안전.규칙글() }] });
+  const j = await 불러본다({ ...쓰기설정, messages: [{ role: 'user', content: 물음 + '\n\n' + 힌트규칙() + '\n\n' + 안전.규칙글() }] }, 6, 이름);
   입력 += j.usage?.input_tokens || 0; 출력 += j.usage?.output_tokens || 0;
   const 답 = new Map();
   for (const line of 글자(j).split(/\r?\n/)) {
@@ -212,14 +215,41 @@ const 성한가 = (w, clue) => {
 const 묶음 = 15;
 const 통과 = [], 고쳐통과 = [], 뺄것 = [], 사실틀림 = [];
 
+/* 묶음이 끝날 때마다 결과를 packs/관문진행.jsonl 에 한 줄씩 적어 둔다.
+   끝날 때 한 번만 적었더니, 실행이 중간에 끊기자 몇십 분 치 결과가 통째로 사라졌다.
+   packs/ 는 실행이 끊겨도 «중간 결과 보존» 으로 남으므로, 이어받은 실행은 이 파일을 읽고
+   이미 시험한 힌트(낱말과 힌트 글이 그대로인 것)는 건너뛴다. 관문이 끝까지 가면 지운다. */
+const 진행파일 = 'packs/관문진행.jsonl';
+const 진행키 = w => w[0] + '\t' + w[1];
+const 지난진행 = new Map();
+try {
+  for (const l of fs.readFileSync(진행파일, 'utf8').split('\n')) {
+    if (!l.trim()) continue;
+    try { const r = JSON.parse(l); 지난진행.set(r.키, r); } catch (_) {}
+  }
+} catch (_) {}
+const 남은것 = [];
+for (const w of 할것) {
+  const r = 지난진행.get(진행키(w));
+  if (!r) { 남은것.push(w); continue; }
+  if (r.사실틀림) 사실틀림.push([w[0], w[1], r.사실틀림]);
+  if (r.결과 === '통과') 통과.push(w[0]);
+  else if (r.결과 === '고쳐통과') { 고쳐통과.push([w[0], w[1], r.새힌트]); w[1] = r.새힌트; }
+  else 뺄것.push([w[0], w[1], r.고른것 || '못고름']);
+}
+if (지난진행.size) console.error(`지난 실행에서 이미 시험한 것 ${할것.length - 남은것.length}개는 건너뛴다. 남은 것 ${남은것.length}개`);
+const 적기 = r => fs.appendFileSync(진행파일, JSON.stringify(r) + '\n', 'utf8');
+
 const 묶음들_ = [];
-for (let i = 0; i < 할것.length; i += 묶음) 묶음들_.push(i);
+for (let i = 0; i < 남은것.length; i += 묶음) 묶음들_.push(i);
+let 끝낸수 = 할것.length - 남은것.length;
 // 한 번에 여러 묶음을 동시에 부른다 (lib-hint.mjs 의 동시에)
 await 동시에(묶음들_, async (i) => {
-  const 덩이 = 할것.slice(i, i + 묶음).map(w => ({ w, 보기: 보기만들기(w) }));
+  const 번호 = `묶음${i / 묶음 + 1}/${묶음들_.length}`;
+  const 덩이 = 남은것.slice(i, i + 묶음).map(w => ({ w, 보기: 보기만들기(w), 키: 진행키(w) }));
 
-  let 푼결과 = await 풀려보기(덩이);
-  const 사실 = await 사실보기(덩이);
+  let 푼결과 = await 풀려보기(덩이, `${번호} 풀기`);
+  const 사실 = await 사실보기(덩이, `${번호} 사실확인`);
 
   // 첫판에 못 넘은 것 — 힌트가 가리키지 못하거나 사실이 틀린 것
   const 다시할것 = [];
@@ -227,28 +257,38 @@ await 동시에(묶음들_, async (i) => {
     const f = 사실.get(x.w[0]);
     const 사실나쁨 = f?.판정 === '틀림';
     if (사실나쁨) 사실틀림.push([x.w[0], x.w[1], f.까닭]);
-    if (x.고른것 === x.w[0] && !사실나쁨) { 통과.push(x.w[0]); continue; }
-    if (손댄.has(x.w[0])) { 통과.push(x.w[0]); continue; }   // 사람 힌트는 고치지 않는다
+    const 틀린까닭 = 사실나쁨 ? f.까닭 || '틀림' : undefined;
+    if ((x.고른것 === x.w[0] && !사실나쁨) || 손댄.has(x.w[0])) {   // 사람 힌트는 고치지 않는다
+      통과.push(x.w[0]); 적기({ 키: x.키, 결과: '통과', 사실틀림: 틀린까닭 }); continue;
+    }
+    x.틀린까닭 = 틀린까닭;
     다시할것.push(x);
   }
 
   // 한 번 다시 쓰고 다시 물어본다
   if (다시할것.length) {
-    const 새것 = await 다시쓰기(다시할것);
+    const 새것 = await 다시쓰기(다시할것, `${번호} 다시쓰기`);
     const 재시험 = [];
     for (const x of 다시할것) {
       const n = 새것.get(x.w[0]);
       if (n && 성한가(x.w[0], n)) 재시험.push({ w: [x.w[0], n, x.w[2]], 보기: x.보기, 원래: x.w });
     }
-    const 푼것2 = 재시험.length ? await 풀려보기(재시험) : [];
+    const 푼것2 = 재시험.length ? await 풀려보기(재시험, `${번호} 다시풀기`) : [];
     const 넘은것 = new Set(푼것2.filter(x => x.고른것 === x.w[0]).map(x => x.w[0]));
     for (const x of 다시할것) {
       const r = 재시험.find(y => y.w[0] === x.w[0]);
-      if (r && 넘은것.has(x.w[0])) { x.w[1] = r.w[1]; 고쳐통과.push([x.w[0], r.원래[1], r.w[1]]); }
-      else 뺄것.push([x.w[0], x.w[1], x.고른것 || '못고름']);
+      if (r && 넘은것.has(x.w[0])) {
+        고쳐통과.push([x.w[0], r.원래[1], r.w[1]]);
+        적기({ 키: x.키, 결과: '고쳐통과', 새힌트: r.w[1], 사실틀림: x.틀린까닭 });
+        x.w[1] = r.w[1];
+      } else {
+        뺄것.push([x.w[0], x.w[1], x.고른것 || '못고름']);
+        적기({ 키: x.키, 결과: '뺄것', 고른것: x.고른것 || '못고름', 사실틀림: x.틀린까닭 });
+      }
     }
   }
-  process.stderr.write(`  관문 ${Math.min(i + 묶음, 할것.length)}/${할것.length} — 통과 ${통과.length} · 고쳐서 통과 ${고쳐통과.length} · 뺄 것 ${뺄것.length}\r`);
+  끝낸수 += 덩이.length;
+  console.error(`  ${시각()} 관문 ${끝낸수}/${할것.length} 끝남 (${번호}) — 통과 ${통과.length} · 고쳐서 통과 ${고쳐통과.length} · 뺄 것 ${뺄것.length}`);
 });
 
 const 값 = Math.round((입력 / 1e6 * 3 + 출력 / 1e6 * 15) * 1400);
@@ -276,4 +316,5 @@ if (뺄이름.size) {
     '\n# 관문을 두 번 못 넘은 말 — 힌트를 다시 써도 그 낱말을 가리키지 못했다\n' +
     [...뺄이름].join('\n') + '\n', 'utf8');
 }
+try { fs.unlinkSync(진행파일); } catch (_) {}   // 끝까지 갔으니 중간 기록은 필요 없다
 console.error(`→ ${packPath} 갱신 (낱말 ${pack.groups[0].words.length}개)`);
