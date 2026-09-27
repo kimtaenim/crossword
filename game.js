@@ -781,7 +781,9 @@ let C = 44;                  // 칸 크기(px)
 function sizeCells() {
   const avail = Math.min(scroller.clientWidth - 12, 520);
   // 폰에서 칸이 60px 가까이 커져 판이 몇 줄 안 보였다. 52px 을 넘지 않게 한다 (편집국: 글씨·칸 모두 작게)
-  C = Math.min(52, Math.max(28, Math.floor(avail / W)));
+  // 자판이 떠 있으면(기기 자판 kbup, 내장 자판 nokb 꺼짐) 칸을 더 줄여 판이 몇 줄이라도 보이게 한다
+  const 빽빽 = document.body.classList.contains('kbup') || !document.body.classList.contains('nokb');
+  C = Math.min(빽빽 ? 44 : 52, Math.max(28, Math.floor(avail / W)));
   document.documentElement.style.setProperty('--c', C + 'px');
   layer.style.width = W * C + 'px';
 }
@@ -915,6 +917,8 @@ function renderClue() {
     '<div class="meta">' +
       `<span class="tag ${w.dir === 'A' ? 'a' : 'd'}">${w.num} ${w.dir === 'A' ? '가로' : '세로'}</span>` +
       `<span class="len">${w.len}${isAlpha(w.word[0]) ? '자 (영문)' : hasAlpha(w.word) ? '글자 (영문·숫자 섞임)' : '글자'}</span>` +
+      // 자판이 떠 있어 아래 단추 줄을 치웠을 때 쓰는 작은 단추. CSS 가 빽빽한 꼴에서만 보여 준다
+      '<span class="mini"><button data-go="-1" title="이전 단어">‹</button><button data-go="1" title="다음 단어">›</button><button data-hint="1" title="한 칸 열기">💡</button></span>' +
     '</div>' +
     `<p class="txt">${w.clue}</p>` + 예문줄(w);
 }
@@ -2014,6 +2018,11 @@ document.querySelector('.cluebar').addEventListener('pointerdown', e => {
 });
 document.getElementById('hint').addEventListener('click', () => { hint(); focusIME(); });
 document.getElementById('open').addEventListener('click', openWord);
+document.getElementById('clue').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.go) nextWord(Number(b.dataset.go));
+  else if (b.dataset.hint) document.getElementById('hint').click();
+});
 document.getElementById('prev').addEventListener('click', () => nextWord(-1));
 document.getElementById('next').addEventListener('click', () => nextWord(1));
 document.getElementById('help').addEventListener('click', () => document.getElementById('howto').showModal());
@@ -2049,13 +2058,13 @@ if (vv) {
     clearTimeout(vvT);
     vvT = setTimeout(() => {
       document.body.style.height = Math.round(vv.height) + 'px';
-      sizeCells();
-      render();
       // 자판이 올라와 칸을 가릴 때만 끌어온다. 그리고 막 들어와 보던 자리로
       // 옮기는 동안에는 건드리지 않는다 — 안 그러면 복원한 자리가 딸려 간다
       const covered = vv.height < window.innerHeight - 60;
-      // 기기 자판이 떠 있는 동안에는 힌트 밑 예문을 숨긴다 — 예문 두 줄이 판을 다 가렸다. 자판을 내리면 다시 보인다
+      // 자판이 떠 있는 동안(kbup)은 «빽빽한 꼴»: 머리와 단추 줄을 치우고 힌트·예문·판만 둔다. 예문은 그대로 보인다
       document.body.classList.toggle('kbup', covered);
+      sizeCells();
+      render();
       if (covered && Date.now() > settling) {
         const c = S.cur && G.cells.get(S.cur);
         if (c) scrollTo(c);

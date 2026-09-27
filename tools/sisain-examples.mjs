@@ -53,7 +53,8 @@ function 문장(본문, w) {
   const 문장들 = 본문.split(/(?<=[다요까][.?!])\s+|(?<=[.?!])\s+(?=[가-힣A-Z«〈"'‘“])/);
   const 든것 = 문장들.filter(s => s.includes(w) && s.length >= 12).sort((a, b) => a.length - b.length);
   if (!든것.length) return '';
-  let s = 든것[0].replace(/^ⓒ\S+\s+\S+\s*/, '').trim();   // 사진 설명 앞의 «ⓒ시사IN 누구» 를 뗀다
+  // 사진 설명 앞의 «ⓒ시사IN 누구», 본문 중간의 «■» 소제목 표시가 문장에 섞여 들어온다. ■ 앞은 버리고, 남은 ■ 는 뗀다
+  let s = 든것[0].replace(/^ⓒ\S+\s+\S+\s*/, '').replace(/^.{0,30}?■\s*/, '').replace(/\s*■\s*/g, ' ').trim();
   if (s.length > 최대길이) {
     const i = s.indexOf(w);
     const 앞 = Math.max(0, Math.min(i - 20, s.length - 최대길이));
