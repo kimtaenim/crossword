@@ -21,6 +21,7 @@
    푸는 쪽은 Sonnet 을 쓴다. 힌트를 쓴 Haiku 와 다른 눈이라야 검사가 된다.
 */
 import { 힌트규칙, 쓰기설정, 푸는모델 } from './lib-hint.mjs';
+import { 도장읽기, 규칙판, 유효한가 } from './lib-stamp.mjs';
 import { 안전모듈, 재료기사 } from './lib-safety.mjs';
 import fs from 'fs';
 import path from 'path';
@@ -94,7 +95,13 @@ try {
     .map(l => l.trim()).filter(l => l && !l.startsWith('#')));
 } catch (_) {}
 
-const 할것 = 맛보기 ? 모든낱말.slice(0, 맛보기) : 모든낱말;
+/* --새것만: 자동 작업이 쓴다. 안전 도장이 없는 힌트(새로 캔 말, 새로 쓴 힌트)만 시험한다.
+   이미 판정을 지난 힌트를 매번 다시 풀리면 돈만 들고 멀쩡한 힌트가 흔들린다. */
+const 새것만 = process.argv.includes('--새것만');
+const 도장 = 도장읽기(), 판 = 규칙판(안전);
+const 대상 = 새것만 ? 모든낱말.filter(w => !유효한가(도장, w[0], w[1], 판)) : 모든낱말;
+const 할것 = 맛보기 ? 대상.slice(0, 맛보기) : 대상;
+console.error(`관문에 세울 힌트 ${할것.length}개${새것만 ? ' (도장 없는 것만)' : ''}`);
 /* 쓰는 쪽과 푸는 쪽에 다른 모델을 둔다.
    힌트는 잘 써야 하니 좋은 모델(Sonnet)이 쓰고, 푸는 것은 약한 모델(Haiku)이 한다.
    약한 모델이 보기에서 골라낼 수 있으면 실력 없는 사람도 풀 수 있다는 뜻이다 —

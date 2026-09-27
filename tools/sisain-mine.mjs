@@ -24,6 +24,8 @@ const repo = process.argv[2] && !process.argv[2].startsWith('--')
 const 인자 = k => (process.argv.find(a => a.startsWith('--' + k + '=')) || '').split('=')[1];
 const 부터 = 인자('부터') || '';
 const 건수 = Number(인자('건수') || 9999);
+// 자동 작업은 새로 들어온 기사 번호만 넘긴다. 같은 기사를 몇 번이고 다시 읽히지 않으려는 것
+const 기사들 = 인자('기사') ? new Set(fs.readFileSync(인자('기사'), 'utf8').split(/\s+/).filter(Boolean)) : null;
 const 한번에 = Number(인자('한번에') || 3);
 
 const env = {};
@@ -71,6 +73,7 @@ const 취재 = new Set(['news', 'feature']);
 const 글 = arts
   .filter(a => 취재.has(onto[a.id]?.genre))          // 칼럼·서평·만화에서는 안 캔다
   .filter(a => !부터 || day(a.date) >= 부터)
+  .filter(a => !기사들 || 기사들.has(String(a.id)))   // --기사=목록.txt: 새로 들어온 기사에서만 캔다
   .sort((a, b) => day(b.date).localeCompare(day(a.date)))
   .slice(0, 건수);
 
