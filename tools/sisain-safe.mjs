@@ -19,7 +19,7 @@
    기계가 보기 전에 낱말 목록으로 먼저 턴다(아래 거친말). 목록에 없는 것도 모델이 잡는다.
    사람이 손댄 힌트도 검사한다 — 안전은 예외를 두지 않는다.
 */
-import { 힌트규칙, 쓰기설정 } from './lib-hint.mjs';
+import { 힌트규칙, 쓰기설정, 동시에 } from './lib-hint.mjs';
 import { 안전모듈, 품질모듈, 재료기사 } from './lib-safety.mjs';
 import { 도장키, 도장읽기, 도장쓰기, 규칙판, 유효한가 } from './lib-stamp.mjs';
 import { 판정물음 as 물음, 난이도물음, 난이도읽기 } from './lib-judge.mjs';
@@ -138,7 +138,10 @@ const 살린 = 살린말들();
 
 console.error(`힌트 ${할것.length}개를 전수로 본다\n`);
 
-for (let i = 0; i < 할것.length; i += 묶음) {
+const 묶음들_ = [];
+for (let i = 0; i < 할것.length; i += 묶음) 묶음들_.push(i);
+// 한 번에 여러 묶음을 동시에 부른다 (lib-hint.mjs 의 동시에)
+await 동시에(묶음들_, async (i) => {
   const 덩이 = 할것.slice(i, i + 묶음);
   // 두 번 따로 묻는다 — 일반 잣대와 «피해자의 눈». 한 물음에 섞으면 피해자 잣대가 묻힌다
   // (돌려차기 힌트는 사실이고 비하도 없어서 일반 잣대를 그대로 지나갔다).
@@ -218,7 +221,7 @@ for (let i = 0; i < 할것.length; i += 묶음) {
   }
   for (const x of 남은) 못고친것.push([x.w[0], x.w[1], x.까닭]);
   process.stderr.write(`  검사 ${Math.min(i + 묶음, 할것.length)}/${할것.length} — 걸린 것 ${걸린것.length} · 고친 것 ${고친것.length} · 못 고친 것 ${못고친것.length}\r`);
-}
+});
 
 // 판정(opus 5.5: 입력 $4·출력 $20 /백만 토큰)이 대부분이라 그 값으로 어림한다
 const 값 = Math.round((입력 / 1e6 * 4 + 출력 / 1e6 * 20) * 1400);

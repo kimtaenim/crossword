@@ -14,7 +14,7 @@
 
    --쓰기 가 없으면 미리보기만 한다.
 */
-import { 힌트규칙, 쓰기설정 } from './lib-hint.mjs';
+import { 힌트규칙, 쓰기설정, 동시에 } from './lib-hint.mjs';
 import { 안전모듈, 재료기사 } from './lib-safety.mjs';
 import { 도장읽기, 규칙판, 유효한가 } from './lib-stamp.mjs';
 import fs from 'fs';
@@ -117,7 +117,10 @@ const 새힌트 = new Map();
 const 어려움 = new Set();
 let 입력토큰 = 0, 출력토큰 = 0;
 
-for (let i = 0; i < 대상.length; i += 묶음크기) {
+const 묶음들_ = [];
+for (let i = 0; i < 대상.length; i += 묶음크기) 묶음들_.push(i);
+// 한 번에 여러 묶음을 동시에 부른다 (lib-hint.mjs 의 동시에)
+await 동시에(묶음들_, async (i) => {
   const 덩이 = 대상.slice(i, i + 묶음크기);
   const j = await 불러본다({
       ...쓰기설정,   // 힌트는 비싼 모델이 쓴다 (lib-hint.mjs)
@@ -133,7 +136,7 @@ for (let i = 0; i < 대상.length; i += 묶음크기) {
   입력토큰 += (j.usage || {}).input_tokens || 0;
   출력토큰 += (j.usage || {}).output_tokens || 0;
   process.stderr.write(`  다듬는 중 ${Math.min(i + 묶음크기, 대상.length)}/${대상.length}\r`);
-}
+});
 
 /** 고친 힌트도 규칙을 다시 본다 — 못 미치면 옛 힌트를 그대로 둔다 */
 // «고칠 데 없음» 같은 대답을 힌트 자리에 그대로 써 넣은 적이 있다. 그런 말은 힌트가 아니다
@@ -142,7 +145,7 @@ const 대답찌꺼기 = /^(고칠 데 없음|고친 힌트 없음|고칠 힌트 
 // 기사에 그런 말이 인용돼 있으면 그대로 따라 쓴다. 사람이 볼 때까지 남아 있으면 안 되는 종류다.
 const 거친말 = /빨갱이|종북|좌빨|수꼴|토착왜구|매국노|틀딱|급식충|맘충|김치녀|짱깨|쪽바리|병신|미친놈|벙어리|절름발이|장애자|불구자|창녀/;
 const 성한가 = (w, clue) => {
-  if (!clue || clue.length > 46 || clue.length < 6) return false;
+  if (!clue || clue.length > 60 || clue.length < 6) return false;
   if (거친말.test(clue)) return false;
   if (대답찌꺼기.test(clue.trim())) return false;
   if (clue.includes(w)) return false;

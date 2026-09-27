@@ -20,7 +20,7 @@
 
    푸는 쪽은 Sonnet 을 쓴다. 힌트를 쓴 Haiku 와 다른 눈이라야 검사가 된다.
 */
-import { 힌트규칙, 쓰기설정, 푸는모델 } from './lib-hint.mjs';
+import { 힌트규칙, 쓰기설정, 푸는모델, 동시에 } from './lib-hint.mjs';
 import { 도장읽기, 규칙판, 유효한가 } from './lib-stamp.mjs';
 import { 안전모듈, 재료기사 } from './lib-safety.mjs';
 import fs from 'fs';
@@ -210,7 +210,10 @@ const 성한가 = (w, clue) => {
 const 묶음 = 15;
 const 통과 = [], 고쳐통과 = [], 뺄것 = [], 사실틀림 = [];
 
-for (let i = 0; i < 할것.length; i += 묶음) {
+const 묶음들_ = [];
+for (let i = 0; i < 할것.length; i += 묶음) 묶음들_.push(i);
+// 한 번에 여러 묶음을 동시에 부른다 (lib-hint.mjs 의 동시에)
+await 동시에(묶음들_, async (i) => {
   const 덩이 = 할것.slice(i, i + 묶음).map(w => ({ w, 보기: 보기만들기(w) }));
 
   let 푼결과 = await 풀려보기(덩이);
@@ -244,7 +247,7 @@ for (let i = 0; i < 할것.length; i += 묶음) {
     }
   }
   process.stderr.write(`  관문 ${Math.min(i + 묶음, 할것.length)}/${할것.length} — 통과 ${통과.length} · 고쳐서 통과 ${고쳐통과.length} · 뺄 것 ${뺄것.length}\r`);
-}
+});
 
 const 값 = Math.round((입력 / 1e6 * 3 + 출력 / 1e6 * 15) * 1400);
 console.error(`\n\n통과 ${통과.length} · 고쳐서 통과 ${고쳐통과.length} · 못 넘어 뺄 것 ${뺄것.length} · 사실 틀림 ${사실틀림.length}`);

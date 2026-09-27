@@ -14,7 +14,7 @@
 
    힌트는 기사에 적힌 것만 가지고 쓴다. 지어내면 푸는 사람이 영영 못 맞힌다.
 */
-import { 힌트규칙, 쓰기설정 } from './lib-hint.mjs';
+import { 힌트규칙, 쓰기설정, 동시에 } from './lib-hint.mjs';
 import { 안전모듈, 재료기사 } from './lib-safety.mjs';
 import fs from 'fs';
 import path from 'path';
@@ -117,7 +117,10 @@ ${덩이.map((a, i) => `[기사 ${i + 1}] ${a.title}\n${(a.subtitle || '')}\n${(
 const 캔것 = new Map();
 let 입력토큰 = 0, 출력토큰 = 0;
 
-for (let i = 0; i < 글.length; i += 한번에) {
+const 묶음들_ = [];
+for (let i = 0; i < 글.length; i += 한번에) 묶음들_.push(i);
+// 한 번에 여러 묶음을 동시에 부른다 (lib-hint.mjs 의 동시에)
+await 동시에(묶음들_, async (i) => {
   const 덩이 = 글.slice(i, i + 한번에);
   const j = await 불러본다({
       ...쓰기설정,   // 낱말과 힌트는 비싼 모델이 쓴다 (lib-hint.mjs)
@@ -133,7 +136,7 @@ for (let i = 0; i < 글.length; i += 한번에) {
   입력토큰 += (j.usage || {}).input_tokens || 0;
   출력토큰 += (j.usage || {}).output_tokens || 0;
   process.stderr.write(`  캐는 중 ${Math.min(i + 한번에, 글.length)}/${글.length} — ${캔것.size}종\r`);
-}
+});
 
 /** 여기서 한 번 거른다 — 정답이 새거나 길이가 안 맞으면 버린다 */
 // 거친 말·비하 표현이 힌트에 들어가면 안 된다. 기계가 «빨갱이» 를 쓴 적이 있다 —
@@ -147,7 +150,7 @@ for (const [w, clue, k] of 캔것.values()) {
   if (clue.includes(w)) 샘 = true;
   if (거친말.test(clue)) { 버림.push([w, clue, '거친 말']); continue; }
   if (샘) { 버림.push([w, clue, '정답이 샘']); continue; }
-  if (clue.length > 46 || clue.length < 6) { 버림.push([w, clue, '길이']); continue; }
+  if (clue.length > 60 || clue.length < 6) { 버림.push([w, clue, '길이']); continue; }
   통과.push([w, clue, k]);
 }
 
