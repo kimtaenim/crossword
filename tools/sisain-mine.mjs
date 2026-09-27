@@ -43,7 +43,9 @@ async function 불러본다(body, 횟수 = 3) {
   let 마지막;
   for (let i = 0; i < 횟수; i++) {
     try {
+      // 5분 넘게 답이 없으면 끊고 다시 부른다. 대기 제한이 없어 호출 10개가 한꺼번에 멈춘 채 10분 넘게 서 있었다
       const res = await fetch('https://api.anthropic.com/v1/messages', {
+        signal: AbortSignal.timeout(5 * 60 * 1000),
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify(body),
