@@ -1,0 +1,38 @@
+# 크로스워드 화면(GitHub Pages) 배포. main 에 올라오면 그대로 배포한다. 모델 호출 없음.
+#
+# 2026-09-26 23:12 에 «쓰이지 않는 배포 워크플로» 라며 이 파일의 전신을 지웠는데, Pages 소스가
+# «GitHub Actions» 로 되어 있어 그 뒤로 화면이 한 번도 배포되지 않았다(하루 동안 옛 화면이 남았다).
+# 시사 단어장은 화면이 챗봇 사이트(sisain-chatbot.vercel.app/crossword/)에서 받아 오고 도장으로 거르므로,
+# 여기서는 검사 없이 파일만 올린다.
+name: 화면 배포
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
