@@ -69,6 +69,12 @@ async function 불러본다(body, 횟수 = 6, 이름 = '') {
         body: JSON.stringify(body),
       });
       const j = await res.json();
+      if (!res.ok && res.status === 400 && body.output_config && /effort|output_config/.test(JSON.stringify(j))) {
+        // 이 모델이 «생각 길이» 설정을 받지 않으면, 그 설정만 빼고 다시 부른다. 조용히 넘어가지 않고 적어 둔다
+        console.error(`  ${시각()} ${body.model} 이 생각 길이 설정을 받지 않는다 — 설정 없이 부른다`);
+        delete body.output_config;
+        i--; continue;
+      }
       if (!res.ok) throw new Error(JSON.stringify(j).slice(0, 200));
       if (이름) console.error(`  ${시각()} 받음 ${이름} — ${Math.round((Date.now() - 시작) / 1000)}초`);
       return j;
@@ -166,7 +172,7 @@ async function 사실보기(덩이, 이름 = '') {
 한 줄에 하나씩 "낱말|맞음" / "낱말|틀림|무엇이 틀렸는지" / "낱말|모름" 꼴로만 적는다.
 
 ${덩이.map(x => `[${x.w[0]}] ${x.w[1]}${대목(x.w[0]).map(e => `\n   ${e}`).join('')}`).join('\n\n')}`;
-  const j = await 불러본다({ ...확인설정, messages: [{ role: 'user', content: 물음 }] }, 6, 이름);   // 사실 확인은 Sonnet (편집국 결정)
+  const j = await 불러본다({ ...확인설정, output_config: 확인설정.output_config && { ...확인설정.output_config }, messages: [{ role: 'user', content: 물음 }] }, 6, 이름);   // 사실 확인은 Sonnet (편집국 결정)
   입력 += j.usage?.input_tokens || 0; 출력 += j.usage?.output_tokens || 0;
   const 답 = new Map();
   for (const line of 글자(j).split(/\r?\n/)) {
