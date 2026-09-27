@@ -780,7 +780,8 @@ let C = 44;                  // 칸 크기(px)
 
 function sizeCells() {
   const avail = Math.min(scroller.clientWidth - 12, 520);
-  C = Math.max(28, Math.floor(avail / W));
+  // 폰에서 칸이 60px 가까이 커져 판이 몇 줄 안 보였다. 52px 을 넘지 않게 한다 (편집국: 글씨·칸 모두 작게)
+  C = Math.min(52, Math.max(28, Math.floor(avail / W)));
   document.documentElement.style.setProperty('--c', C + 'px');
   layer.style.width = W * C + 'px';
 }

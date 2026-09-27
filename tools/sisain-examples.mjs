@@ -35,9 +35,12 @@ const arts = 재료기사(안전, JSON.parse(fs.readFileSync(path.join(repo, 'da
   .sort((a, b) => b.날.localeCompare(a.날));
 
 // 정답을 가린다. 정답 전체뿐 아니라 정답의 두 글자 이상 조각도 가린다 («탄핵소추» 예문의 «탄핵» 이 보였다)
+// 조각은 정답이 넉 자 이하면 두 글자부터, 다섯 자 이상이면 세 글자부터 가린다.
+// («부당노동행위» 에서 «노동» 까지 가리면 «원청 노동자» 가 «원청 ㅇㅇ자» 가 됐다)
 function 가림(글, w) {
   let out = 글.split(w).join('ㅇ'.repeat(w.length));
-  for (let n = w.length - 1; n >= 2; n--)
+  const 최소 = w.length <= 4 ? 2 : 3;
+  for (let n = w.length - 1; n >= 최소; n--)
     for (let i = 0; i + n <= w.length; i++) out = out.split(w.slice(i, i + n)).join('ㅇ'.repeat(n));
   return out;
 }
