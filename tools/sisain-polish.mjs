@@ -71,10 +71,10 @@ function 기사대목(w, 개수 = 3) {
   for (const a of 원문) {
     const n = a.t.split(w).length - 1;
     if (!n) continue;
-    // 한 번 스친 기사보다 그 말이 중심인 기사(제목에 있거나 여러 번 나온 것)를 먼저. 같으면 새 기사 먼저
-    후보.push({ a, 중심: (a.제목.includes(w) ? 3 : 0) + Math.min(n, 5) });
+    // 한 번 스친 기사는 뺀다(제목에 있거나 두 번 이상 나온 기사만). 그중 가장 새 기사부터 — 최신 시사 (편집국 결정)
+    if (a.제목.includes(w) || n >= 2) 후보.push({ a });
   }
-  후보.sort((x, y) => y.중심 - x.중심 || y.a.d.localeCompare(x.a.d));
+  후보.sort((x, y) => y.a.d.localeCompare(x.a.d));
   return 후보.slice(0, 개수).map(({ a }) => {
     const i = a.t.indexOf(w);
     return { id: a.id, 글: `(${a.d} «${a.제목.slice(0, 40)}») ${a.t.slice(Math.max(0, i - 90), i + 110).replace(/\s+/g, ' ').trim()}` };
