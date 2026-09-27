@@ -915,7 +915,18 @@ function renderClue() {
       `<span class="tag ${w.dir === 'A' ? 'a' : 'd'}">${w.num} ${w.dir === 'A' ? '가로' : '세로'}</span>` +
       `<span class="len">${w.len}${isAlpha(w.word[0]) ? '자 (영문)' : hasAlpha(w.word) ? '글자 (영문·숫자 섞임)' : '글자'}</span>` +
     '</div>' +
-    `<p class="txt">${w.clue}</p>` + 기사링크(w);
+    `<p class="txt">${w.clue}</p>` + 예문줄(w);
+}
+
+/* 예문 — 그 말이 쓰인 시사IN 기사 둘. 제목·문장에서 정답은 ㅇㅇㅇ 으로 가려 두었다(tools/sisain-examples.mjs).
+   작은 글씨로 날짜·제목을 보여 주고 기사로 잇는다. 매주 새 기사가 들어오면 바뀐다. */
+const 글자만 = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function 예문줄(w) {
+  const es = w && PACK && PACK.예문 && PACK.예문[w.word];
+  if (!Array.isArray(es) || !es.length) return 기사링크(w);
+  return '<ul class="ex">' + es.filter(e => /^\d+$/.test(String(e.id))).map(e =>
+    `<li><a href="https://www.sisain.co.kr/news/articleView.html?idxno=${e.id}" target="_blank" rel="noopener">` +
+    `${글자만(e.날)} 〈${글자만(e.제목)}〉${e.예문 ? ' ' + 글자만(e.예문) : ''} ↗</a></li>`).join('') + '</ul>';
 }
 
 /* 시사 단어장은 힌트의 장면을 가져온 시사IN 기사를 단다(pack.기사: 낱말 → 기사 번호).
