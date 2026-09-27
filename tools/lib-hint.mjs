@@ -56,6 +56,8 @@ export function 너무어려운가(낱말, 기사수) {
 export const 쓰는모델 = process.env.WRITE_MODEL || 'claude-opus-5-5';
 export const 쓰기설정 = { model: 쓰는모델, max_tokens: 16000, output_config: { effort: 'medium' } };
 export const 푸는모델 = 'claude-haiku-4-5-20251001';
+/* 사실 확인은 쓰는 일이 아니라 검사하는 일이다. 편집국이 «소네트나 하이쿠로 해도 된다» 고 정했다 */
+export const 확인설정 = { model: process.env.CHECK_MODEL || 'claude-sonnet-5', max_tokens: 8000 };
 
 /** 일 여러 개를 한 번에 몇 개씩 동시에 돌린다. 모델 호출을 하나씩 기다리면
     비싼 모델에서는 몇 시간이 걸린다(낱말 캐기 100번 × 1분). 순서가 중요하지 않은 묶음 처리에 쓴다. */
