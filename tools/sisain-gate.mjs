@@ -20,7 +20,7 @@
 
    푸는 쪽은 Sonnet 을 쓴다. 힌트를 쓴 Haiku 와 다른 눈이라야 검사가 된다.
 */
-import { 힌트규칙, 쓰기설정, 확인설정, 푸는모델, 동시에 } from './lib-hint.mjs';
+import { 힌트규칙, 쓰기설정, 확인설정, 푸는모델, 동시에, 최대글자 } from './lib-hint.mjs';
 import { 도장읽기, 규칙판, 유효한가 } from './lib-stamp.mjs';
 import { 안전모듈, 재료기사 } from './lib-safety.mjs';
 import fs from 'fs';
@@ -98,6 +98,12 @@ const 원문 = arts.map(a => ({
 
 const packPath = 'packs/news.json';
 const pack = JSON.parse(fs.readFileSync(packPath, 'utf8'));
+// 일곱 글자 이상은 넣지 않는다 (편집국 결정). 이어받은 단어장에 남아 있으면 여기서 뺀다
+const 긴말 = pack.groups.flatMap(g => g.words).filter(w => w[0].length > 최대글자).map(w => w[0]);
+if (긴말.length) {
+  for (const g of pack.groups) g.words = g.words.filter(w => w[0].length <= 최대글자);
+  console.error(`일곱 글자 이상 ${긴말.length}개 뺀다: ${긴말.join(' ')}`);
+}
 const 모든낱말 = pack.groups.flatMap(g => g.words);
 
 let 손댄 = new Set();
@@ -316,6 +322,7 @@ const groups = pack.groups.map(g =>
   `    {\n      "name": ${q(g.name)},\n      "words": [\n` +
   g.words.map(w => '        [' + w.map(q).join(', ') + ']').join(',\n') + '\n      ]\n    }').join(',\n');
 fs.writeFileSync(packPath, `{\n${head}\n  "groups": [\n${groups}\n  ]\n}\n`, 'utf8');
+if (긴말.length) fs.appendFileSync('packs/뺀말.txt', '\n# 일곱 글자 이상 — 넣지 않는다 (편집국 결정)\n' + 긴말.join('\n') + '\n', 'utf8');
 if (뺄이름.size) {
   fs.appendFileSync('packs/뺀말.txt',
     '\n# 관문을 두 번 못 넘은 말 — 힌트를 다시 써도 그 낱말을 가리키지 못했다\n' +

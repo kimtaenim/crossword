@@ -36,7 +36,9 @@ export function 살린말들() {
 }
 
 /** 길고 드물어 너무 어려운 말인가 */
+export const 최대글자 = 6;   // 일곱 글자 이상은 넣지 않는다 (편집국 결정). 살린말에 있어도 뺀다
 export function 너무어려운가(낱말, 기사수) {
+  if (낱말.length > 최대글자) return { 어렵다: true, 까닭: `${낱말.length}글자 (일곱 글자 이상은 넣지 않는다)` };
   if (살린말들().has(낱말)) return { 어렵다: false, 까닭: '' };
   for (const [길이, 최소] of 하한) {
     if (낱말.length >= 길이) {
