@@ -1439,6 +1439,28 @@ ime.addEventListener('compositionend', () => {
 ime.addEventListener('input', imeSync);
 ime.addEventListener('blur', () => { composing = false; });
 
+/* 자판이 떠 있는가(kbup). 챗봇 사이트 안의 액자(iframe)에서는 visualViewport 가 줄지 않아 높이로는 모른다.
+   그래서 셋 중 하나면 떠 있는 것으로 본다 —
+   ① 바깥 창(챗봇)이 postMessage 로 알려 줌  ② 터치 기기에서 기기 자판용 숨은 입력칸에 초점이 있음  ③ 실제 높이가 줄어듦 */
+let 바깥자판 = null;   // 바깥 창이 알려 준 값. null 이면 모름
+const 터치기기 = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+function 자판떠있나(높이줄음) {
+  if (바깥자판 !== null) return 바깥자판;
+  if (터치기기 && document.body.classList.contains('nokb') && document.activeElement === ime) return true;
+  return !!높이줄음;
+}
+function 자판반영(높이줄음) {
+  const 전 = document.body.classList.contains('kbup');
+  const 후 = 자판떠있나(높이줄음);
+  if (전 !== 후) { document.body.classList.toggle('kbup', 후); sizeCells(); render(); }
+}
+window.addEventListener('message', e => {
+  const d = e.data;
+  if (d && d.type === 'kb' && typeof d.up === 'boolean') { 바깥자판 = d.up; 자판반영(false); }
+});
+ime.addEventListener('focus', () => setTimeout(() => 자판반영(false), 250));
+ime.addEventListener('blur', () => setTimeout(() => 자판반영(false), 250));
+
 /* ───────── 화면 자판 ───────── */
 const ROWS = [
   ['ㅂ','ㅈ','ㄷ','ㄱ','ㅅ','ㅛ','ㅕ','ㅑ','ㅐ','ㅔ'],
@@ -2062,7 +2084,7 @@ if (vv) {
       // 옮기는 동안에는 건드리지 않는다 — 안 그러면 복원한 자리가 딸려 간다
       const covered = vv.height < window.innerHeight - 60;
       // 자판이 떠 있는 동안(kbup)은 «빽빽한 꼴»: 머리와 단추 줄을 치우고 힌트·예문·판만 둔다. 예문은 그대로 보인다
-      document.body.classList.toggle('kbup', covered);
+      document.body.classList.toggle('kbup', 자판떠있나(covered));
       sizeCells();
       render();
       if (covered && Date.now() > settling) {
