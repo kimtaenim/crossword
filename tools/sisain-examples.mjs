@@ -50,7 +50,8 @@ const 다친일 = /사망|숨지|숨진|숨졌|목숨|부상|다쳐|다친|다�
 const 괜찮은글 = 글 => 안전.검사(글).안전 && !안전.곁가지(글).붙음 && !다친일.test(글);
 // 낱말이 다른 낱말의 꼬리로 들어 있는 것은 그 말이 아니다 («전당대회» 의 «당대회», «지방선거» 의 «선거»).
 // 바로 앞에 한글 음절이 붙어 있으면 세지 않는다. 뒤에는 조사가 붙으므로 막지 않는다
-const 낱말꼴 = w => new RegExp('(?<![가-힣])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+// 띄어쓰기는 가리지 않는다 — 단어장의 «연임개헌» 이 기사에는 «연임 개헌» 으로 나온다 (2026-10-05)
+const 낱말꼴 = w => new RegExp('(?<![가-힣])' + w.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join(' ?'), 'g');
 const 든다 = (글, w) => 낱말꼴(w).test(글);
 const 몇번 = (글, w) => (글.match(낱말꼴(w)) || []).length;
 // 공용 안전 모듈(lib/safety.js)과 같은 목록. 그쪽이 바뀌면 여기도 맞춘다
@@ -108,6 +109,29 @@ for (const w of 낱말들) {
 }
 pack.예문 = 새것;
 console.error(`예문 — 둘 ${둘} · 하나 ${하나} · 없음 ${없음} (낱말 ${낱말들.length}개)`);
+
+/* --새말: 이번에 새로 등록하는 낱말은 맥락(예문)과 기사 출처가 있어야 들어간다 (편집국 결정 2026-10-05).
+   «새로» 는 챗봇 저장소에 지금 나가 있는 단어장(public/crossword/news.json)에 없는 말이다.
+   예문이 하나도 없으면 이번 판에서 뺀다 — 그 말이 다시 기사에 나오면 그때 다시 캐인다.
+   예문은 있는데 출처 기사가 비었으면 첫 예문의 기사를 출처로 단다. 힌트 글은 건드리지 않는다(도장 그대로). */
+if (process.argv.includes('--새말')) {
+  let 나간말 = new Set();
+  try { 나간말 = new Set(JSON.parse(fs.readFileSync(path.join(repo, 'public/crossword/news.json'), 'utf8')).groups.flatMap(g => g.words).map(w => w[0])); } catch (_) {}
+  pack.기사 = pack.기사 || {};
+  const 뺀 = [], 단 = [];
+  for (const g of pack.groups) {
+    g.words = g.words.filter(w => {
+      if (나간말.has(w[0])) return true;
+      if (!새것[w[0]]) { 뺀.push(w[0]); delete pack.기사[w[0]]; return false; }
+      if (!pack.기사[w[0]]) { pack.기사[w[0]] = 새것[w[0]][0].id; 단.push(w[0]); }
+      return true;
+    });
+  }
+  const 새말 = pack.groups.flatMap(g => g.words).filter(w => !나간말.has(w[0]));
+  console.error(`새 낱말 ${새말.length}개 — 모두 예문·출처 있음${단.length ? ` (출처를 예문 기사로 단 것: ${단.join(' ')})` : ''}`);
+  if (뺀.length) console.error(`예문(맥락)이 없어 이번에 넣지 않은 새 낱말 ${뺀.length}개: ${뺀.join(' ')}`);
+  for (const w of 새말) console.error(`  ${w[0]} — ${w[1]}  [기사 ${pack.기사[w[0]]}] ${(새것[w[0]] || []).map(e => `${e.날} 〈${e.제목}〉`).join(' / ')}`);
+}
 for (const w of 낱말들.slice(0, 3)) for (const e of 새것[w] || []) console.error(`  ${w}: ${e.날} 〈${e.제목}〉 ${e.예문}`);
 
 if (!WRITE) { console.error('\n미리보기만 했다. 실제로 쓰려면 --쓰기 를 붙일 것.'); process.exit(0); }
